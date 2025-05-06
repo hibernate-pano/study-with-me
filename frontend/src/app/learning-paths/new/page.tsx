@@ -105,14 +105,33 @@ export default function NewLearningPath() {
   const { user } = useAuth();
 
   useEffect(() => {
-    // 在实际应用中，这里会调用API生成学习路径
-    // 目前仍使用模拟数据
-    const timer = setTimeout(() => {
-      setLearningPath(mockLearningPath);
-      setIsLoading(false);
-    }, 2000);
+    // 从会话存储中获取新生成的学习路径ID
+    const fetchLearningPath = async () => {
+      const pathId = sessionStorage.getItem('newPathId');
 
-    return () => clearTimeout(timer);
+      if (pathId) {
+        try {
+          // 从API获取学习路径详情
+          const response = await learningPathsApi.getById(pathId);
+          setLearningPath(response.path);
+          setIsLoading(false);
+
+          // 清除会话存储中的学习路径ID
+          sessionStorage.removeItem('newPathId');
+        } catch (error) {
+          console.error('获取学习路径失败:', error);
+          // 如果获取失败，使用模拟数据
+          setLearningPath(mockLearningPath);
+          setIsLoading(false);
+        }
+      } else {
+        // 如果没有学习路径ID，使用模拟数据
+        setLearningPath(mockLearningPath);
+        setIsLoading(false);
+      }
+    };
+
+    fetchLearningPath();
   }, []);
 
   const steps = ['生成学习路径', '自定义调整', '开始学习'];
@@ -126,7 +145,12 @@ export default function NewLearningPath() {
   };
 
   const handleStartLearning = () => {
-    router.push('/learning-paths/1/chapters/1');
+    if (learningPath && learningPath.id) {
+      router.push(`/learning-paths/${learningPath.id}/chapters/1`);
+    } else {
+      // 如果没有真实的学习路径ID，使用模拟ID
+      router.push('/learning-paths/1/chapters/1');
+    }
   };
 
   return (

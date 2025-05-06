@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -13,7 +13,8 @@ import {
   CardContent,
   CardActions,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -24,24 +25,52 @@ import {
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { learningPathsApi } from '@/lib/api';
 
 export default function Home() {
   const [learningGoal, setLearningGoal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!learningGoal.trim()) return;
 
     setIsLoading(true);
+    setError('');
 
-    // In a real app, this would call the API to generate a learning path
-    setTimeout(() => {
+    try {
+      // 如果用户已登录，则调用API生成学习路径
+      if (isAuthenticated && user) {
+        // 将学习目标和用户ID传递给API
+        const response = await learningPathsApi.generate({
+          goal: learningGoal,
+          userLevel: 'beginner', // 默认为初学者级别
+          userId: user.id
+        });
+
+        // 生成成功后，将学习路径ID存储在会话存储中
+        sessionStorage.setItem('newPathId', response.path.id);
+
+        // 重定向到学习路径页面
+        router.push('/learning-paths/new');
+      } else {
+        // 如果用户未登录，则将学习目标存储在会话存储中，并重定向到登录页面
+        sessionStorage.setItem('learningGoal', learningGoal);
+        sessionStorage.setItem('redirectPath', '/learning-paths/new');
+        router.push('/login');
+      }
+    } catch (err: any) {
+      console.error('生成学习路径失败:', err);
+      setError(err.message || '生成学习路径失败，请稍后再试');
+    } finally {
       setIsLoading(false);
-      router.push('/learning-paths/new');
-    }, 2000);
+    }
   };
 
   const features = [
@@ -67,8 +96,9 @@ export default function Home() {
     }
   ];
 
-  const popularPaths = [
+  const [popularPaths, setPopularPaths] = useState([
     {
+      id: '1',
       title: 'React前端开发',
       description: '从零开始学习React，掌握现代前端开发技能',
       level: '初级到中级',
@@ -76,6 +106,7 @@ export default function Home() {
       users: 1245
     },
     {
+      id: '2',
       title: 'Python数据分析',
       description: '学习Python数据分析，掌握数据处理和可视化技能',
       level: '初级到高级',
@@ -83,13 +114,40 @@ export default function Home() {
       users: 987
     },
     {
+      id: '3',
       title: '机器学习基础',
       description: '了解机器学习的核心概念和常用算法',
       level: '中级',
       chapters: 10,
       users: 756
     }
-  ];
+  ]);
+
+  // 获取热门学习路径
+  useEffect(() => {
+    const fetchPopularPaths = async () => {
+      try {
+        const response = await learningPathsApi.getPopularPaths(3);
+        if (response.paths && response.paths.length > 0) {
+          // 将API返回的数据转换为前端需要的格式
+          const formattedPaths = response.paths.map(path => ({
+            id: path.id,
+            title: path.title,
+            description: path.description,
+            level: path.level,
+            chapters: path.chapters || 0,
+            users: Math.floor(Math.random() * 1000) + 500 // 模拟用户数
+          }));
+          setPopularPaths(formattedPaths);
+        }
+      } catch (error) {
+        console.error('获取热门学习路径失败:', error);
+        // 如果API调用失败，保留默认数据
+      }
+    };
+
+    fetchPopularPaths();
+  }, []);
 
   return (
     <Box>
@@ -118,6 +176,12 @@ export default function Home() {
               <Typography variant="h5" color="text.secondary" paragraph>
                 使用AI技术帮助学习，对学习内容进行拆解和制定标准的学习计划，提供实时辅导和课后练习，让学习更高效。
               </Typography>
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
 
               <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
                 <Grid container spacing={2}>
@@ -261,10 +325,20 @@ export default function Home() {
                     </Typography>
                   </CardContent>
                   <CardActions>
-                    <Button size="small" color="primary">
+                    <Button
+                      size="small"
+                      color="primary"
+                      component={Link}
+                      href={`/learning-paths/${path.id}`}
+                    >
                       查看详情
                     </Button>
-                    <Button size="small" color="primary">
+                    <Button
+                      size="small"
+                      color="primary"
+                      component={Link}
+                      href={isAuthenticated ? `/learning-paths/${path.id}/chapters/1` : '/login'}
+                    >
                       开始学习
                     </Button>
                   </CardActions>

@@ -114,7 +114,12 @@ export const authApi = {
 export const learningPathsApi = {
   generate: (data: any) => api.post('/learning-paths/generate', data),
   getById: (id: string) => api.get(`/learning-paths/${id}`),
-  getUserPaths: (userId: string) => api.get(`/learning-paths/user/${userId}`),
+  getUserPaths: () => api.get('/learning-paths/user'),
+  getPopularPaths: (limit: number = 3) => api.get(`/learning-paths/popular?limit=${limit}`),
+  getChapters: (pathId: string) => api.get(`/learning-paths/${pathId}/chapters`),
+  getChapter: (pathId: string, chapterId: string) => api.get(`/learning-paths/${pathId}/chapters/${chapterId}`),
+  updatePath: (pathId: string, data: any) => api.put(`/learning-paths/${pathId}`, data),
+  deletePath: (pathId: string) => api.delete(`/learning-paths/${pathId}`),
 };
 
 // Content API

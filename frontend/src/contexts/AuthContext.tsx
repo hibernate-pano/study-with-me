@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { authApi } from '@/lib/api';
+import { authApi, learningPathsApi } from '@/lib/api';
 
 // 定义用户类型
 interface User {
@@ -71,10 +71,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 检查是否有重定向路径
       const redirectPath = sessionStorage.getItem('redirectPath');
-      if (redirectPath) {
+
+      // 检查是否有学习目标
+      const learningGoal = sessionStorage.getItem('learningGoal');
+
+      if (redirectPath && redirectPath === '/learning-paths/new' && learningGoal) {
+        // 如果重定向路径是学习路径生成页面，并且有学习目标，则先生成学习路径
+        try {
+          const pathResponse = await learningPathsApi.generate({
+            goal: learningGoal,
+            userLevel: 'beginner',
+            userId: response.user.id
+          });
+
+          // 生成成功后，将学习路径ID存储在会话存储中
+          sessionStorage.setItem('newPathId', pathResponse.path.id);
+
+          // 清除会话存储中的学习目标
+          sessionStorage.removeItem('learningGoal');
+          sessionStorage.removeItem('redirectPath');
+
+          // 重定向到学习路径页面
+          router.push('/learning-paths/new');
+        } catch (error) {
+          console.error('生成学习路径失败:', error);
+          // 如果生成失败，仍然重定向到学习路径页面，将使用模拟数据
+          sessionStorage.removeItem('learningGoal');
+          sessionStorage.removeItem('redirectPath');
+          router.push('/learning-paths/new');
+        }
+      } else if (redirectPath) {
+        // 如果只有重定向路径，则直接重定向
         sessionStorage.removeItem('redirectPath');
         router.push(redirectPath);
       } else {
+        // 否则重定向到首页
         router.push('/');
       }
     } catch (error) {
