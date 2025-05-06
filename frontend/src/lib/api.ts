@@ -131,6 +131,13 @@ export const contentApi = {
 // Tutor API
 export const tutorApi = {
   chat: (data: any) => api.post('/tutor/chat', data),
+  getChatHistory: (userId: string, pathId: string, chapterId: string) =>
+    api.get(`/tutor/history/${userId}/${pathId}/${chapterId}`),
+  saveChatHistory: (data: any) => api.post('/tutor/history/save', data),
+  clearChatHistory: (userId: string, pathId: string, chapterId: string) =>
+    api.delete(`/tutor/history/${userId}/${pathId}/${chapterId}`),
+  getRecommendedQuestions: (pathId: string, chapterId: string) =>
+    api.get(`/tutor/recommended-questions/${pathId}/${chapterId}`),
 };
 
 // Progress API

@@ -26,7 +26,8 @@ import {
   School as SchoolIcon,
   Book as BookIcon,
   AccountCircle as AccountCircleIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  QuestionAnswer as QuestionAnswerIcon
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -66,6 +67,7 @@ export default function Navbar({ }: NavbarProps = {}) {
     { text: '首页', icon: <HomeIcon />, href: '/' },
     { text: '学习路径', icon: <SchoolIcon />, href: '/learning-paths' },
     { text: '学习内容', icon: <BookIcon />, href: isAuthenticated ? '/learning-paths' : '/login' },
+    { text: 'AI辅导', icon: <QuestionAnswerIcon />, href: '/ai-tutor' },
   ];
 
   const drawer = (

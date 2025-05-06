@@ -21,7 +21,8 @@ import {
   Tab,
   Tabs,
   LinearProgress,
-  Chip
+  Chip,
+  Alert
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -29,7 +30,8 @@ import {
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckCircleIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Feedback as FeedbackIcon
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -37,6 +39,8 @@ import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { contentApi, tutorApi, progressApi, exercisesApi } from '@/lib/api';
+import FeedbackDialog from '@/components/FeedbackDialog';
+import AITutor from '@/components/AITutor';
 
 // 模拟章节内容数据
 const mockChapterContent = {
@@ -182,20 +186,47 @@ export default function ChapterPage() {
   const [chapterContent, setChapterContent] = useState<any>(null);
   const [exercises, setExercises] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
-  const [question, setQuestion] = useState('');
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string }>({});
   const [exerciseResults, setExerciseResults] = useState<{ [key: number]: boolean }>({});
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
+  const { user } = useAuth();
 
   useEffect(() => {
-    // 模拟API请求
-    const timer = setTimeout(() => {
-      setChapterContent(mockChapterContent);
-      setExercises(mockExercises);
-      setIsLoading(false);
-    }, 1500);
+    const fetchChapterContent = async () => {
+      setIsLoading(true);
 
-    return () => clearTimeout(timer);
-  }, []);
+      try {
+        // 获取章节内容
+        const contentResponse = await contentApi.getById(params.chapterId as string);
+        setChapterContent(contentResponse.content);
+
+        // 获取章节练习题
+        const exercisesResponse = await exercisesApi.getChapterExercises(params.chapterId as string);
+        setExercises(exercisesResponse.exercises);
+
+        // 更新学习进度
+        if (user) {
+          await progressApi.update({
+            userId: user.id,
+            pathId: params.pathId as string,
+            chapterId: params.chapterId as string,
+            status: 'started'
+          });
+        }
+      } catch (error) {
+        console.error('获取章节内容失败:', error);
+        // 如果API调用失败，使用模拟数据
+        setChapterContent(mockChapterContent);
+        setExercises(mockExercises);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchChapterContent();
+  }, [params.chapterId, params.pathId, user]);
 
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -205,12 +236,7 @@ export default function ChapterPage() {
     setTabValue(newValue);
   };
 
-  const handleSendQuestion = () => {
-    if (!question.trim()) return;
-    // 在实际应用中，这里会发送请求到AI辅导API
-    console.log('发送问题:', question);
-    setQuestion('');
-  };
+
 
   const handleAnswerSelect = (exerciseId: number, answer: string) => {
     setSelectedAnswers({
@@ -219,7 +245,7 @@ export default function ChapterPage() {
     });
   };
 
-  const handleCheckAnswer = (exerciseId: number) => {
+  const handleCheckAnswer = async (exerciseId: number) => {
     const exercise = exercises.find(ex => ex.id === exerciseId);
     if (exercise && selectedAnswers[exerciseId]) {
       const isCorrect = selectedAnswers[exerciseId] === exercise.answer;
@@ -227,21 +253,60 @@ export default function ChapterPage() {
         ...exerciseResults,
         [exerciseId]: isCorrect
       });
+
+      // 更新学习进度
+      if (user) {
+        try {
+          await progressApi.update({
+            userId: user.id,
+            pathId: params.pathId as string,
+            chapterId: params.chapterId as string,
+            exerciseId: exerciseId.toString(),
+            status: isCorrect ? 'completed' : 'failed'
+          });
+        } catch (error) {
+          console.error('更新练习进度失败:', error);
+        }
+      }
     }
   };
 
-  // 模拟章节列表
-  const chapters = [
-    { id: 1, title: 'React简介', completed: true },
-    { id: 2, title: 'JSX语法', completed: false },
-    { id: 3, title: '组件基础', completed: false },
-    { id: 4, title: '组件生命周期', completed: false },
-    { id: 5, title: '状态管理', completed: false },
-    { id: 6, title: 'Context API', completed: false },
-    { id: 7, title: 'React Router', completed: false },
-    { id: 8, title: 'API集成', completed: false },
-    { id: 9, title: '项目实战', completed: false },
-  ];
+  // 章节列表
+  const [chapters, setChapters] = useState<any[]>([]);
+  const [userProgress, setUserProgress] = useState<any>(null);
+
+  // 获取章节列表和用户进度
+  useEffect(() => {
+    const fetchChapters = async () => {
+      try {
+        // 获取学习路径的所有章节
+        const chaptersResponse = await learningPathsApi.getChapters(params.pathId as string);
+        setChapters(chaptersResponse.chapters || []);
+
+        // 获取用户学习进度
+        if (user) {
+          const progressResponse = await progressApi.getUserProgress(user.id, params.pathId as string);
+          setUserProgress(progressResponse.progress);
+        }
+      } catch (error) {
+        console.error('获取章节列表失败:', error);
+        // 如果API调用失败，使用模拟数据
+        setChapters([
+          { id: 1, title: 'React简介', completed: true },
+          { id: 2, title: 'JSX语法', completed: false },
+          { id: 3, title: '组件基础', completed: false },
+          { id: 4, title: '组件生命周期', completed: false },
+          { id: 5, title: '状态管理', completed: false },
+          { id: 6, title: 'Context API', completed: false },
+          { id: 7, title: 'React Router', completed: false },
+          { id: 8, title: 'API集成', completed: false },
+          { id: 9, title: '项目实战', completed: false },
+        ]);
+      }
+    };
+
+    fetchChapters();
+  }, [params.pathId, user]);
 
   return (
     <ProtectedRoute>
@@ -266,15 +331,24 @@ export default function ChapterPage() {
             <Box sx={{ p: 2 }}>
               <Typography variant="h6">React前端开发</Typography>
               <Typography variant="body2" color="text.secondary">
-                学习进度: 11%
+                学习进度: {userProgress ? `${userProgress.percentage}%` : '0%'}
               </Typography>
-              <LinearProgress variant="determinate" value={11} sx={{ mt: 1 }} />
+              <LinearProgress
+                variant="determinate"
+                value={userProgress ? userProgress.percentage : 0}
+                sx={{ mt: 1 }}
+              />
             </Box>
             <Divider />
             <List>
               {chapters.map((chapter) => (
                 <ListItem key={chapter.id} disablePadding>
-                  <ListItemButton selected={chapter.id === Number(params.chapterId)}>
+                  <ListItemButton
+                    selected={chapter.id === Number(params.chapterId)}
+                    onClick={() => {
+                      window.location.href = `/learning-paths/${params.pathId}/chapters/${chapter.id}`;
+                    }}
+                  >
                     <ListItemText
                       primary={chapter.title}
                       primaryTypographyProps={{
@@ -322,9 +396,21 @@ export default function ChapterPage() {
                   {/* 学习内容标签页 */}
                   <TabPanel value={tabValue} index={0}>
                     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-                      <Typography variant="h5" gutterBottom>
-                        概述
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Typography variant="h5" gutterBottom>
+                          概述
+                        </Typography>
+                        <Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<FeedbackIcon />}
+                            onClick={() => setFeedbackDialogOpen(true)}
+                          >
+                            内容反馈
+                          </Button>
+                        </Box>
+                      </Box>
                       <Typography variant="body1" paragraph>
                         {chapterContent.summary}
                       </Typography>
@@ -420,6 +506,12 @@ export default function ChapterPage() {
                           variant="outlined"
                           startIcon={<ArrowBackIcon />}
                           disabled={Number(params.chapterId) <= 1}
+                          onClick={() => {
+                            const prevChapterId = Number(params.chapterId) - 1;
+                            if (prevChapterId >= 1) {
+                              window.location.href = `/learning-paths/${params.pathId}/chapters/${prevChapterId}`;
+                            }
+                          }}
                         >
                           上一章
                         </Button>
@@ -427,6 +519,12 @@ export default function ChapterPage() {
                           variant="contained"
                           endIcon={<ArrowForwardIcon />}
                           disabled={Number(params.chapterId) >= chapters.length}
+                          onClick={() => {
+                            const nextChapterId = Number(params.chapterId) + 1;
+                            if (nextChapterId <= chapters.length) {
+                              window.location.href = `/learning-paths/${params.pathId}/chapters/${nextChapterId}`;
+                            }
+                          }}
                         >
                           下一章
                         </Button>
@@ -513,37 +611,11 @@ export default function ChapterPage() {
                   {/* AI辅导标签页 */}
                   <TabPanel value={tabValue} index={2}>
                     <Paper sx={{ p: 3, mb: 3, borderRadius: 2, height: '70vh', display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="h5" gutterBottom>
-                        AI辅导助手
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                        有任何问题都可以向AI助手提问，它会根据当前学习内容为您提供解答。
-                      </Typography>
-
-                      <Box sx={{ flexGrow: 1, bgcolor: 'background.default', borderRadius: 2, p: 2, mb: 2, overflow: 'auto' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 10 }}>
-                          暂无对话记录，请在下方输入您的问题。
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <TextField
-                          fullWidth
-                          placeholder="输入您的问题..."
-                          variant="outlined"
-                          value={question}
-                          onChange={(e) => setQuestion(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendQuestion()}
-                        />
-                        <IconButton
-                          color="primary"
-                          onClick={handleSendQuestion}
-                          disabled={!question.trim()}
-                          sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
-                        >
-                          <SendIcon />
-                        </IconButton>
-                      </Box>
+                      <AITutor
+                        pathId={params.pathId as string}
+                        chapterId={params.chapterId as string}
+                        chapterTitle={chapterContent?.title}
+                      />
                     </Paper>
                   </TabPanel>
                 </Box>
@@ -552,6 +624,45 @@ export default function ChapterPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* 反馈对话框 */}
+      <FeedbackDialog
+        open={feedbackDialogOpen}
+        onClose={() => setFeedbackDialogOpen(false)}
+        contentId={params.chapterId as string}
+        contentType="chapter"
+        onSubmit={async (data) => {
+          try {
+            // 在实际应用中，这里会调用API提交反馈
+            // await contentApi.submitFeedback(data);
+            console.log('提交反馈:', data);
+
+            // 模拟API调用
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            setFeedbackSuccess(true);
+            setTimeout(() => setFeedbackSuccess(false), 3000);
+          } catch (error) {
+            console.error('提交反馈失败:', error);
+            throw new Error('提交反馈失败，请稍后再试');
+          }
+        }}
+      />
+
+      {feedbackSuccess && (
+        <Alert
+          severity="success"
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 9999,
+            boxShadow: 3
+          }}
+        >
+          感谢您的反馈！我们会认真考虑您的建议，不断改进内容质量。
+        </Alert>
+      )}
     </ProtectedRoute>
   );
 }
