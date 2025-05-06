@@ -7,9 +7,9 @@ Study With Me 是一个利用人工智能技术帮助用户高效学习的在线
 - **个性化学习路径**：AI根据用户目标和基础自动生成定制化学习计划
 - **结构化知识体系**：将复杂知识拆解为清晰的结构和进阶路径
 - **智能实时辅导**：提供24/7的AI辅导，解答疑问，补充知识点
+- **课后练习生成**：AI根据学习内容自动生成针对性练习题，帮助巩固所学知识
 - **多模态学习内容**：融合文本、代码、图表、视频等多种形式
 - **进度追踪与激励**：智能跟踪学习进度，通过游戏化元素保持学习动力
-- **社区协作学习**：促进用户间的知识分享和协作学习
 
 ## 项目文档
 
@@ -27,29 +27,24 @@ Study With Me 是一个利用人工智能技术帮助用户高效学习的在线
 
 ### 前端
 - React + Next.js
-- TailwindCSS + DaisyUI
-- SWR/React Query
+- Material UI (Google风格)
 - TypeScript
+- SWR (数据获取)
 
 ### 后端
-- Node.js + NestJS
-- PostgreSQL + Prisma
-- Redis
-- JWT认证
+- Node.js + Express
+- TypeScript
+- Supabase (PostgreSQL数据库、认证、存储)
 
 ### AI服务
-- OpenAI GPT-4/Claude/Gemini
-- LangChain
-- Pinecone/Milvus向量数据库
-- 自研RAG系统
+- 硅基流动 Qwen/Qwen3-235B-A22B 模型
 
 ## 开发环境设置
 
 ### 前提条件
 - Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL 14+
-- Redis 6+
+- Supabase账号
+- 硅基流动API密钥
 
 ### 安装步骤
 
@@ -59,45 +54,76 @@ git clone https://github.com/yourusername/study-with-me.git
 cd study-with-me
 ```
 
-2. 安装依赖
+2. 设置Supabase
+   - 在Supabase创建新项目
+   - 运行`backend/supabase/schema.sql`中的SQL语句设置数据库结构
+   - 复制项目URL和API密钥
+
+3. 设置前端
 ```bash
-# 前端依赖
 cd frontend
 npm install
+cp .env.local.example .env.local
+# 编辑.env.local文件，填入Supabase URL和密钥
+```
 
-# 后端依赖
-cd ../backend
+4. 设置后端
+```bash
+cd backend
 npm install
+cp .env.example .env
+# 编辑.env文件，填入Supabase和AI模型的配置
 ```
 
-3. 环境配置
+5. 启动开发服务器
 ```bash
-# 前端环境变量
-cp frontend/.env.example frontend/.env.local
-
-# 后端环境变量
-cp backend/.env.example backend/.env
-```
-
-4. 启动开发服务器
-```bash
-# 使用Docker Compose启动所有服务
-docker-compose up -d
-
-# 或分别启动前后端
 # 前端
 cd frontend
 npm run dev
 
 # 后端
 cd backend
-npm run start:dev
+npm run dev
 ```
 
-5. 访问应用
-- 前端: http://localhost:3000
-- 后端API: http://localhost:4000
-- API文档: http://localhost:4000/api-docs
+6. 访问应用
+   - 前端: http://localhost:3000
+   - 后端API: http://localhost:4000
+
+## 配置硅基流动 Qwen/Qwen3-235B-A22B 模型
+
+1. 获取硅基流动API密钥
+2. 在`backend/.env`文件中配置以下环境变量:
+   ```
+   AI_API_URL=your_ai_api_url
+   AI_API_KEY=your_ai_api_key
+   AI_MODEL_NAME=Qwen/Qwen3-235B-A22B
+   ```
+
+## 开发指南
+
+### 前端开发
+
+前端使用Next.js的App Router结构，主要页面包括:
+
+- `/`: 首页
+- `/learning-paths/new`: 新建学习路径
+- `/learning-paths/[pathId]/chapters/[chapterId]`: 章节内容页面
+
+添加新页面时，在`src/app`目录下创建相应的文件夹和`page.tsx`文件。
+
+### 后端开发
+
+后端使用Express框架，API路由包括:
+
+- `/api/auth`: 认证相关API
+- `/api/learning-paths`: 学习路径相关API
+- `/api/content`: 内容生成相关API
+- `/api/tutor`: AI辅导相关API
+- `/api/progress`: 学习进度相关API
+- `/api/exercises`: 练习题相关API
+
+添加新API时，在`src/routes`目录下创建相应的路由文件，并在`src/index.ts`中注册。
 
 ## 贡献指南
 
@@ -115,6 +141,28 @@ npm run start:dev
 3. 提交你的更改 (`git commit -m 'Add some amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 创建一个Pull Request
+
+## 部署
+
+### 前端部署
+
+可以使用Vercel部署Next.js应用:
+
+```bash
+cd frontend
+vercel
+```
+
+### 后端部署
+
+可以使用云服务器或Serverless服务部署Express应用:
+
+```bash
+cd backend
+npm run build
+# 使用PM2或其他进程管理器运行
+pm2 start dist/index.js
+```
 
 ## 许可证
 
