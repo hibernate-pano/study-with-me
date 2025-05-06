@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
   ListItemText,
   Box,
   Avatar,
@@ -20,25 +20,25 @@ import {
   useMediaQuery,
   useTheme
 } from '@mui/material';
-import { 
-  Menu as MenuIcon, 
-  Home as HomeIcon, 
-  School as SchoolIcon, 
-  Book as BookIcon, 
+import {
+  Menu as MenuIcon,
+  Home as HomeIcon,
+  School as SchoolIcon,
+  Book as BookIcon,
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavbarProps {
-  isLoggedIn?: boolean;
-  userName?: string;
-  userAvatar?: string;
-  onLogout?: () => void;
+  // 可选的额外属性
 }
 
-export default function Navbar({ isLoggedIn = false, userName = '', userAvatar = '', onLogout }: NavbarProps) {
+export default function Navbar({ }: NavbarProps = {}) {
+  // 使用认证上下文
+  const { user, isAuthenticated, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const theme = useTheme();
@@ -59,7 +59,7 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
 
   const handleLogout = () => {
     handleMenuClose();
-    if (onLogout) onLogout();
+    logout();
   };
 
   const menuItems = [
@@ -72,13 +72,13 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
     <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
       <List>
         {menuItems.map((item) => (
-          <ListItem 
-            key={item.text} 
-            component={Link} 
+          <ListItem
+            key={item.text}
+            component={Link}
             href={item.href}
             selected={pathname === item.href}
-            sx={{ 
-              color: 'inherit', 
+            sx={{
+              color: 'inherit',
               textDecoration: 'none',
               bgcolor: pathname === item.href ? 'rgba(66, 133, 244, 0.08)' : 'transparent',
               '&:hover': {
@@ -109,14 +109,14 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
               <MenuIcon />
             </IconButton>
           )}
-          
-          <Typography 
-            variant="h6" 
-            component={Link} 
-            href="/" 
-            sx={{ 
-              flexGrow: 1, 
-              color: 'primary.main', 
+
+          <Typography
+            variant="h6"
+            component={Link}
+            href="/"
+            sx={{
+              flexGrow: 1,
+              color: 'primary.main',
               textDecoration: 'none',
               fontWeight: 500,
               display: 'flex',
@@ -127,16 +127,16 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
             <SchoolIcon />
             Study With Me
           </Typography>
-          
+
           {!isMobile && (
             <Box sx={{ display: 'flex', gap: 2 }}>
               {menuItems.map((item) => (
-                <Button 
+                <Button
                   key={item.text}
                   component={Link}
                   href={item.href}
                   color={pathname === item.href ? 'primary' : 'inherit'}
-                  sx={{ 
+                  sx={{
                     fontWeight: pathname === item.href ? 500 : 400,
                     borderRadius: 2,
                     px: 2
@@ -148,8 +148,8 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
               ))}
             </Box>
           )}
-          
-          {isLoggedIn ? (
+
+          {isAuthenticated ? (
             <Box sx={{ ml: 2 }}>
               <IconButton
                 onClick={handleMenuOpen}
@@ -157,11 +157,11 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
                 aria-controls="menu-appbar"
                 aria-haspopup="true"
               >
-                {userAvatar ? (
-                  <Avatar src={userAvatar} alt={userName} sx={{ width: 32, height: 32 }} />
+                {user?.avatar_url ? (
+                  <Avatar src={user.avatar_url} alt={user.display_name || user.email} sx={{ width: 32, height: 32 }} />
                 ) : (
                   <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                    {userName.charAt(0).toUpperCase()}
+                    {(user?.display_name || user?.email || '').charAt(0).toUpperCase()}
                   </Avatar>
                 )}
               </IconButton>
@@ -173,7 +173,7 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
                 onClose={handleMenuClose}
               >
                 <MenuItem disabled>
-                  <Typography variant="body2">{userName}</Typography>
+                  <Typography variant="body2">{user?.display_name || user?.email}</Typography>
                 </MenuItem>
                 <Divider />
                 <MenuItem component={Link} href="/profile" onClick={handleMenuClose}>
@@ -192,17 +192,17 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
             </Box>
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button 
-                component={Link} 
-                href="/login" 
+              <Button
+                component={Link}
+                href="/login"
                 color="inherit"
                 variant="text"
               >
                 登录
               </Button>
-              <Button 
-                component={Link} 
-                href="/register" 
+              <Button
+                component={Link}
+                href="/register"
                 color="primary"
                 variant="contained"
                 disableElevation
@@ -213,7 +213,7 @@ export default function Navbar({ isLoggedIn = false, userName = '', userAvatar =
           )}
         </Toolbar>
       </AppBar>
-      
+
       <Drawer
         anchor="left"
         open={drawerOpen}

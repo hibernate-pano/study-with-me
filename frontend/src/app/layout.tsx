@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -23,7 +24,9 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body className={roboto.className}>
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

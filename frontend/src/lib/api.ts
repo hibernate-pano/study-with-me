@@ -69,8 +69,12 @@ class ApiClient {
   async request(endpoint: string, options = {}) {
     const url = `${API_URL}${endpoint}`;
 
+    // 获取认证令牌
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
     const headers = {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     };
 
@@ -81,7 +85,7 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const error = await response.json();
         return Promise.reject(error);

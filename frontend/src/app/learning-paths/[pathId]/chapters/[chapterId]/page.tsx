@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Button, 
-  Paper, 
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Paper,
   Grid,
   Drawer,
   List,
@@ -23,7 +23,7 @@ import {
   LinearProgress,
   Chip
 } from '@mui/material';
-import { 
+import {
   Menu as MenuIcon,
   Send as SendIcon,
   ArrowBack as ArrowBackIcon,
@@ -32,8 +32,11 @@ import {
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '@/contexts/AuthContext';
+import { contentApi, tutorApi, progressApi, exercisesApi } from '@/lib/api';
 
 // 模拟章节内容数据
 const mockChapterContent = {
@@ -180,8 +183,8 @@ export default function ChapterPage() {
   const [exercises, setExercises] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
   const [question, setQuestion] = useState('');
-  const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: string}>({});
-  const [exerciseResults, setExerciseResults] = useState<{[key: number]: boolean}>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string }>({});
+  const [exerciseResults, setExerciseResults] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     // 模拟API请求
@@ -241,312 +244,314 @@ export default function ChapterPage() {
   ];
 
   return (
-    <Box>
-      <Navbar />
-      
-      <Box sx={{ display: 'flex' }}>
-        {/* 侧边导航抽屉 */}
-        <Drawer
-          variant="temporary"
-          open={drawerOpen}
-          onClose={handleDrawerToggle}
-          sx={{
-            width: 280,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
+    <ProtectedRoute>
+      <Box>
+        <Navbar />
+
+        <Box sx={{ display: 'flex' }}>
+          {/* 侧边导航抽屉 */}
+          <Drawer
+            variant="temporary"
+            open={drawerOpen}
+            onClose={handleDrawerToggle}
+            sx={{
               width: 280,
-              boxSizing: 'border-box',
-            },
-          }}
-        >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6">React前端开发</Typography>
-            <Typography variant="body2" color="text.secondary">
-              学习进度: 11%
-            </Typography>
-            <LinearProgress variant="determinate" value={11} sx={{ mt: 1 }} />
-          </Box>
-          <Divider />
-          <List>
-            {chapters.map((chapter) => (
-              <ListItem key={chapter.id} disablePadding>
-                <ListItemButton selected={chapter.id === Number(params.chapterId)}>
-                  <ListItemText 
-                    primary={chapter.title} 
-                    primaryTypographyProps={{
-                      color: chapter.completed ? 'primary' : 'inherit',
-                      fontWeight: chapter.id === Number(params.chapterId) ? 500 : 400
-                    }}
-                  />
-                  {chapter.completed && <CheckCircleIcon color="primary" fontSize="small" />}
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Drawer>
-        
-        {/* 主内容区域 */}
-        <Box component="main" sx={{ flexGrow: 1 }}>
-          <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <IconButton 
-                edge="start" 
-                color="inherit" 
-                aria-label="menu" 
-                onClick={handleDrawerToggle}
-                sx={{ mr: 2 }}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Typography variant="h4" component="h1">
-                {isLoading ? '加载中...' : chapterContent?.title}
+              flexShrink: 0,
+              '& .MuiDrawer-paper': {
+                width: 280,
+                boxSizing: 'border-box',
+              },
+            }}
+          >
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6">React前端开发</Typography>
+              <Typography variant="body2" color="text.secondary">
+                学习进度: 11%
               </Typography>
+              <LinearProgress variant="determinate" value={11} sx={{ mt: 1 }} />
             </Box>
-            
-            {isLoading ? (
-              <LinearProgress />
-            ) : (
-              <Box>
-                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                  <Tabs value={tabValue} onChange={handleTabChange} aria-label="chapter tabs">
-                    <Tab label="学习内容" />
-                    <Tab label="练习题" />
-                    <Tab label="AI辅导" />
-                  </Tabs>
-                </Box>
-                
-                {/* 学习内容标签页 */}
-                <TabPanel value={tabValue} index={0}>
-                  <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-                    <Typography variant="h5" gutterBottom>
-                      概述
-                    </Typography>
-                    <Typography variant="body1" paragraph>
-                      {chapterContent.summary}
-                    </Typography>
-                    
-                    <Divider sx={{ my: 3 }} />
-                    
-                    <Typography variant="h5" gutterBottom>
-                      核心概念
-                    </Typography>
-                    
-                    {chapterContent.concepts.map((concept: any, index: number) => (
-                      <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            {concept.title}
-                          </Typography>
-                          <ReactMarkdown>
-                            {concept.explanation}
-                          </ReactMarkdown>
-                          
-                          {concept.examples.length > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                示例:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {concept.examples.map((example: string, exIndex: number) => (
-                                  <Chip key={exIndex} label={example} size="small" />
-                                ))}
-                              </Box>
-                            </Box>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                    
-                    {chapterContent.codeExamples.length > 0 && (
-                      <Box sx={{ mt: 4 }}>
-                        <Typography variant="h5" gutterBottom>
-                          代码示例
-                        </Typography>
-                        
-                        {chapterContent.codeExamples.map((example: any, index: number) => (
-                          <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
-                            <CardContent>
-                              <Typography variant="h6" gutterBottom>
-                                {example.title}
-                              </Typography>
-                              <Paper 
-                                sx={{ 
-                                  p: 2, 
-                                  bgcolor: 'grey.900', 
-                                  color: 'grey.100',
-                                  borderRadius: 1,
-                                  fontFamily: 'monospace',
-                                  overflow: 'auto'
-                                }}
-                              >
-                                <pre style={{ margin: 0 }}>{example.code}</pre>
-                              </Paper>
-                              <Typography variant="body2" sx={{ mt: 2 }}>
-                                {example.explanation}
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </Box>
-                    )}
-                    
-                    {chapterContent.faq.length > 0 && (
-                      <Box sx={{ mt: 4 }}>
-                        <Typography variant="h5" gutterBottom>
-                          常见问题
-                        </Typography>
-                        
-                        {chapterContent.faq.map((faq: any, index: number) => (
-                          <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
-                            <CardContent>
-                              <Typography variant="h6" gutterBottom>
-                                {faq.question}
-                              </Typography>
-                              <Typography variant="body1">
-                                {faq.answer}
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </Box>
-                    )}
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-                      <Button
-                        variant="outlined"
-                        startIcon={<ArrowBackIcon />}
-                        disabled={Number(params.chapterId) <= 1}
-                      >
-                        上一章
-                      </Button>
-                      <Button
-                        variant="contained"
-                        endIcon={<ArrowForwardIcon />}
-                        disabled={Number(params.chapterId) >= chapters.length}
-                      >
-                        下一章
-                      </Button>
-                    </Box>
-                  </Paper>
-                </TabPanel>
-                
-                {/* 练习题标签页 */}
-                <TabPanel value={tabValue} index={1}>
-                  <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                      <AssignmentIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography variant="h5">
-                        章节练习
-                      </Typography>
-                    </Box>
-                    
-                    <Typography variant="body1" paragraph>
-                      完成以下练习题，检验您对本章内容的理解。
-                    </Typography>
-                    
-                    {exercises.map((exercise) => (
-                      <Card key={exercise.id} sx={{ mb: 3, borderRadius: 2 }}>
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            {exercise.id}. {exercise.question}
-                          </Typography>
-                          
-                          {exercise.type === 'multiple_choice' && (
-                            <List>
-                              {exercise.options.map((option: string, index: number) => (
-                                <ListItem key={index} disablePadding>
-                                  <ListItemButton 
-                                    onClick={() => handleAnswerSelect(exercise.id, option)}
-                                    selected={selectedAnswers[exercise.id] === option}
-                                    disabled={exerciseResults[exercise.id] !== undefined}
-                                    sx={{ 
-                                      borderRadius: 1,
-                                      bgcolor: selectedAnswers[exercise.id] === option ? 'primary.50' : 'transparent'
-                                    }}
-                                  >
-                                    <ListItemText primary={option} />
-                                  </ListItemButton>
-                                </ListItem>
-                              ))}
-                            </List>
-                          )}
-                          
-                          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Button 
-                              variant="contained" 
-                              onClick={() => handleCheckAnswer(exercise.id)}
-                              disabled={!selectedAnswers[exercise.id] || exerciseResults[exercise.id] !== undefined}
-                            >
-                              提交答案
-                            </Button>
-                            
-                            {exerciseResults[exercise.id] !== undefined && (
-                              <Typography 
-                                variant="body1" 
-                                color={exerciseResults[exercise.id] ? 'success.main' : 'error.main'}
-                              >
-                                {exerciseResults[exercise.id] ? '✓ 回答正确' : '✗ 回答错误'}
-                              </Typography>
-                            )}
-                          </Box>
-                          
-                          {exerciseResults[exercise.id] !== undefined && (
-                            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                解析:
-                              </Typography>
-                              <Typography variant="body2">
-                                {exercise.explanation}
-                              </Typography>
-                            </Box>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Paper>
-                </TabPanel>
-                
-                {/* AI辅导标签页 */}
-                <TabPanel value={tabValue} index={2}>
-                  <Paper sx={{ p: 3, mb: 3, borderRadius: 2, height: '70vh', display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="h5" gutterBottom>
-                      AI辅导助手
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      有任何问题都可以向AI助手提问，它会根据当前学习内容为您提供解答。
-                    </Typography>
-                    
-                    <Box sx={{ flexGrow: 1, bgcolor: 'background.default', borderRadius: 2, p: 2, mb: 2, overflow: 'auto' }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 10 }}>
-                        暂无对话记录，请在下方输入您的问题。
-                      </Typography>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <TextField
-                        fullWidth
-                        placeholder="输入您的问题..."
-                        variant="outlined"
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendQuestion()}
-                      />
-                      <IconButton 
-                        color="primary" 
-                        onClick={handleSendQuestion}
-                        disabled={!question.trim()}
-                        sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
-                      >
-                        <SendIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
-                </TabPanel>
+            <Divider />
+            <List>
+              {chapters.map((chapter) => (
+                <ListItem key={chapter.id} disablePadding>
+                  <ListItemButton selected={chapter.id === Number(params.chapterId)}>
+                    <ListItemText
+                      primary={chapter.title}
+                      primaryTypographyProps={{
+                        color: chapter.completed ? 'primary' : 'inherit',
+                        fontWeight: chapter.id === Number(params.chapterId) ? 500 : 400
+                      }}
+                    />
+                    {chapter.completed && <CheckCircleIcon color="primary" fontSize="small" />}
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          </Drawer>
+
+          {/* 主内容区域 */}
+          <Box component="main" sx={{ flexGrow: 1 }}>
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <IconButton
+                  edge="start"
+                  color="inherit"
+                  aria-label="menu"
+                  onClick={handleDrawerToggle}
+                  sx={{ mr: 2 }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Typography variant="h4" component="h1">
+                  {isLoading ? '加载中...' : chapterContent?.title}
+                </Typography>
               </Box>
-            )}
-          </Container>
+
+              {isLoading ? (
+                <LinearProgress />
+              ) : (
+                <Box>
+                  <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="chapter tabs">
+                      <Tab label="学习内容" />
+                      <Tab label="练习题" />
+                      <Tab label="AI辅导" />
+                    </Tabs>
+                  </Box>
+
+                  {/* 学习内容标签页 */}
+                  <TabPanel value={tabValue} index={0}>
+                    <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                      <Typography variant="h5" gutterBottom>
+                        概述
+                      </Typography>
+                      <Typography variant="body1" paragraph>
+                        {chapterContent.summary}
+                      </Typography>
+
+                      <Divider sx={{ my: 3 }} />
+
+                      <Typography variant="h5" gutterBottom>
+                        核心概念
+                      </Typography>
+
+                      {chapterContent.concepts.map((concept: any, index: number) => (
+                        <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              {concept.title}
+                            </Typography>
+                            <ReactMarkdown>
+                              {concept.explanation}
+                            </ReactMarkdown>
+
+                            {concept.examples.length > 0 && (
+                              <Box sx={{ mt: 2 }}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                  示例:
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                  {concept.examples.map((example: string, exIndex: number) => (
+                                    <Chip key={exIndex} label={example} size="small" />
+                                  ))}
+                                </Box>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+
+                      {chapterContent.codeExamples.length > 0 && (
+                        <Box sx={{ mt: 4 }}>
+                          <Typography variant="h5" gutterBottom>
+                            代码示例
+                          </Typography>
+
+                          {chapterContent.codeExamples.map((example: any, index: number) => (
+                            <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
+                              <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                  {example.title}
+                                </Typography>
+                                <Paper
+                                  sx={{
+                                    p: 2,
+                                    bgcolor: 'grey.900',
+                                    color: 'grey.100',
+                                    borderRadius: 1,
+                                    fontFamily: 'monospace',
+                                    overflow: 'auto'
+                                  }}
+                                >
+                                  <pre style={{ margin: 0 }}>{example.code}</pre>
+                                </Paper>
+                                <Typography variant="body2" sx={{ mt: 2 }}>
+                                  {example.explanation}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
+                      )}
+
+                      {chapterContent.faq.length > 0 && (
+                        <Box sx={{ mt: 4 }}>
+                          <Typography variant="h5" gutterBottom>
+                            常见问题
+                          </Typography>
+
+                          {chapterContent.faq.map((faq: any, index: number) => (
+                            <Card key={index} sx={{ mb: 3, borderRadius: 2 }}>
+                              <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                  {faq.question}
+                                </Typography>
+                                <Typography variant="body1">
+                                  {faq.answer}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
+                      )}
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+                        <Button
+                          variant="outlined"
+                          startIcon={<ArrowBackIcon />}
+                          disabled={Number(params.chapterId) <= 1}
+                        >
+                          上一章
+                        </Button>
+                        <Button
+                          variant="contained"
+                          endIcon={<ArrowForwardIcon />}
+                          disabled={Number(params.chapterId) >= chapters.length}
+                        >
+                          下一章
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </TabPanel>
+
+                  {/* 练习题标签页 */}
+                  <TabPanel value={tabValue} index={1}>
+                    <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                        <AssignmentIcon color="primary" sx={{ mr: 1 }} />
+                        <Typography variant="h5">
+                          章节练习
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="body1" paragraph>
+                        完成以下练习题，检验您对本章内容的理解。
+                      </Typography>
+
+                      {exercises.map((exercise) => (
+                        <Card key={exercise.id} sx={{ mb: 3, borderRadius: 2 }}>
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              {exercise.id}. {exercise.question}
+                            </Typography>
+
+                            {exercise.type === 'multiple_choice' && (
+                              <List>
+                                {exercise.options.map((option: string, index: number) => (
+                                  <ListItem key={index} disablePadding>
+                                    <ListItemButton
+                                      onClick={() => handleAnswerSelect(exercise.id, option)}
+                                      selected={selectedAnswers[exercise.id] === option}
+                                      disabled={exerciseResults[exercise.id] !== undefined}
+                                      sx={{
+                                        borderRadius: 1,
+                                        bgcolor: selectedAnswers[exercise.id] === option ? 'primary.50' : 'transparent'
+                                      }}
+                                    >
+                                      <ListItemText primary={option} />
+                                    </ListItemButton>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            )}
+
+                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Button
+                                variant="contained"
+                                onClick={() => handleCheckAnswer(exercise.id)}
+                                disabled={!selectedAnswers[exercise.id] || exerciseResults[exercise.id] !== undefined}
+                              >
+                                提交答案
+                              </Button>
+
+                              {exerciseResults[exercise.id] !== undefined && (
+                                <Typography
+                                  variant="body1"
+                                  color={exerciseResults[exercise.id] ? 'success.main' : 'error.main'}
+                                >
+                                  {exerciseResults[exercise.id] ? '✓ 回答正确' : '✗ 回答错误'}
+                                </Typography>
+                              )}
+                            </Box>
+
+                            {exerciseResults[exercise.id] !== undefined && (
+                              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                  解析:
+                                </Typography>
+                                <Typography variant="body2">
+                                  {exercise.explanation}
+                                </Typography>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Paper>
+                  </TabPanel>
+
+                  {/* AI辅导标签页 */}
+                  <TabPanel value={tabValue} index={2}>
+                    <Paper sx={{ p: 3, mb: 3, borderRadius: 2, height: '70vh', display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="h5" gutterBottom>
+                        AI辅导助手
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        有任何问题都可以向AI助手提问，它会根据当前学习内容为您提供解答。
+                      </Typography>
+
+                      <Box sx={{ flexGrow: 1, bgcolor: 'background.default', borderRadius: 2, p: 2, mb: 2, overflow: 'auto' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 10 }}>
+                          暂无对话记录，请在下方输入您的问题。
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <TextField
+                          fullWidth
+                          placeholder="输入您的问题..."
+                          variant="outlined"
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleSendQuestion()}
+                        />
+                        <IconButton
+                          color="primary"
+                          onClick={handleSendQuestion}
+                          disabled={!question.trim()}
+                          sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+                        >
+                          <SendIcon />
+                        </IconButton>
+                      </Box>
+                    </Paper>
+                  </TabPanel>
+                </Box>
+              )}
+            </Container>
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </ProtectedRoute>
   );
 }
