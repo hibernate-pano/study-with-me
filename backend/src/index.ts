@@ -34,6 +34,9 @@ app.use('/api/content', require('./routes/content'));
 app.use('/api/tutor', require('./routes/tutor'));
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/exercises', require('./routes/exercises'));
+app.use('/api/achievements', require('./routes/achievements'));
+app.use('/api/streaks', require('./routes/streaks'));
+app.use('/api/leaderboard', require('./routes/leaderboard'));
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

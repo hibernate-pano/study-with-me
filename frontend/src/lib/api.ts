@@ -144,10 +144,42 @@ export const tutorApi = {
 export const progressApi = {
   update: (data: any) => api.post('/progress/update', data),
   getUserProgress: (userId: string, pathId: string) => api.get(`/progress/${userId}/${pathId}`),
+  getUserStats: (userId: string) => api.get(`/progress/stats/${userId}`),
+  getPathStats: (userId: string, pathId: string) => api.get(`/progress/path-stats/${userId}/${pathId}`),
+  getLearningTimeHistory: (userId: string, period: 'day' | 'week' | 'month' = 'week') =>
+    api.get(`/progress/time-history/${userId}?period=${period}`),
 };
 
 // Exercises API
 export const exercisesApi = {
   generate: (data: any) => api.post('/exercises/generate', data),
   getChapterExercises: (chapterId: string) => api.get(`/exercises/chapter/${chapterId}`),
+};
+
+// Achievements API
+export const achievementsApi = {
+  getAll: () => api.get('/achievements'),
+  getUserAchievements: (userId: string) => api.get(`/achievements/user/${userId}`),
+  checkAchievements: (userId: string) => api.post(`/achievements/check/${userId}`),
+};
+
+// Streaks API
+export const streaksApi = {
+  getUserStreak: (userId: string) => api.get(`/streaks/${userId}`),
+  updateStreak: (userId: string) => api.post(`/streaks/${userId}/update`),
+  getStreakRewards: (userId: string) => api.get(`/streaks/${userId}/rewards`),
+  grantStreakReward: (userId: string, rewardId: string) =>
+    api.post(`/streaks/${userId}/rewards/${rewardId}/grant`),
+};
+
+// Leaderboard API
+export const leaderboardApi = {
+  getTimeLeaderboard: (limit: number = 10, period: 'week' | 'month' | 'all' = 'week') =>
+    api.get(`/leaderboard/time?limit=${limit}&period=${period}`),
+  getCompletionLeaderboard: (limit: number = 10) =>
+    api.get(`/leaderboard/completion?limit=${limit}`),
+  getStreakLeaderboard: (limit: number = 10) =>
+    api.get(`/leaderboard/streak?limit=${limit}`),
+  getUserRanking: (userId: string, type: 'time' | 'completion' | 'streak' = 'time', period: 'week' | 'month' | 'all' = 'week') =>
+    api.get(`/leaderboard/user/${userId}?type=${type}&period=${period}`),
 };

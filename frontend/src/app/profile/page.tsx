@@ -18,11 +18,17 @@ import {
 } from '@mui/material';
 import {
   Save as SaveIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  EmojiEvents as EmojiEventsIcon,
+  BarChart as BarChartIcon,
+  LocalFireDepartment as FireIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import LearningStatistics from '@/components/LearningStatistics';
+import AchievementsList from '@/components/AchievementsList';
+import LearningStreak from '@/components/LearningStreak';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -86,18 +92,18 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     setIsUpdating(true);
     setError('');
     setSuccess('');
-    
+
     try {
       // 在实际应用中，这里会调用API更新用户资料
       // const response = await api.updateProfile(profileData);
-      
+
       // 模拟API调用
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setSuccess('个人资料更新成功');
     } catch (err: any) {
       console.error('更新失败:', err);
@@ -111,7 +117,7 @@ export default function ProfilePage() {
     <ProtectedRoute>
       <Box>
         <Navbar />
-        
+
         <Container maxWidth="md" sx={{ mt: 4, mb: 8 }}>
           <Paper sx={{ p: 0, borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ bgcolor: 'primary.main', color: 'white', p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -129,28 +135,29 @@ export default function ProfilePage() {
                 </Typography>
               </Box>
             </Box>
-            
+
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="profile tabs">
-                <Tab label="个人资料" />
-                <Tab label="学习统计" />
-                <Tab label="账户设置" />
+                <Tab label="个人资料" icon={<PersonIcon />} iconPosition="start" />
+                <Tab label="学习统计" icon={<BarChartIcon />} iconPosition="start" />
+                <Tab label="我的成就" icon={<EmojiEventsIcon />} iconPosition="start" />
+                <Tab label="连续学习" icon={<FireIcon />} iconPosition="start" />
               </Tabs>
             </Box>
-            
+
             <TabPanel value={tabValue} index={0}>
               {error && (
                 <Alert severity="error" sx={{ mb: 3 }}>
                   {error}
                 </Alert>
               )}
-              
+
               {success && (
                 <Alert severity="success" sx={{ mb: 3 }}>
                   {success}
                 </Alert>
               )}
-              
+
               <Box component="form" onSubmit={handleSubmit}>
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
@@ -198,23 +205,17 @@ export default function ProfilePage() {
                 </Grid>
               </Box>
             </TabPanel>
-            
+
             <TabPanel value={tabValue} index={1}>
-              <Typography variant="h6" gutterBottom>
-                学习统计
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                此功能在开发中，敬请期待...
-              </Typography>
+              <LearningStatistics />
             </TabPanel>
-            
+
             <TabPanel value={tabValue} index={2}>
-              <Typography variant="h6" gutterBottom>
-                账户设置
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                此功能在开发中，敬请期待...
-              </Typography>
+              <AchievementsList />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={3}>
+              <LearningStreak />
             </TabPanel>
           </Paper>
         </Container>

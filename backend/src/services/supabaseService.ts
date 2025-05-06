@@ -328,6 +328,227 @@ class SupabaseService {
 
     return data;
   }
+
+  /**
+   * Get user learning statistics
+   * @param userId The user ID
+   * @returns The user's learning statistics
+   */
+  async getUserLearningStats(userId: string): Promise<any> {
+    // Get all user progress records
+    const { data: progressData, error: progressError } = await this.supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (progressError) {
+      throw progressError;
+    }
+
+    // Get all learning paths the user has started
+    const { data: pathsData, error: pathsError } = await this.supabase
+      .from('learning_paths')
+      .select('id, title')
+      .in('id', progressData.map(p => p.path_id).filter((v, i, a) => a.indexOf(v) === i));
+
+    if (pathsError) {
+      throw pathsError;
+    }
+
+    // Calculate statistics
+    const totalPaths = pathsData.length;
+    const completedChapters = progressData.filter(p => p.completed).length;
+    const totalChapters = progressData.length;
+    const completionRate = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+
+    // Get average score if available
+    const scores = progressData.filter(p => p.score !== null).map(p => p.score);
+    const averageScore = scores.length > 0
+      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+      : null;
+
+    // Calculate learning time (if time_spent is tracked)
+    const totalTimeSpent = progressData
+      .filter(p => p.time_spent)
+      .reduce((sum, p) => sum + (p.time_spent || 0), 0);
+
+    // Get last accessed date
+    const lastAccessed = progressData.length > 0
+      ? new Date(Math.max(...progressData.map(p => new Date(p.last_accessed).getTime())))
+      : null;
+
+    return {
+      totalPaths,
+      completedChapters,
+      totalChapters,
+      completionRate,
+      averageScore,
+      totalTimeSpent,
+      lastAccessed,
+      pathsStarted: pathsData
+    };
+  }
+
+  /**
+   * Get detailed progress statistics for a learning path
+   * @param userId The user ID
+   * @param pathId The learning path ID
+   * @returns Detailed progress statistics
+   */
+  async getPathProgressStats(userId: string, pathId: string): Promise<any> {
+    // Get the learning path
+    const { data: path, error: pathError } = await this.supabase
+      .from('learning_paths')
+      .select('*')
+      .eq('id', pathId)
+      .single();
+
+    if (pathError) {
+      throw pathError;
+    }
+
+    // Get all chapters for the path
+    const { data: chapters, error: chaptersError } = await this.supabase
+      .from('chapter_contents')
+      .select('*')
+      .eq('path_id', pathId)
+      .order('order_index', { ascending: true });
+
+    if (chaptersError) {
+      throw chaptersError;
+    }
+
+    // Get user progress for all chapters
+    const { data: progressData, error: progressError } = await this.supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('path_id', pathId);
+
+    if (progressError) {
+      throw progressError;
+    }
+
+    // Map progress to chapters
+    const chaptersWithProgress = chapters.map(chapter => {
+      const progress = progressData.find(p => p.chapter_id === chapter.id) || null;
+      return {
+        ...chapter,
+        progress: progress ? {
+          completed: progress.completed,
+          score: progress.score,
+          last_accessed: progress.last_accessed,
+          completed_at: progress.completed_at,
+          time_spent: progress.time_spent
+        } : null
+      };
+    });
+
+    // Calculate overall statistics
+    const completedChapters = progressData.filter(p => p.completed).length;
+    const totalChapters = chapters.length;
+    const completionPercentage = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+
+    // Calculate time statistics
+    const totalTimeSpent = progressData
+      .filter(p => p.time_spent)
+      .reduce((sum, p) => sum + (p.time_spent || 0), 0);
+
+    // Find the last accessed chapter
+    const lastAccessedProgress = progressData.length > 0
+      ? progressData.reduce((latest, current) =>
+        new Date(current.last_accessed) > new Date(latest.last_accessed) ? current : latest,
+        progressData[0])
+      : null;
+
+    const lastAccessedChapter = lastAccessedProgress
+      ? chapters.find(c => c.id === lastAccessedProgress.chapter_id)
+      : null;
+
+    return {
+      path,
+      statistics: {
+        completedChapters,
+        totalChapters,
+        completionPercentage,
+        totalTimeSpent,
+        lastAccessedChapter: lastAccessedChapter ? {
+          id: lastAccessedChapter.id,
+          title: lastAccessedChapter.title,
+          last_accessed: lastAccessedProgress.last_accessed
+        } : null
+      },
+      chaptersWithProgress
+    };
+  }
+
+  /**
+   * Get user learning time history
+   * @param userId The user ID
+   * @param period The time period ('day', 'week', 'month')
+   * @returns Learning time history data
+   */
+  async getLearningTimeHistory(userId: string, period: 'day' | 'week' | 'month' = 'week'): Promise<any> {
+    // Get all user progress records with time_spent
+    const { data: progressData, error: progressError } = await this.supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .not('time_spent', 'is', null);
+
+    if (progressError) {
+      throw progressError;
+    }
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'day':
+        // Last 24 hours
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        // Last 30 days
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'week':
+      default:
+        // Last 7 days
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+    }
+
+    // Filter progress data by date
+    const filteredProgressData = progressData.filter(p =>
+      new Date(p.last_accessed) >= startDate
+    );
+
+    // Group by date
+    const timeByDate = filteredProgressData.reduce((acc, curr) => {
+      const date = new Date(curr.last_accessed).toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = 0;
+      }
+      acc[date] += curr.time_spent || 0;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Convert to array format for charts
+    const timeHistory = Object.entries(timeByDate).map(([date, time]) => ({
+      date,
+      time_spent: time
+    }));
+
+    // Sort by date
+    timeHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return {
+      period,
+      timeHistory
+    };
+  }
 }
 
 export default new SupabaseService();

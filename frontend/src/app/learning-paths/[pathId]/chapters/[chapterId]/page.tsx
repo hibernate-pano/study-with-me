@@ -38,9 +38,11 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/contexts/AuthContext';
-import { contentApi, tutorApi, progressApi, exercisesApi } from '@/lib/api';
+import { contentApi, tutorApi, progressApi, exercisesApi, learningPathsApi, achievementsApi } from '@/lib/api';
 import FeedbackDialog from '@/components/FeedbackDialog';
 import AITutor from '@/components/AITutor';
+import LearningTimeTracker from '@/components/LearningTimeTracker';
+import { Snackbar, Alert } from '@mui/material';
 
 // 模拟章节内容数据
 const mockChapterContent = {
@@ -190,6 +192,8 @@ export default function ChapterPage() {
   const [exerciseResults, setExerciseResults] = useState<{ [key: number]: boolean }>({});
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [newAchievements, setNewAchievements] = useState<any[]>([]);
+  const [achievementAlert, setAchievementAlert] = useState(false);
 
   const { user } = useAuth();
 
@@ -245,6 +249,27 @@ export default function ChapterPage() {
     });
   };
 
+  // 检查成就
+  const checkAchievements = async () => {
+    if (!user) return;
+
+    try {
+      const response = await achievementsApi.checkAchievements(user.id);
+
+      if (response.newAchievements && response.newAchievements.length > 0) {
+        const achievementsData = response.newAchievements.map((a: any) => ({
+          ...a.achievement,
+          earned_at: a.earned_at
+        }));
+
+        setNewAchievements(achievementsData);
+        setAchievementAlert(true);
+      }
+    } catch (error) {
+      console.error('检查成就失败:', error);
+    }
+  };
+
   const handleCheckAnswer = async (exerciseId: number) => {
     const exercise = exercises.find(ex => ex.id === exerciseId);
     if (exercise && selectedAnswers[exerciseId]) {
@@ -264,6 +289,11 @@ export default function ChapterPage() {
             exerciseId: exerciseId.toString(),
             status: isCorrect ? 'completed' : 'failed'
           });
+
+          // 检查是否获得新成就
+          if (isCorrect) {
+            await checkAchievements();
+          }
         } catch (error) {
           console.error('更新练习进度失败:', error);
         }
@@ -376,9 +406,17 @@ export default function ChapterPage() {
                 >
                   <MenuIcon />
                 </IconButton>
-                <Typography variant="h4" component="h1">
-                  {isLoading ? '加载中...' : chapterContent?.title}
-                </Typography>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="h4" component="h1">
+                    {isLoading ? '加载中...' : chapterContent?.title}
+                  </Typography>
+                </Box>
+                {!isLoading && (
+                  <LearningTimeTracker
+                    pathId={params.pathId as string}
+                    chapterId={params.chapterId as string}
+                  />
+                )}
               </Box>
 
               {isLoading ? (
@@ -663,6 +701,24 @@ export default function ChapterPage() {
           感谢您的反馈！我们会认真考虑您的建议，不断改进内容质量。
         </Alert>
       )}
+
+      {/* 成就提醒 */}
+      <Snackbar
+        open={achievementAlert}
+        autoHideDuration={6000}
+        onClose={() => setAchievementAlert(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setAchievementAlert(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%', boxShadow: 3 }}
+        >
+          恭喜！您获得了新成就：{newAchievements.length > 0 ? newAchievements[0].title : ''}
+          {newAchievements.length > 1 && `等 ${newAchievements.length} 个成就`}
+        </Alert>
+      </Snackbar>
     </ProtectedRoute>
   );
 }

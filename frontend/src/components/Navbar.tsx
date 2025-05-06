@@ -27,7 +27,8 @@ import {
   Book as BookIcon,
   AccountCircle as AccountCircleIcon,
   Logout as LogoutIcon,
-  QuestionAnswer as QuestionAnswerIcon
+  QuestionAnswer as QuestionAnswerIcon,
+  Leaderboard as LeaderboardIcon
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -68,30 +69,38 @@ export default function Navbar({ }: NavbarProps = {}) {
     { text: '学习路径', icon: <SchoolIcon />, href: '/learning-paths' },
     { text: '学习内容', icon: <BookIcon />, href: isAuthenticated ? '/learning-paths' : '/login' },
     { text: 'AI辅导', icon: <QuestionAnswerIcon />, href: '/ai-tutor' },
+    { text: '排行榜', icon: <LeaderboardIcon />, href: '/leaderboard', requireAuth: true },
   ];
 
   const drawer = (
     <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
       <List>
-        {menuItems.map((item) => (
-          <ListItem
-            key={item.text}
-            component={Link}
-            href={item.href}
-            selected={pathname === item.href}
-            sx={{
-              color: 'inherit',
-              textDecoration: 'none',
-              bgcolor: pathname === item.href ? 'rgba(66, 133, 244, 0.08)' : 'transparent',
-              '&:hover': {
-                bgcolor: 'rgba(66, 133, 244, 0.04)',
-              }
-            }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
-          </ListItem>
-        ))}
+        {menuItems.map((item) => {
+          // 如果需要认证且用户未登录，则不显示该菜单项
+          if (item.requireAuth && !isAuthenticated) {
+            return null;
+          }
+
+          return (
+            <ListItem
+              key={item.text}
+              component={Link}
+              href={item.href}
+              selected={pathname === item.href}
+              sx={{
+                color: 'inherit',
+                textDecoration: 'none',
+                bgcolor: pathname === item.href ? 'rgba(66, 133, 244, 0.08)' : 'transparent',
+                '&:hover': {
+                  bgcolor: 'rgba(66, 133, 244, 0.04)',
+                }
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );
@@ -132,22 +141,29 @@ export default function Navbar({ }: NavbarProps = {}) {
 
           {!isMobile && (
             <Box sx={{ display: 'flex', gap: 2 }}>
-              {menuItems.map((item) => (
-                <Button
-                  key={item.text}
-                  component={Link}
-                  href={item.href}
-                  color={pathname === item.href ? 'primary' : 'inherit'}
-                  sx={{
-                    fontWeight: pathname === item.href ? 500 : 400,
-                    borderRadius: 2,
-                    px: 2
-                  }}
-                  startIcon={item.icon}
-                >
-                  {item.text}
-                </Button>
-              ))}
+              {menuItems.map((item) => {
+                // 如果需要认证且用户未登录，则不显示该菜单项
+                if (item.requireAuth && !isAuthenticated) {
+                  return null;
+                }
+
+                return (
+                  <Button
+                    key={item.text}
+                    component={Link}
+                    href={item.href}
+                    color={pathname === item.href ? 'primary' : 'inherit'}
+                    sx={{
+                      fontWeight: pathname === item.href ? 500 : 400,
+                      borderRadius: 2,
+                      px: 2
+                    }}
+                    startIcon={item.icon}
+                  >
+                    {item.text}
+                  </Button>
+                );
+              })}
             </Box>
           )}
 

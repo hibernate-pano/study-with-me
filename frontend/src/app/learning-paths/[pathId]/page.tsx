@@ -48,16 +48,16 @@ export default function LearningPathDetailPage() {
   useEffect(() => {
     const fetchLearningPath = async () => {
       setIsLoading(true);
-      
+
       try {
         // 获取学习路径详情
         const pathResponse = await learningPathsApi.getById(params.pathId as string);
         setLearningPath(pathResponse.path);
-        
+
         // 获取章节列表
         const chaptersResponse = await learningPathsApi.getChapters(params.pathId as string);
         setChapters(chaptersResponse.chapters || []);
-        
+
         // 获取用户学习进度
         if (user) {
           const progressResponse = await progressApi.getUserProgress(user.id, params.pathId as string);
@@ -75,7 +75,7 @@ export default function LearningPathDetailPage() {
           estimated_hours: 20,
           created_at: '2023-05-15T10:30:00Z'
         });
-        
+
         setChapters([
           { id: 1, title: 'React简介', completed: true },
           { id: 2, title: 'JSX语法', completed: false },
@@ -87,7 +87,7 @@ export default function LearningPathDetailPage() {
           { id: 8, title: 'API集成', completed: false },
           { id: 9, title: '项目实战', completed: false },
         ]);
-        
+
         setUserProgress({
           percentage: 11,
           completed_chapters: 1,
@@ -98,7 +98,7 @@ export default function LearningPathDetailPage() {
         setIsLoading(false);
       }
     };
-    
+
     fetchLearningPath();
   }, [params.pathId, user]);
 
@@ -115,7 +115,7 @@ export default function LearningPathDetailPage() {
     <ProtectedRoute>
       <Box>
         <Navbar />
-        
+
         <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -131,51 +131,51 @@ export default function LearningPathDetailPage() {
                   返回学习路径列表
                 </Button>
               </Box>
-              
+
               <Grid container spacing={4}>
                 <Grid item xs={12} md={8}>
                   <Paper sx={{ p: 4, borderRadius: 2 }}>
                     <Typography variant="h4" component="h1" gutterBottom>
                       {learningPath.title}
                     </Typography>
-                    
+
                     <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                      <Chip 
-                        icon={<SchoolIcon />} 
-                        label={`难度: ${learningPath.level}`} 
-                        variant="outlined" 
+                      <Chip
+                        icon={<SchoolIcon />}
+                        label={`难度: ${learningPath.level}`}
+                        variant="outlined"
                       />
-                      <Chip 
-                        icon={<MenuBookIcon />} 
-                        label={`章节: ${chapters.length}`} 
-                        variant="outlined" 
+                      <Chip
+                        icon={<MenuBookIcon />}
+                        label={`章节: ${chapters.length}`}
+                        variant="outlined"
                       />
-                      <Chip 
-                        icon={<TimerIcon />} 
-                        label={`预计学时: ${learningPath.estimated_hours || 20}小时`} 
-                        variant="outlined" 
+                      <Chip
+                        icon={<TimerIcon />}
+                        label={`预计学时: ${learningPath.estimated_hours || 20}小时`}
+                        variant="outlined"
                       />
                     </Box>
-                    
+
                     <Typography variant="body1" paragraph>
                       {learningPath.description}
                     </Typography>
-                    
+
                     <Divider sx={{ my: 3 }} />
-                    
+
                     <Typography variant="h5" gutterBottom>
                       学习目标
                     </Typography>
                     <Typography variant="body1" paragraph>
                       {learningPath.goal}
                     </Typography>
-                    
+
                     <Divider sx={{ my: 3 }} />
-                    
+
                     <Typography variant="h5" gutterBottom>
                       章节列表
                     </Typography>
-                    
+
                     <List>
                       {chapters.map((chapter, index) => (
                         <Card key={chapter.id} sx={{ mb: 2, borderRadius: 2 }}>
@@ -207,13 +207,13 @@ export default function LearningPathDetailPage() {
                     </List>
                   </Paper>
                 </Grid>
-                
+
                 <Grid item xs={12} md={4}>
                   <Paper sx={{ p: 4, borderRadius: 2, position: 'sticky', top: 20 }}>
                     <Typography variant="h5" gutterBottom>
                       学习进度
                     </Typography>
-                    
+
                     {userProgress ? (
                       <>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -224,12 +224,12 @@ export default function LearningPathDetailPage() {
                             {userProgress.percentage}%
                           </Typography>
                         </Box>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={userProgress.percentage} 
-                          sx={{ mb: 3, height: 8, borderRadius: 4 }} 
+                        <LinearProgress
+                          variant="determinate"
+                          value={userProgress.percentage}
+                          sx={{ mb: 3, height: 8, borderRadius: 4 }}
                         />
-                        
+
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                           <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h6">
@@ -264,7 +264,7 @@ export default function LearningPathDetailPage() {
                         您尚未开始学习此路径
                       </Typography>
                     )}
-                    
+
                     <Button
                       fullWidth
                       variant="contained"
@@ -275,12 +275,14 @@ export default function LearningPathDetailPage() {
                     >
                       {userProgress ? '继续学习' : '开始学习'}
                     </Button>
-                    
+
                     <Button
                       fullWidth
                       variant="outlined"
                       startIcon={<BarChartIcon />}
                       disabled={!userProgress}
+                      component={Link}
+                      href={`/learning-paths/${params.pathId}/statistics`}
                     >
                       查看详细统计
                     </Button>
