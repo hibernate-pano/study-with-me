@@ -475,26 +475,70 @@ class AIService {
    */
   async answerQuestion(question: string, context: any): Promise<string> {
     const prompt = `
-    作为AI学习助手，请回答用户关于"${context.chapterTitle}"的问题。
+    作为AI学习助手，请回答用户关于"${context.chapterTitle || '当前主题'}"的问题。
 
     用户问题：${question}
 
     当前学习上下文：
-    - 学习路径：${context.pathTitle}
-    - 当前章节：${context.chapterTitle}
+    - 学习路径：${context.pathTitle || '未指定'}
+    - 当前章节：${context.chapterTitle || '未指定'}
     - 相关知识点：${context.conceptTitle || '未指定'}
 
     请基于以下相关知识提供准确、清晰的回答：
     ${context.conceptContent || ''}
 
-    回答应该：
-    1. 直接解答问题
-    2. 提供具体例子
+    回答要求：
+    1. 直接解答问题，使用清晰的语言
+    2. 提供具体例子，帮助理解
     3. 如有必要，解释相关概念
     4. 建议下一步学习方向
+    5. 使用标准Markdown格式，确保代码块、列表和标题格式正确
+    6. 避免使用复杂的HTML或非标准Markdown语法
+    7. 确保代码示例使用正确的语法高亮标记（如\`\`\`javascript\`\`\`）
+    8. 使用简洁明了的表达方式
+
+    请注意：你的回答将直接显示在学习平台上，不需要额外的格式化或包装。请确保回答是完整且独立的。
     `;
 
-    return await this.generateContent(prompt);
+    try {
+      // Get the raw response from the AI
+      const rawResponse = await this.generateContent(prompt);
+
+      // Clean up the response to ensure it's valid markdown
+      // Remove any potential JSON formatting or code blocks that might be wrapping the entire response
+      let cleanResponse = rawResponse;
+
+      // Remove any JSON-like wrapping if present
+      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
+      const match = rawResponse.match(jsonBlockRegex);
+      if (match && match[0] === rawResponse.trim()) {
+        cleanResponse = match[1].trim();
+      }
+
+      // If the response looks like it might be JSON but isn't wrapped in code blocks
+      if (rawResponse.trim().startsWith('{') && rawResponse.trim().endsWith('}')) {
+        try {
+          // Try to parse it as JSON
+          const jsonObj = JSON.parse(rawResponse);
+          // If it has a content or text field, use that
+          if (jsonObj.content) return jsonObj.content;
+          if (jsonObj.text) return jsonObj.text;
+          if (jsonObj.answer) return jsonObj.answer;
+          if (jsonObj.message) return jsonObj.message;
+
+          // Otherwise stringify it nicely
+          cleanResponse = JSON.stringify(jsonObj, null, 2);
+        } catch (e) {
+          // Not valid JSON, keep the original response
+          console.log('Response looked like JSON but failed to parse');
+        }
+      }
+
+      return cleanResponse;
+    } catch (error) {
+      console.error('Error in answerQuestion:', error);
+      return '抱歉，我无法回答这个问题。请尝试重新表述或询问其他问题。';
+    }
   }
 }
 

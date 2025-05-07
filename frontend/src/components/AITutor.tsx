@@ -160,26 +160,54 @@ export default function AITutor({ pathId, chapterId, chapterTitle }: AITutorProp
         pathId,
         chapterId,
         message: userMessage.content,
-        context: messages.map(msg => ({ role: msg.role, content: msg.content }))
+        context: {
+          pathTitle: '学习路径', // 这里可以添加实际的路径标题
+          chapterTitle: chapterTitle || '当前章节',
+          conceptTitle: '', // 如果有特定概念，可以在这里添加
+          conceptContent: '', // 如果有特定内容，可以在这里添加
+          messages: messages.map(msg => ({ role: msg.role, content: msg.content }))
+        }
       });
+
+      // 检查响应格式并提取消息内容
+      let aiContent = '';
+      if (response) {
+        if (typeof response.message === 'string') {
+          aiContent = response.message;
+        } else if (response.answer && typeof response.answer === 'string') {
+          aiContent = response.answer;
+        } else if (typeof response === 'string') {
+          aiContent = response;
+        } else {
+          console.warn('Unexpected response format:', response);
+          aiContent = '收到了回复，但格式不正确。请重试。';
+        }
+      } else {
+        aiContent = '没有收到有效回复。请重试。';
+      }
 
       // 添加AI回复到聊天记录
       const aiMessage: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: response.message,
+        content: aiContent,
         timestamp: new Date().toISOString()
       };
 
       setMessages(prev => [...prev, aiMessage]);
 
       // 保存聊天历史
-      await tutorApi.saveChatHistory({
-        userId: user.id,
-        pathId,
-        chapterId,
-        messages: [...messages, userMessage, aiMessage]
-      });
+      try {
+        await tutorApi.saveChatHistory({
+          userId: user.id,
+          pathId,
+          chapterId,
+          messages: [...messages, userMessage, aiMessage]
+        });
+      } catch (saveError) {
+        console.error('保存聊天历史失败:', saveError);
+        // 不中断用户体验，只记录错误
+      }
     } catch (error: any) {
       console.error('AI辅导请求失败:', error);
 
@@ -354,9 +382,44 @@ export default function AITutor({ pathId, chapterId, chapterTitle }: AITutorProp
                     {message.content}
                   </Typography>
                 ) : (
-                  <ReactMarkdown>
-                    {message.content}
-                  </ReactMarkdown>
+                  <Box sx={{
+                    '& pre': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      padding: 1,
+                      borderRadius: 1,
+                      overflow: 'auto',
+                      maxWidth: '100%'
+                    },
+                    '& code': {
+                      fontFamily: 'monospace',
+                      fontSize: '0.9em',
+                      padding: '2px 4px',
+                      borderRadius: '3px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                    },
+                    '& img': { maxWidth: '100%' },
+                    '& a': { color: 'primary.main' },
+                    '& table': {
+                      borderCollapse: 'collapse',
+                      width: '100%',
+                      marginBottom: 2
+                    },
+                    '& th, & td': {
+                      border: '1px solid rgba(0, 0, 0, 0.12)',
+                      padding: '8px 12px',
+                      textAlign: 'left'
+                    },
+                    '& blockquote': {
+                      borderLeft: '4px solid rgba(0, 0, 0, 0.12)',
+                      margin: '0 0 16px',
+                      padding: '0 16px',
+                      color: 'text.secondary'
+                    }
+                  }}>
+                    <ReactMarkdown>
+                      {message.content}
+                    </ReactMarkdown>
+                  </Box>
                 )}
               </Paper>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start' }}>
