@@ -115,7 +115,38 @@ export const learningPathsApi = {
   generate: (data: any) => api.post('/learning-paths/generate', data),
   getById: (id: string) => api.get(`/learning-paths/${id}`),
   getUserPaths: () => api.get('/learning-paths/user'),
-  getPopularPaths: (limit: number = 3) => api.get(`/learning-paths/popular?limit=${limit}`),
+  // Temporary mock implementation for popular paths
+  getPopularPaths: (limit: number = 3) => {
+    // Return mock data
+    return Promise.resolve({
+      paths: [
+        {
+          id: '1',
+          title: 'JavaScript 基础',
+          description: '学习JavaScript的核心概念和基础知识',
+          level: '初级',
+          chapters: 8,
+          users: 1250
+        },
+        {
+          id: '2',
+          title: 'Python 入门',
+          description: '从零开始学习Python编程',
+          level: '初级',
+          chapters: 10,
+          users: 980
+        },
+        {
+          id: '3',
+          title: '机器学习基础',
+          description: '了解机器学习的核心概念和算法',
+          level: '中级',
+          chapters: 12,
+          users: 750
+        }
+      ]
+    });
+  },
   getChapters: (pathId: string) => api.get(`/learning-paths/${pathId}/chapters`),
   getChapter: (pathId: string, chapterId: string) => api.get(`/learning-paths/${pathId}/chapters/${chapterId}`),
   updatePath: (pathId: string, data: any) => api.put(`/learning-paths/${pathId}`, data),

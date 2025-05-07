@@ -177,6 +177,27 @@ class SupabaseService {
   }
 
   /**
+   * Get popular learning paths
+   * @param limit The maximum number of paths to return
+   * @returns Popular learning paths
+   */
+  async getPopularLearningPaths(limit: number = 3): Promise<any[]> {
+    // In a real app, this would use metrics like views, completions, ratings, etc.
+    // For now, we'll just get the most recent paths as a simple implementation
+    const { data, error } = await this.supabase
+      .from('learning_paths')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
    * Create chapter content
    * @param pathId The learning path ID
    * @param chapterData The chapter data

@@ -5,6 +5,28 @@ import supabaseService from '../services/supabaseService';
 const router = express.Router();
 
 /**
+ * @route GET /api/learning-paths/popular
+ * @desc Get popular learning paths
+ * @access Public
+ */
+router.get('/popular', async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 3;
+
+    const paths = await supabaseService.getPopularLearningPaths(limit);
+
+    res.status(200).json({
+      paths
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to get learning path',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route POST /api/learning-paths/generate
  * @desc Generate a learning path
  * @access Private
@@ -20,10 +42,10 @@ router.post('/generate', async (req, res) => {
 
     // Generate learning path using AI
     const pathData = await aiService.generateLearningPath(goal, userLevel || 'beginner');
-    
+
     // Save to database
     const savedPath = await supabaseService.createLearningPath(userId, pathData);
-    
+
     res.status(201).json({
       message: 'Learning path generated successfully',
       path: savedPath
@@ -37,32 +59,6 @@ router.post('/generate', async (req, res) => {
 });
 
 /**
- * @route GET /api/learning-paths/:id
- * @desc Get a learning path by ID
- * @access Private
- */
-router.get('/:id', async (req, res) => {
-  try {
-    const pathId = req.params.id;
-    
-    const path = await supabaseService.getLearningPath(pathId);
-    
-    if (!path) {
-      return res.status(404).json({ message: 'Learning path not found' });
-    }
-    
-    res.status(200).json({
-      path
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      message: 'Failed to get learning path',
-      error: error.message
-    });
-  }
-});
-
-/**
  * @route GET /api/learning-paths/user/:userId
  * @desc Get all learning paths for a user
  * @access Private
@@ -70,15 +66,41 @@ router.get('/:id', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    
+
     const paths = await supabaseService.getUserLearningPaths(userId);
-    
+
     res.status(200).json({
       paths
     });
   } catch (error: any) {
     res.status(500).json({
       message: 'Failed to get learning paths',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/learning-paths/:id
+ * @desc Get a learning path by ID
+ * @access Private
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const pathId = req.params.id;
+
+    const path = await supabaseService.getLearningPath(pathId);
+
+    if (!path) {
+      return res.status(404).json({ message: 'Learning path not found' });
+    }
+
+    res.status(200).json({
+      path
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to get learning path',
       error: error.message
     });
   }
