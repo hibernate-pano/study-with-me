@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
 /**
  * Base API client for making requests to the backend
@@ -84,17 +84,26 @@ class ApiClient {
     };
 
     try {
+      console.log(`API Request: ${options.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        const error = await response.json();
-        return Promise.reject(error);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          // If response is not JSON
+          errorData = { message: `HTTP Error: ${response.status} ${response.statusText}` };
+        }
+
+        console.error('API Response Error:', errorData);
+        return Promise.reject(errorData.error || errorData.message || `HTTP Error: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API Error:', error);
-      return Promise.reject(error);
+      console.error('API Request Failed:', error);
+      return Promise.reject(error.message || 'Network error occurred');
     }
   }
 }

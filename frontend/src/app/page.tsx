@@ -47,6 +47,9 @@ export default function Home() {
     try {
       // 如果用户已登录，则调用API生成学习路径
       if (isAuthenticated && user) {
+        console.log('开始生成学习路径，目标:', learningGoal);
+        console.log('用户ID:', user.id);
+
         // 将学习目标和用户ID传递给API
         const response = await learningPathsApi.generate({
           goal: learningGoal,
@@ -54,11 +57,17 @@ export default function Home() {
           userId: user.id
         });
 
-        // 生成成功后，将学习路径ID存储在会话存储中
-        sessionStorage.setItem('newPathId', response.path.id);
+        console.log('学习路径生成成功:', response);
 
-        // 重定向到学习路径页面
-        router.push('/learning-paths/new');
+        // 生成成功后，将学习路径ID存储在会话存储中
+        if (response && response.path && response.path.id) {
+          sessionStorage.setItem('newPathId', response.path.id);
+
+          // 重定向到学习路径页面
+          router.push('/learning-paths/new');
+        } else {
+          throw new Error('服务器返回的学习路径数据无效');
+        }
       } else {
         // 如果用户未登录，则将学习目标存储在会话存储中，并重定向到登录页面
         sessionStorage.setItem('learningGoal', learningGoal);
@@ -67,7 +76,20 @@ export default function Home() {
       }
     } catch (err: any) {
       console.error('生成学习路径失败:', err);
-      setError(err.message || '生成学习路径失败，请稍后再试');
+
+      // 提供更详细的错误信息
+      if (typeof err === 'string') {
+        setError(err);
+      } else if (err && err.message) {
+        setError(err.message);
+      } else {
+        setError('生成学习路径失败，请检查网络连接或稍后再试');
+      }
+
+      // 如果是API连接问题，提供更具体的提示
+      if (err && err.message && err.message.includes('fetch')) {
+        setError('无法连接到服务器，请检查后端服务是否正常运行');
+      }
     } finally {
       setIsLoading(false);
     }

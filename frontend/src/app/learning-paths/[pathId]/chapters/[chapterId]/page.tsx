@@ -22,7 +22,8 @@ import {
   Tabs,
   LinearProgress,
   Chip,
-  Alert
+  Alert,
+  Snackbar
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -44,7 +45,7 @@ import FeedbackDialog from '@/components/FeedbackDialog';
 import AITutor from '@/components/AITutor';
 import LearningTimeTracker from '@/components/LearningTimeTracker';
 import ChapterDiagrams from '@/components/ChapterDiagrams';
-import { Snackbar, Alert } from '@mui/material';
+
 
 // 模拟章节内容数据
 const mockChapterContent = {
