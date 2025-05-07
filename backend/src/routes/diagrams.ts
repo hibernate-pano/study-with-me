@@ -19,10 +19,10 @@ router.post('/generate', async (req, res) => {
 
     // 生成图表
     const diagram = await mermaidService.generateDiagramForContent(title, content, diagramType);
-    
+
     // 保存到数据库
     const savedDiagram = await mermaidService.saveDiagram(chapterId, diagram);
-    
+
     res.status(201).json({
       message: '图表生成成功',
       diagram: savedDiagram
@@ -43,9 +43,9 @@ router.post('/generate', async (req, res) => {
 router.get('/chapter/:chapterId', async (req, res) => {
   try {
     const chapterId = req.params.chapterId;
-    
+
     const diagrams = await mermaidService.getChapterDiagrams(chapterId);
-    
+
     res.status(200).json({
       diagrams
     });
@@ -72,10 +72,10 @@ router.post('/mindmap', async (req, res) => {
 
     // 生成思维导图代码
     const mermaidCode = mermaidService.generateMindMap(title, concepts);
-    
+
     // 生成图表URL
     const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
-    
+
     res.status(200).json({
       mermaidCode,
       diagramUrl
@@ -103,10 +103,10 @@ router.post('/flowchart', async (req, res) => {
 
     // 生成流程图代码
     const mermaidCode = mermaidService.generateFlowchart(title, steps);
-    
+
     // 生成图表URL
     const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
-    
+
     res.status(200).json({
       mermaidCode,
       diagramUrl
@@ -134,10 +134,10 @@ router.post('/sequence', async (req, res) => {
 
     // 生成时序图代码
     const mermaidCode = mermaidService.generateSequenceDiagram(title, actors, interactions);
-    
+
     // 生成图表URL
     const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
-    
+
     res.status(200).json({
       mermaidCode,
       diagramUrl
@@ -165,10 +165,10 @@ router.post('/class', async (req, res) => {
 
     // 生成类图代码
     const mermaidCode = mermaidService.generateClassDiagram(title, classes, relationships || []);
-    
+
     // 生成图表URL
     const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
-    
+
     res.status(200).json({
       mermaidCode,
       diagramUrl
@@ -196,10 +196,10 @@ router.post('/pie', async (req, res) => {
 
     // 生成饼图代码
     const mermaidCode = mermaidService.generatePieChart(title, data);
-    
+
     // 生成图表URL
     const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
-    
+
     res.status(200).json({
       mermaidCode,
       diagramUrl
@@ -207,6 +207,64 @@ router.post('/pie', async (req, res) => {
   } catch (error: any) {
     res.status(500).json({
       message: '饼图生成失败',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/diagrams/bar
+ * @desc 生成条形图
+ * @access Private
+ */
+router.post('/bar', async (req, res) => {
+  try {
+    const { title, data } = req.body;
+
+    if (!title || !data) {
+      return res.status(400).json({ message: '标题和数据列表是必需的' });
+    }
+
+    // 生成条形图代码
+    const mermaidCode = mermaidService.generateBarChart(title, data);
+
+    // 生成图表URL
+    const diagramUrl = await mermaidService.generateMermaidUrl(mermaidCode);
+
+    res.status(200).json({
+      mermaidCode,
+      diagramUrl
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: '条形图生成失败',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/diagrams/auto
+ * @desc 根据内容自动选择合适的图表类型
+ * @access Private
+ */
+router.post('/auto', async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ message: '标题和内容是必需的' });
+    }
+
+    // 自动生成图表
+    const diagram = await mermaidService.generateDiagramForContent(title, content, 'auto');
+
+    res.status(200).json({
+      diagram
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: '图表生成失败',
       error: error.message
     });
   }

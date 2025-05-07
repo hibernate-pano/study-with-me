@@ -31,17 +31,19 @@ import {
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckCircleIcon,
   Assignment as AssignmentIcon,
-  Feedback as FeedbackIcon
+  Feedback as FeedbackIcon,
+  InsertChart as ChartIcon
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/contexts/AuthContext';
-import { contentApi, tutorApi, progressApi, exercisesApi, learningPathsApi, achievementsApi } from '@/lib/api';
+import { contentApi, tutorApi, progressApi, exercisesApi, learningPathsApi, achievementsApi, diagramsApi } from '@/lib/api';
 import FeedbackDialog from '@/components/FeedbackDialog';
 import AITutor from '@/components/AITutor';
 import LearningTimeTracker from '@/components/LearningTimeTracker';
+import ChapterDiagrams from '@/components/ChapterDiagrams';
 import { Snackbar, Alert } from '@mui/material';
 
 // 模拟章节内容数据
@@ -536,6 +538,29 @@ export default function ChapterPage() {
                               </CardContent>
                             </Card>
                           ))}
+                        </Box>
+                      )}
+
+                      {/* 图表与可视化部分 */}
+                      {chapterContent.diagrams && chapterContent.diagrams.length > 0 ? (
+                        <Box sx={{ mt: 4 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <ChartIcon color="primary" sx={{ mr: 1 }} />
+                            <Typography variant="h5" gutterBottom>
+                              图表与可视化
+                            </Typography>
+                          </Box>
+
+                          <Paper sx={{ p: 3, borderRadius: 2 }}>
+                            <ChapterDiagrams chapterId={params.chapterId as string} />
+                          </Paper>
+                        </Box>
+                      ) : (
+                        <Box sx={{ mt: 4 }}>
+                          <Divider sx={{ mb: 2 }} />
+                          <Typography variant="body2" color="text.secondary" align="center">
+                            正在为本章节生成图表，请稍后查看...
+                          </Typography>
                         </Box>
                       )}
 

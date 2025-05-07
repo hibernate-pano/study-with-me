@@ -193,4 +193,6 @@ export const diagramsApi = {
   generateSequence: (data: any) => api.post('/diagrams/sequence', data),
   generateClass: (data: any) => api.post('/diagrams/class', data),
   generatePie: (data: any) => api.post('/diagrams/pie', data),
+  generateBar: (data: any) => api.post('/diagrams/bar', data),
+  generateAuto: (data: any) => api.post('/diagrams/auto', data),
 };
