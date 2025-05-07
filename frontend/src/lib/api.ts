@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+import LLMLogger from '@/utils/LLMLogger';
 
 /**
  * Base API client for making requests to the backend
@@ -66,8 +67,20 @@ class ApiClient {
    * @param options The fetch options
    * @returns The response data
    */
-  async request(endpoint: string, options = {}) {
+  async request(endpoint: string, options: any = {}) {
+    // 使用LLMLogger开始记录API请求
+    const requestId = LLMLogger.startRequest({
+      type: 'api_request',
+      endpoint,
+      method: options.method || 'GET',
+      url: `${API_URL}${endpoint}`
+    });
+
     const url = `${API_URL}${endpoint}`;
+
+    console.log(`[${requestId}] ===== API REQUEST START =====`);
+    console.log(`[${requestId}] ${options.method || 'GET'} ${url}`);
+    console.log(`[${requestId}] Request Timestamp:`, new Date().toISOString());
 
     // 获取认证令牌
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -83,27 +96,250 @@ class ApiClient {
       headers,
     };
 
+    // 记录请求体，但对于长内容只记录部分
+    if (config.body && typeof config.body === 'string') {
+      try {
+        // 尝试解析为JSON以便更好地记录
+        const bodyObj = JSON.parse(config.body);
+
+        // 使用LLMLogger记录请求数据
+        LLMLogger.logRequest(requestId, bodyObj, {
+          headers: {
+            contentType: headers['Content-Type'],
+            hasAuth: !!headers['Authorization']
+          }
+        });
+
+        console.log(`[${requestId}] Request Body:`, JSON.stringify(bodyObj, (key, value) => {
+          // 对于长文本内容，只记录前100个字符
+          if (typeof value === 'string' && value.length > 100 && key !== 'userId') {
+            return value.substring(0, 100) + '...';
+          }
+          return value;
+        }, 2));
+      } catch (e) {
+        // 如果不是有效的JSON，记录原始内容的一部分
+        console.log(`[${requestId}] Request Body (raw):`, config.body.length > 200 ?
+          config.body.substring(0, 200) + '...' : config.body);
+
+        // 使用LLMLogger记录请求数据
+        LLMLogger.logRequest(requestId, { rawBody: 'Non-JSON body' }, {
+          headers: {
+            contentType: headers['Content-Type'],
+            hasAuth: !!headers['Authorization']
+          },
+          bodyLength: config.body.length
+        });
+      }
+    } else {
+      // 使用LLMLogger记录请求数据
+      LLMLogger.logRequest(requestId, { noBody: true }, {
+        headers: {
+          contentType: headers['Content-Type'],
+          hasAuth: !!headers['Authorization']
+        }
+      });
+    }
+
     try {
-      console.log(`API Request: ${options.method || 'GET'} ${url}`);
+      console.log(`[${requestId}] Sending request...`);
+      const startTime = Date.now();
       const response = await fetch(url, config);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      console.log(`[${requestId}] ===== API RESPONSE START =====`);
+      console.log(`[${requestId}] Response Time: ${duration}ms`);
+      console.log(`[${requestId}] Status:`, response.status, response.statusText);
+      console.log(`[${requestId}] Headers:`, JSON.stringify(Object.fromEntries([...response.headers]), null, 2));
 
       if (!response.ok) {
+        console.error(`[${requestId}] Response Error: ${response.status} ${response.statusText}`);
+
         let errorData;
+        let responseText = '';
+
         try {
-          errorData = await response.json();
+          // 先获取原始响应文本
+          responseText = await response.text();
+          console.error(`[${requestId}] Error Response Text:`, responseText);
+
+          // 使用LLMLogger记录错误响应
+          LLMLogger.logResponse(requestId, {
+            status: response.status,
+            statusText: response.statusText,
+            responseText
+          });
+
+          // 尝试解析为JSON
+          try {
+            errorData = JSON.parse(responseText);
+            console.error(`[${requestId}] Error Response Data:`, JSON.stringify(errorData, null, 2));
+          } catch (jsonError) {
+            // 如果不是JSON，使用原始文本
+            errorData = { message: `HTTP Error: ${response.status} ${response.statusText}`, rawResponse: responseText };
+            console.error(`[${requestId}] Failed to parse error response as JSON:`, jsonError);
+
+            // 使用LLMLogger记录JSON解析错误
+            LLMLogger.logError(requestId, jsonError, {
+              phase: 'response_parsing',
+              responseText: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : '')
+            });
+          }
         } catch (e) {
-          // If response is not JSON
+          // 如果无法获取响应文本
           errorData = { message: `HTTP Error: ${response.status} ${response.statusText}` };
+          console.error(`[${requestId}] Failed to read error response:`, e);
+
+          // 使用LLMLogger记录读取响应错误
+          LLMLogger.logError(requestId, e, {
+            phase: 'response_reading',
+            status: response.status,
+            statusText: response.statusText
+          });
         }
 
-        console.error('API Response Error:', errorData);
+        console.error(`[${requestId}] ===== API RESPONSE ERROR END =====`);
+
+        // 结束LLMLogger请求记录
+        LLMLogger.endRequest(requestId, {
+          status: 'error',
+          statusCode: response.status,
+          duration,
+          errorMessage: errorData.message || `HTTP Error: ${response.status}`
+        });
+
         return Promise.reject(errorData.error || errorData.message || `HTTP Error: ${response.status}`);
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('API Request Failed:', error);
-      return Promise.reject(error.message || 'Network error occurred');
+      // 获取响应文本
+      const responseText = await response.text();
+      console.log(`[${requestId}] Response Text Length:`, responseText.length);
+      console.log(`[${requestId}] Response Text Sample:`, responseText.length > 500 ?
+        responseText.substring(0, 500) + '...' : responseText);
+
+      // 使用LLMLogger记录原始响应
+      LLMLogger.logResponse(requestId, {
+        status: response.status,
+        statusText: response.statusText,
+        responseLength: responseText.length,
+        responseTextSample: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : '')
+      });
+
+      // 记录处理步骤
+      const processingSteps: any[] = [];
+
+      // 尝试解析为JSON
+      let responseData;
+      try {
+        // 只有当响应不为空时才尝试解析
+        if (responseText.trim()) {
+          responseData = JSON.parse(responseText);
+          console.log(`[${requestId}] Response Data Structure:`, Object.keys(responseData));
+          console.log(`[${requestId}] Response Data Sample:`, JSON.stringify(responseData, (_key, value) => {
+            // 对于长文本内容，只记录前100个字符
+            if (typeof value === 'string' && value.length > 100) {
+              return value.substring(0, 100) + '...';
+            }
+            return value;
+          }, 2));
+
+          processingSteps.push({
+            step: 'parse_json',
+            success: true,
+            responseKeys: Object.keys(responseData)
+          });
+
+          // 检查是否是AI响应
+          if (endpoint.includes('/tutor/chat') ||
+            endpoint.includes('/content/generate') ||
+            endpoint.includes('/learning-paths/generate')) {
+            // 使用LLMLogger记录处理后的内容
+            if (responseData.message || responseData.answer || responseData.content) {
+              const aiContent = responseData.message || responseData.answer || responseData.content;
+              LLMLogger.logProcessedContent(requestId,
+                typeof aiContent === 'string' ? aiContent : JSON.stringify(aiContent),
+                {
+                  processingSteps,
+                  responseType: 'ai_response',
+                  field: responseData.message ? 'message' :
+                    responseData.answer ? 'answer' : 'content'
+                }
+              );
+            }
+          }
+        } else {
+          console.log(`[${requestId}] Empty response`);
+          responseData = {};
+
+          processingSteps.push({
+            step: 'handle_empty_response',
+            success: true
+          });
+        }
+      } catch (jsonError: any) {
+        console.error(`[${requestId}] Failed to parse response as JSON:`, jsonError);
+        console.error(`[${requestId}] Raw response:`, responseText);
+
+        processingSteps.push({
+          step: 'parse_json',
+          success: false,
+          error: jsonError.message
+        });
+
+        // 使用LLMLogger记录JSON解析错误
+        LLMLogger.logError(requestId, jsonError, {
+          phase: 'json_parsing',
+          responseText: responseText.substring(0, 500) + (responseText.length > 500 ? '...' : '')
+        });
+
+        // 结束LLMLogger请求记录
+        LLMLogger.endRequest(requestId, {
+          status: 'error',
+          statusCode: response.status,
+          duration,
+          errorType: 'json_parsing_error',
+          errorMessage: jsonError.message
+        });
+
+        throw new Error(`Invalid JSON response: ${jsonError.message || 'Unknown error'}`);
+      }
+
+      console.log(`[${requestId}] ===== API RESPONSE END =====`);
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'success',
+        statusCode: response.status,
+        duration,
+        responseType: 'json',
+        responseKeys: Object.keys(responseData)
+      });
+
+      return responseData;
+    } catch (error: any) {
+      console.error(`[${requestId}] ===== API REQUEST ERROR =====`);
+      console.error(`[${requestId}] Request Failed:`, error);
+      if (error && error.stack) {
+        console.error(`[${requestId}] Error Stack:`, error.stack);
+      }
+      console.error(`[${requestId}] ===== API REQUEST ERROR END =====`);
+
+      // 使用LLMLogger记录请求错误
+      LLMLogger.logError(requestId, error, {
+        phase: 'request',
+        endpoint,
+        method: options.method || 'GET'
+      });
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'error',
+        errorType: 'network_error',
+        errorMessage: error && error.message ? error.message : 'Network error occurred'
+      });
+
+      return Promise.reject(error && error.message ? error.message : 'Network error occurred');
     }
   }
 }
@@ -125,7 +361,7 @@ export const learningPathsApi = {
   getById: (id: string) => api.get(`/learning-paths/${id}`),
   getUserPaths: () => api.get('/learning-paths/user'),
   // Temporary mock implementation for popular paths
-  getPopularPaths: (limit: number = 3) => {
+  getPopularPaths: (_limit: number = 3) => {
     // Return mock data
     return Promise.resolve({
       paths: [
@@ -200,16 +436,16 @@ export const exercisesApi = {
 export const achievementsApi = {
   getAll: () => api.get('/achievements'),
   getUserAchievements: (userId: string) => api.get(`/achievements/user/${userId}`),
-  checkAchievements: (userId: string) => api.post(`/achievements/check/${userId}`),
+  checkAchievements: (userId: string) => api.post(`/achievements/check/${userId}`, {}),
 };
 
 // Streaks API
 export const streaksApi = {
   getUserStreak: (userId: string) => api.get(`/streaks/${userId}`),
-  updateStreak: (userId: string) => api.post(`/streaks/${userId}/update`),
+  updateStreak: (userId: string) => api.post(`/streaks/${userId}/update`, {}),
   getStreakRewards: (userId: string) => api.get(`/streaks/${userId}/rewards`),
   grantStreakReward: (userId: string, rewardId: string) =>
-    api.post(`/streaks/${userId}/rewards/${rewardId}/grant`),
+    api.post(`/streaks/${userId}/rewards/${rewardId}/grant`, {}),
 };
 
 // Leaderboard API

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import LLMLogger from './utils/LLMLogger';
 
 // Load environment variables
 dotenv.config();
@@ -49,9 +50,30 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
+// Initialize LLMLogger
+console.log(`Initializing LLMLogger with log directory: ${LLMLogger['logDir']}`);
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+
+  // Log server start with LLMLogger
+  const startRequestId = LLMLogger.startRequest({
+    type: 'server_start',
+    port,
+    timestamp: new Date().toISOString()
+  });
+
+  LLMLogger.logProcessedContent(startRequestId, 'Server started successfully', {
+    port,
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+
+  LLMLogger.endRequest(startRequestId, {
+    status: 'success',
+    message: 'Server started successfully'
+  });
 });
 
 export { supabase };

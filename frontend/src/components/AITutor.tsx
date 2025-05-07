@@ -28,6 +28,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { tutorApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import LLMLogger from '@/utils/LLMLogger';
 
 interface AITutorProps {
   pathId: string;
@@ -153,9 +154,27 @@ export default function AITutor({ pathId, chapterId, chapterTitle }: AITutorProp
     setIsLoading(true);
     setError('');
 
+    // 使用LLMLogger开始记录请求
+    const requestId = LLMLogger.startRequest({
+      type: 'tutor_question',
+      userId: user?.id,
+      pathId,
+      chapterId,
+      chapterTitle,
+      questionLength: question.length
+    });
+
+    console.log(`[${requestId}] ===== AI TUTOR FRONTEND REQUEST START =====`);
+    console.log(`[${requestId}] User ID:`, user?.id);
+    console.log(`[${requestId}] Path ID:`, pathId);
+    console.log(`[${requestId}] Chapter ID:`, chapterId);
+    console.log(`[${requestId}] Chapter Title:`, chapterTitle);
+    console.log(`[${requestId}] User Message:`, userMessage.content);
+    console.log(`[${requestId}] Chat History Length:`, messages.length);
+
     try {
-      // 调用AI辅导API
-      const response = await tutorApi.chat({
+      // 准备请求数据
+      const requestData = {
         userId: user.id,
         pathId,
         chapterId,
@@ -167,24 +186,83 @@ export default function AITutor({ pathId, chapterId, chapterTitle }: AITutorProp
           conceptContent: '', // 如果有特定内容，可以在这里添加
           messages: messages.map(msg => ({ role: msg.role, content: msg.content }))
         }
+      };
+
+      // 使用LLMLogger记录请求数据
+      LLMLogger.logRequest(requestId, requestData, {
+        messageCount: messages.length,
+        newMessageLength: userMessage.content.length
       });
+
+      console.log(`[${requestId}] Request Data:`, JSON.stringify(requestData, (key, value) => {
+        // 对于长文本内容，只记录前100个字符
+        if (typeof value === 'string' && value.length > 100 && key !== 'userId') {
+          return value.substring(0, 100) + '...';
+        }
+        return value;
+      }, 2));
+
+      // 调用AI辅导API
+      console.log(`[${requestId}] Calling tutorApi.chat...`);
+      const startTime = Date.now();
+      const response = await tutorApi.chat(requestData);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      // 使用LLMLogger记录响应
+      LLMLogger.logResponse(requestId, response);
+
+      console.log(`[${requestId}] ===== AI TUTOR FRONTEND RESPONSE START =====`);
+      console.log(`[${requestId}] Response Time: ${duration}ms`);
+      console.log(`[${requestId}] Response Type:`, typeof response);
+      console.log(`[${requestId}] Response Structure:`, Object.keys(response || {}));
+      console.log(`[${requestId}] Raw Response:`, JSON.stringify(response, null, 2));
+
+      // 记录处理步骤
+      const processingSteps: any[] = [];
 
       // 检查响应格式并提取消息内容
       let aiContent = '';
       if (response) {
         if (typeof response.message === 'string') {
+          console.log(`[${requestId}] Found 'message' field (string) in response`);
           aiContent = response.message;
+          processingSteps.push({ step: 'extract_field', field: 'message', success: true });
         } else if (response.answer && typeof response.answer === 'string') {
+          console.log(`[${requestId}] Found 'answer' field (string) in response`);
           aiContent = response.answer;
+          processingSteps.push({ step: 'extract_field', field: 'answer', success: true });
         } else if (typeof response === 'string') {
+          console.log(`[${requestId}] Response is a string`);
           aiContent = response;
+          processingSteps.push({ step: 'use_raw_string', success: true });
         } else {
-          console.warn('Unexpected response format:', response);
+          console.warn(`[${requestId}] Unexpected response format:`, response);
           aiContent = '收到了回复，但格式不正确。请重试。';
+          processingSteps.push({
+            step: 'handle_unexpected_format',
+            success: false,
+            responseType: typeof response,
+            responseKeys: Object.keys(response || {})
+          });
         }
       } else {
+        console.warn(`[${requestId}] No response received`);
         aiContent = '没有收到有效回复。请重试。';
+        processingSteps.push({ step: 'handle_empty_response', success: false });
       }
+
+      console.log(`[${requestId}] Extracted Content Length:`, aiContent.length);
+      console.log(`[${requestId}] Extracted Content Sample:`, aiContent.substring(0, 200) + (aiContent.length > 200 ? '...' : ''));
+
+      // 使用LLMLogger记录处理后的内容
+      LLMLogger.logProcessedContent(requestId, aiContent, {
+        processingSteps,
+        processingDuration: 0, // 前端处理几乎是瞬时的
+        originalResponseType: typeof response,
+        processedLength: aiContent.length,
+        containsMarkdown: aiContent.includes('#') || aiContent.includes('*') || aiContent.includes('>')
+      });
 
       // 添加AI回复到聊天记录
       const aiMessage: Message = {
@@ -194,34 +272,84 @@ export default function AITutor({ pathId, chapterId, chapterTitle }: AITutorProp
         timestamp: new Date().toISOString()
       };
 
+      console.log(`[${requestId}] Created AI message with ID:`, aiMessage.id);
       setMessages(prev => [...prev, aiMessage]);
 
       // 保存聊天历史
       try {
+        console.log(`[${requestId}] Saving chat history...`);
         await tutorApi.saveChatHistory({
           userId: user.id,
           pathId,
           chapterId,
           messages: [...messages, userMessage, aiMessage]
         });
-      } catch (saveError) {
-        console.error('保存聊天历史失败:', saveError);
+        console.log(`[${requestId}] Chat history saved successfully`);
+      } catch (saveError: any) {
+        console.error(`[${requestId}] Failed to save chat history:`, saveError);
+        console.error(`[${requestId}] Error message:`, saveError.message);
+        console.error(`[${requestId}] Error stack:`, saveError.stack);
         // 不中断用户体验，只记录错误
       }
+
+      console.log(`[${requestId}] ===== AI TUTOR FRONTEND RESPONSE END =====`);
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'success',
+        duration,
+        responseLength: aiContent.length,
+        question: {
+          length: question.length,
+          type: 'tutor'
+        }
+      });
     } catch (error: any) {
-      console.error('AI辅导请求失败:', error);
+      console.error(`[${requestId}] ===== AI TUTOR FRONTEND ERROR =====`);
+      console.error(`[${requestId}] AI辅导请求失败:`, error);
+      console.error(`[${requestId}] Error message:`, error.message);
+      console.error(`[${requestId}] Error stack:`, error.stack);
+
+      // 使用LLMLogger记录错误
+      LLMLogger.logError(requestId, error, {
+        errorPhase: 'api_request',
+        question,
+        context: {
+          chapterTitle,
+          pathId,
+          chapterId
+        }
+      });
+
+      if (error.response) {
+        console.error(`[${requestId}] Error response:`, error.response);
+        try {
+          console.error(`[${requestId}] Error response data:`, JSON.stringify(error.response.data));
+        } catch (e) {
+          console.error(`[${requestId}] Could not stringify error response data`);
+        }
+      }
 
       // 添加错误消息到聊天记录
       const errorMessage: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: '抱歉，我暂时无法回答您的问题。请稍后再试。',
+        content: `抱歉，我暂时无法回答您的问题。请稍后再试。\n\n错误信息: ${error.message || '未知错误'}`,
         timestamp: new Date().toISOString(),
         isError: true
       };
 
+      console.error(`[${requestId}] Created error message with ID:`, errorMessage.id);
       setMessages(prev => [...prev, errorMessage]);
       setError(error.message || 'AI辅导请求失败，请稍后再试');
+      console.error(`[${requestId}] ===== AI TUTOR FRONTEND ERROR END =====`);
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'error',
+        errorMessage: error.message,
+        errorType: error.name || 'Unknown'
+      });
     } finally {
       setIsLoading(false);
     }

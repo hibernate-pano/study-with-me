@@ -1,6 +1,7 @@
 import axios from 'axios';
 import config from '../config';
 import mermaidService from './mermaidService';
+import LLMLogger from '../utils/LLMLogger';
 
 /**
  * Service for interacting with the AI model (deepseek-ai/DeepSeek-V3)
@@ -23,11 +24,19 @@ class AIService {
    * @returns The generated content
    */
   async generateContent(prompt: string, options: any = {}): Promise<string> {
+    // 使用LLMLogger开始记录请求
+    const requestId = LLMLogger.startRequest({
+      apiUrl: this.apiUrl,
+      model: this.modelName,
+      options
+    });
+
+    console.log(`[${requestId}] ===== AI API REQUEST START =====`);
     try {
-      console.log('AI API Request:');
-      console.log('URL:', this.apiUrl);
-      console.log('Model:', this.modelName);
-      console.log('API Key (first 5 chars):', this.apiKey ? this.apiKey.substring(0, 5) + '...' : 'undefined');
+      console.log(`[${requestId}] API URL:`, this.apiUrl);
+      console.log(`[${requestId}] Model:`, this.modelName);
+      console.log(`[${requestId}] API Key (first 5 chars):`, this.apiKey ? this.apiKey.substring(0, 5) + '...' : 'undefined');
+      console.log(`[${requestId}] Request Timestamp:`, new Date().toISOString());
 
       const requestBody = {
         model: this.modelName,
@@ -38,7 +47,27 @@ class AIService {
         ...options
       };
 
-      console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+      // 记录完整的请求内容，但对于长提示词只记录前500个字符
+      console.log(`[${requestId}] Request Body (partial):`, JSON.stringify({
+        ...requestBody,
+        messages: requestBody.messages.map((msg: { role: string, content: string }) => ({
+          ...msg,
+          content: msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content
+        }))
+      }, null, 2));
+
+      console.log(`[${requestId}] Full Prompt Length:`, prompt.length);
+      console.log(`[${requestId}] Making API call to:`, this.apiUrl);
+
+      // 使用LLMLogger记录提示词
+      LLMLogger.logPrompt(requestId, prompt, {
+        model: this.modelName,
+        temperature: options.temperature,
+        maxTokens: options.max_tokens
+      });
+
+      // 记录请求开始时间
+      const startTime = Date.now();
 
       // This is a placeholder implementation
       // You'll need to adjust this based on the actual API of 硅基流动
@@ -50,35 +79,101 @@ class AIService {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
           },
-          timeout: 30000 // 30秒超时
+          timeout: 60000 // 60秒超时
         }
       );
 
-      console.log('AI API Response Status:', response.status);
-      console.log('AI API Response Headers:', JSON.stringify(response.headers, null, 2));
-      console.log('AI API Response Data (sample):', JSON.stringify(response.data).substring(0, 200) + '...');
+      // 记录请求耗时
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      console.log(`[${requestId}] ===== AI API RESPONSE START =====`);
+      console.log(`[${requestId}] Response Time: ${duration}ms`);
+      console.log(`[${requestId}] Response Status:`, response.status);
+      console.log(`[${requestId}] Response Headers:`, JSON.stringify(response.headers, null, 2));
+
+      // 记录完整的响应数据结构，但对于长内容只记录部分
+      const responseDataStr = JSON.stringify(response.data);
+      console.log(`[${requestId}] Response Data Structure:`, Object.keys(response.data));
+      console.log(`[${requestId}] Response Data Length:`, responseDataStr.length);
+      console.log(`[${requestId}] Response Data Sample:`, responseDataStr.substring(0, 500) + (responseDataStr.length > 500 ? '...' : ''));
+
+      // 使用LLMLogger记录原始响应
+      LLMLogger.logResponse(requestId, response.data);
+
+      // 检查响应结构
+      if (!response.data.choices || !response.data.choices[0] || !response.data.choices[0].message) {
+        console.error(`[${requestId}] Unexpected response structure:`, JSON.stringify(response.data, null, 2));
+        LLMLogger.logError(requestId, new Error('Unexpected response structure from AI API'), response.data);
+        throw new Error('Unexpected response structure from AI API');
+      }
+
+      const content = response.data.choices[0].message.content;
+      console.log(`[${requestId}] Extracted Content Length:`, content.length);
+      console.log(`[${requestId}] Extracted Content Sample:`, content.substring(0, 500) + (content.length > 500 ? '...' : ''));
+      console.log(`[${requestId}] ===== AI API RESPONSE END =====`);
+
+      // 使用LLMLogger记录处理后的内容
+      LLMLogger.logProcessedContent(requestId, content, {
+        processingMethod: 'direct extraction',
+        sourceField: 'choices[0].message.content',
+        tokenCount: response.data.usage?.total_tokens || 'unknown'
+      });
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'success',
+        duration: duration,
+        tokenUsage: response.data.usage,
+        contentLength: content.length
+      });
 
       // Extract the response content based on the API's response format
-      // This might need adjustment based on the actual API response structure
-      return response.data.choices[0].message.content;
+      return content;
     } catch (error: any) {
-      console.error('Error generating AI content:');
-      console.error('Error Name:', error.name);
-      console.error('Error Message:', error.message);
+      console.error(`[${requestId}] ===== AI API ERROR =====`);
+      console.error(`[${requestId}] Error Name:`, error.name);
+      console.error(`[${requestId}] Error Message:`, error.message);
+      console.error(`[${requestId}] Error Stack:`, error.stack);
+
+      // 记录详细错误信息
+      const errorContext: any = {
+        errorType: 'api_call_error',
+        errorName: error.name,
+        errorMessage: error.message
+      };
 
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error('Error Status:', error.response.status);
-        console.error('Error Headers:', JSON.stringify(error.response.headers, null, 2));
-        console.error('Error Data:', JSON.stringify(error.response.data, null, 2));
+        console.error(`[${requestId}] Error Status:`, error.response.status);
+        console.error(`[${requestId}] Error Headers:`, JSON.stringify(error.response.headers, null, 2));
+        console.error(`[${requestId}] Error Data:`, JSON.stringify(error.response.data, null, 2));
+
+        errorContext.responseStatus = error.response.status;
+        errorContext.responseData = error.response.data;
       } else if (error.request) {
         // The request was made but no response was received
-        console.error('Error Request:', error.request);
+        console.error(`[${requestId}] Error Request:`, JSON.stringify(error.request, null, 2));
+        errorContext.requestInfo = error.request;
+        errorContext.errorType = 'network_error';
       } else {
         // Something happened in setting up the request that triggered an Error
-        console.error('Error Config:', error.config);
+        console.error(`[${requestId}] Error Config:`, error.config ? JSON.stringify(error.config, null, 2) : 'No config available');
+        errorContext.errorType = 'request_setup_error';
       }
+
+      console.error(`[${requestId}] ===== AI API ERROR END =====`);
+
+      // 使用LLMLogger记录错误
+      LLMLogger.logError(requestId, error, errorContext);
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'error',
+        errorType: errorContext.errorType,
+        errorMessage: error.message
+      });
 
       throw new Error(`Failed to generate content from AI model: ${error.message}`);
     }
@@ -474,6 +569,17 @@ class AIService {
    * @returns The AI's answer
    */
   async answerQuestion(question: string, context: any): Promise<string> {
+    // 使用LLMLogger开始记录请求
+    const requestId = LLMLogger.startRequest({
+      type: 'tutor_question',
+      question,
+      contextType: context.chapterTitle ? 'chapter' : 'general'
+    });
+
+    console.log(`[${requestId}] ===== AI TUTOR QUESTION START =====`);
+    console.log(`[${requestId}] Question:`, question);
+    console.log(`[${requestId}] Context:`, JSON.stringify(context, null, 2));
+
     const prompt = `
     作为AI学习助手，请回答用户关于"${context.chapterTitle || '当前主题'}"的问题。
 
@@ -496,13 +602,40 @@ class AIService {
     6. 避免使用复杂的HTML或非标准Markdown语法
     7. 确保代码示例使用正确的语法高亮标记（如\`\`\`javascript\`\`\`）
     8. 使用简洁明了的表达方式
+    9. 非常重要：请直接返回纯文本回答，不要返回JSON格式
 
     请注意：你的回答将直接显示在学习平台上，不需要额外的格式化或包装。请确保回答是完整且独立的。
     `;
 
+    console.log(`[${requestId}] Prompt Length:`, prompt.length);
+    console.log(`[${requestId}] Prompt Sample:`, prompt.substring(0, 200) + '...');
+
+    // 使用LLMLogger记录提示词
+    LLMLogger.logPrompt(requestId, prompt, {
+      questionType: 'tutor',
+      chapterTitle: context.chapterTitle,
+      pathTitle: context.pathTitle
+    });
+
     try {
+      // 记录处理开始时间
+      const processingStartTime = Date.now();
+
       // Get the raw response from the AI
+      console.log(`[${requestId}] Calling generateContent...`);
       const rawResponse = await this.generateContent(prompt);
+
+      console.log(`[${requestId}] ===== AI TUTOR RESPONSE PROCESSING START =====`);
+      console.log(`[${requestId}] Raw Response Length:`, rawResponse.length);
+      console.log(`[${requestId}] Raw Response Sample:`, rawResponse.substring(0, 500) + (rawResponse.length > 500 ? '...' : ''));
+      console.log(`[${requestId}] Raw Response First 20 chars:`, JSON.stringify(rawResponse.substring(0, 20)));
+      console.log(`[${requestId}] Raw Response Last 20 chars:`, JSON.stringify(rawResponse.substring(rawResponse.length - 20)));
+
+      // 使用LLMLogger记录原始响应
+      LLMLogger.logResponse(requestId, rawResponse);
+
+      // 记录处理步骤
+      const processingSteps: any[] = [];
 
       // Clean up the response to ensure it's valid markdown
       // Remove any potential JSON formatting or code blocks that might be wrapping the entire response
@@ -512,32 +645,132 @@ class AIService {
       const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
       const match = rawResponse.match(jsonBlockRegex);
       if (match && match[0] === rawResponse.trim()) {
+        console.log(`[${requestId}] Found JSON code block, extracting content`);
         cleanResponse = match[1].trim();
+        console.log(`[${requestId}] Extracted content length:`, cleanResponse.length);
+        console.log(`[${requestId}] Extracted content sample:`, cleanResponse.substring(0, 200) + '...');
+
+        processingSteps.push({
+          step: 'extract_from_code_block',
+          pattern: 'code block with triple backticks',
+          success: true,
+          resultLength: cleanResponse.length
+        });
       }
 
       // If the response looks like it might be JSON but isn't wrapped in code blocks
       if (rawResponse.trim().startsWith('{') && rawResponse.trim().endsWith('}')) {
+        console.log(`[${requestId}] Response appears to be JSON, attempting to parse`);
         try {
           // Try to parse it as JSON
           const jsonObj = JSON.parse(rawResponse);
-          // If it has a content or text field, use that
-          if (jsonObj.content) return jsonObj.content;
-          if (jsonObj.text) return jsonObj.text;
-          if (jsonObj.answer) return jsonObj.answer;
-          if (jsonObj.message) return jsonObj.message;
+          console.log(`[${requestId}] Successfully parsed as JSON:`, JSON.stringify(Object.keys(jsonObj)));
 
-          // Otherwise stringify it nicely
-          cleanResponse = JSON.stringify(jsonObj, null, 2);
+          processingSteps.push({
+            step: 'parse_json',
+            success: true,
+            fields: Object.keys(jsonObj)
+          });
+
+          // If it has a content or text field, use that
+          let fieldUsed = null;
+          if (jsonObj.content) {
+            console.log(`[${requestId}] Using 'content' field from JSON`);
+            cleanResponse = jsonObj.content;
+            fieldUsed = 'content';
+          } else if (jsonObj.text) {
+            console.log(`[${requestId}] Using 'text' field from JSON`);
+            cleanResponse = jsonObj.text;
+            fieldUsed = 'text';
+          } else if (jsonObj.answer) {
+            console.log(`[${requestId}] Using 'answer' field from JSON`);
+            cleanResponse = jsonObj.answer;
+            fieldUsed = 'answer';
+          } else if (jsonObj.message) {
+            console.log(`[${requestId}] Using 'message' field from JSON`);
+            cleanResponse = jsonObj.message;
+            fieldUsed = 'message';
+          } else {
+            // Otherwise stringify it nicely
+            console.log(`[${requestId}] No recognized field found, stringifying entire JSON`);
+            cleanResponse = JSON.stringify(jsonObj, null, 2);
+            fieldUsed = 'full_json_stringify';
+          }
+
+          processingSteps.push({
+            step: 'extract_field',
+            field: fieldUsed,
+            success: true,
+            resultLength: cleanResponse.length
+          });
         } catch (e) {
           // Not valid JSON, keep the original response
-          console.log('Response looked like JSON but failed to parse');
+          console.log(`[${requestId}] Response looked like JSON but failed to parse:`, e);
+          console.log(`[${requestId}] Keeping original response`);
+
+          processingSteps.push({
+            step: 'parse_json',
+            success: false,
+            error: e instanceof Error ? e.message : 'Unknown error'
+          });
         }
       }
 
+      // 记录处理结束时间和总耗时
+      const processingEndTime = Date.now();
+      const processingDuration = processingEndTime - processingStartTime;
+
+      console.log(`[${requestId}] Final cleaned response length:`, cleanResponse.length);
+      console.log(`[${requestId}] Final cleaned response sample:`, cleanResponse.substring(0, 200) + '...');
+      console.log(`[${requestId}] Processing time: ${processingDuration}ms`);
+      console.log(`[${requestId}] ===== AI TUTOR RESPONSE PROCESSING END =====`);
+
+      // 使用LLMLogger记录处理后的内容
+      LLMLogger.logProcessedContent(requestId, cleanResponse, {
+        processingSteps,
+        processingDuration,
+        originalLength: rawResponse.length,
+        processedLength: cleanResponse.length,
+        containsCodeBlocks: cleanResponse.includes('```'),
+        containsMarkdown: cleanResponse.includes('#') || cleanResponse.includes('*') || cleanResponse.includes('>')
+      });
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'success',
+        processingDuration,
+        responseLength: cleanResponse.length,
+        question: {
+          length: question.length,
+          type: 'tutor'
+        }
+      });
+
       return cleanResponse;
-    } catch (error) {
-      console.error('Error in answerQuestion:', error);
-      return '抱歉，我无法回答这个问题。请尝试重新表述或询问其他问题。';
+    } catch (error: any) {
+      console.error(`[${requestId}] ===== AI TUTOR ERROR =====`);
+      console.error(`[${requestId}] Error in answerQuestion:`, error);
+      console.error(`[${requestId}] Error stack:`, error.stack);
+      console.error(`[${requestId}] ===== AI TUTOR ERROR END =====`);
+
+      // 使用LLMLogger记录错误
+      LLMLogger.logError(requestId, error, {
+        errorPhase: 'tutor_response_processing',
+        question,
+        context: {
+          chapterTitle: context.chapterTitle,
+          pathTitle: context.pathTitle
+        }
+      });
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'error',
+        errorMessage: error.message,
+        errorType: error.name || 'Unknown'
+      });
+
+      return '抱歉，我无法回答这个问题。请尝试重新表述或询问其他问题。错误信息：' + error.message;
     }
   }
 }
