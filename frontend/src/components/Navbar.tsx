@@ -67,7 +67,6 @@ export default function Navbar({ }: NavbarProps = {}) {
   const menuItems = [
     { text: '首页', icon: <HomeIcon />, href: '/' },
     { text: '学习路径', icon: <SchoolIcon />, href: '/learning-paths' },
-    { text: '学习内容', icon: <BookIcon />, href: isAuthenticated ? '/learning-paths' : '/login' },
     { text: 'AI辅导', icon: <QuestionAnswerIcon />, href: '/ai-tutor' },
     { text: '排行榜', icon: <LeaderboardIcon />, href: '/leaderboard', requireAuth: true },
   ];

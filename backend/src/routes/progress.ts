@@ -10,14 +10,38 @@ const router = express.Router();
  */
 router.post('/update', async (req, res) => {
   try {
-    const { userId, pathId, chapterId, progress } = req.body;
+    const { userId, pathId, chapterId, status, time_spent, exerciseId, ...otherData } = req.body;
 
-    if (!userId || !pathId || !chapterId || !progress) {
-      return res.status(400).json({ message: 'User ID, path ID, chapter ID, and progress data are required' });
+    if (!userId || !pathId || !chapterId) {
+      return res.status(400).json({ message: 'User ID, path ID, chapter ID are required' });
     }
 
-    // Update progress
-    const updatedProgress = await supabaseService.updateUserProgress(userId, pathId, chapterId, progress);
+    // 构建进度数据对象
+    const progressData: any = {
+      ...otherData
+    };
+
+    // 如果提供了状态，则添加到进度数据中
+    if (status) {
+      progressData.status = status;
+      if (status === 'completed') {
+        progressData.completed = true;
+        progressData.completed_at = new Date().toISOString();
+      }
+    }
+
+    // 如果提供了学习时间，则添加到进度数据中
+    if (time_spent !== undefined) {
+      progressData.time_spent = time_spent;
+    }
+
+    // 如果提供了练习ID，则添加到进度数据中
+    if (exerciseId) {
+      progressData.last_exercise_id = exerciseId;
+    }
+
+    // 更新进度
+    const updatedProgress = await supabaseService.updateUserProgress(userId, pathId, chapterId, progressData);
 
     res.status(200).json({
       message: 'Progress updated successfully',

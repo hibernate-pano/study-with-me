@@ -359,7 +359,25 @@ export const authApi = {
 export const learningPathsApi = {
   generate: (data: any) => api.post('/learning-paths/generate', data),
   getById: (id: string) => api.get(`/learning-paths/${id}`),
-  getUserPaths: () => api.get('/learning-paths/user'),
+  getUserPaths: (userId?: string) => {
+    // 如果提供了userId，则使用它，否则从当前用户获取
+    if (userId) {
+      return api.get(`/learning-paths/user/${userId}`);
+    } else {
+      // 从localStorage获取当前用户信息
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          return api.get(`/learning-paths/user/${user.id}`);
+        } catch (e) {
+          console.error('解析用户信息失败:', e);
+        }
+      }
+      // 如果没有用户信息，则使用通用路径
+      return api.get('/learning-paths/user');
+    }
+  },
   // Temporary mock implementation for popular paths
   getPopularPaths: (_limit: number = 3) => {
     // Return mock data

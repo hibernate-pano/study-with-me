@@ -114,4 +114,26 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * @route GET /api/learning-paths/:pathId/chapters
+ * @desc Get all chapters for a learning path
+ * @access Private
+ */
+router.get('/:pathId/chapters', async (req, res) => {
+  try {
+    const pathId = req.params.pathId;
+
+    const chapters = await supabaseService.getChapters(pathId);
+
+    res.status(200).json({
+      chapters
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to get chapters',
+      error: error.message
+    });
+  }
+});
+
 export = router;

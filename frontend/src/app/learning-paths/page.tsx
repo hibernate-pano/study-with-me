@@ -7,17 +7,10 @@ import {
   Typography,
   Button,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Divider,
   CircularProgress,
   Tabs,
   Tab,
   Paper,
-  LinearProgress,
-  Chip,
-  IconButton,
   Menu,
   MenuItem,
   Dialog,
@@ -31,16 +24,17 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  MoreVert as MoreVertIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  School as SchoolIcon
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { learningPathsApi, progressApi } from '@/lib/api';
-import Link from 'next/link';
+import { learningPathsApi } from '@/lib/api';
+
+import LearningPathCard from '@/components/LearningPathCard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -72,11 +66,12 @@ interface LearningPath {
   id: string;
   title: string;
   description: string;
-  goal: string;
+  goal?: string;
   level: string;
   chapters: number;
-  created_at: string;
+  created_at?: string;
   progress?: number;
+  users?: number;
 }
 
 export default function LearningPathsPage() {
@@ -96,9 +91,14 @@ export default function LearningPathsPage() {
       setIsLoading(true);
       try {
         // 获取用户的学习路径
-        const userPathsResponse = await learningPathsApi.getUserPaths();
-        setUserPaths(userPathsResponse.paths || []);
-        
+        if (user) {
+          const userPathsResponse = await learningPathsApi.getUserPaths(user.id);
+          setUserPaths(userPathsResponse.paths || []);
+        } else {
+          console.log('用户未登录或用户信息未加载完成');
+          setUserPaths([]);
+        }
+
         // 获取热门学习路径
         const popularPathsResponse = await learningPathsApi.getPopularPaths(6);
         setPopularPaths(popularPathsResponse.paths || []);
@@ -111,11 +111,11 @@ export default function LearningPathsPage() {
         setIsLoading(false);
       }
     };
-    
-    fetchPaths();
-  }, []);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    fetchPaths();
+  }, [user]);
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -162,12 +162,12 @@ export default function LearningPathsPage() {
     router.push('/');
   };
 
-  const filteredUserPaths = userPaths.filter(path => 
+  const filteredUserPaths = userPaths.filter(path =>
     path.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     path.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredPopularPaths = popularPaths.filter(path => 
+  const filteredPopularPaths = popularPaths.filter(path =>
     path.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     path.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -228,32 +228,82 @@ export default function LearningPathsPage() {
 
   return (
     <ProtectedRoute>
-      <Box>
+      <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh' }}>
         <Navbar />
-        
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              学习路径
-            </Typography>
+
+        <Container maxWidth="lg" sx={{ pt: 4, pb: 8 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <Box>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 500, color: '#202124' }}>
+                学习路径
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+                探索和管理您的学习旅程
+              </Typography>
+            </Box>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleCreatePath}
+              disableElevation
+              sx={{
+                borderRadius: 8,
+                px: 3,
+                py: 1,
+                bgcolor: '#4285F4',
+                '&:hover': { bgcolor: '#3367D6' }
+              }}
             >
               创建新路径
             </Button>
-          </Box>
-          
-          <Paper sx={{ mb: 4 }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={tabValue} onChange={handleTabChange} aria-label="learning paths tabs">
+          </Paper>
+
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)'
+            }}
+          >
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white' }}>
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                aria-label="learning paths tabs"
+                sx={{
+                  '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.95rem',
+                    py: 2,
+                    px: 3
+                  },
+                  '& .Mui-selected': {
+                    color: '#4285F4',
+                  },
+                  '& .MuiTabs-indicator': {
+                    backgroundColor: '#4285F4',
+                    height: 3
+                  }
+                }}
+              >
                 <Tab label="我的学习路径" />
                 <Tab label="热门学习路径" />
               </Tabs>
             </Box>
-            
-            <Box sx={{ p: 3 }}>
+
+            <Box sx={{ p: 3, bgcolor: 'white' }}>
               <TextField
                 fullWidth
                 placeholder="搜索学习路径..."
@@ -264,17 +314,34 @@ export default function LearningPathsPage() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon />
+                      <SearchIcon sx={{ color: '#5F6368' }} />
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 3 }}
+                sx={{
+                  mb: 3,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    '& fieldset': {
+                      borderColor: '#DADCE0',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#DADCE0',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#4285F4',
+                    },
+                  }
+                }}
               />
             </Box>
-            
+
             {isLoading ? (
-              <Box sx={{ p: 3 }}>
-                <CircularProgress />
+              <Box sx={{ p: 5, textAlign: 'center' }}>
+                <CircularProgress size={40} sx={{ color: '#4285F4' }} />
+                <Typography variant="body1" sx={{ mt: 2, color: '#5F6368' }}>
+                  正在加载学习路径...
+                </Typography>
               </Box>
             ) : (
               <>
@@ -283,120 +350,62 @@ export default function LearningPathsPage() {
                     <Grid container spacing={3}>
                       {filteredUserPaths.map((path) => (
                         <Grid item key={path.id} xs={12} sm={6} md={4}>
-                          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <CardContent sx={{ flexGrow: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Typography gutterBottom variant="h6" component="h2">
-                                  {path.title}
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleMenuOpen(e, path.id)}
-                                >
-                                  <MoreVertIcon />
-                                </IconButton>
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" paragraph>
-                                {path.description}
-                              </Typography>
-                              <Divider sx={{ my: 1 }} />
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  难度: {path.level}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  章节: {path.chapters}
-                                </Typography>
-                              </Box>
-                              {path.progress !== undefined && (
-                                <Box sx={{ mt: 2 }}>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="body2">学习进度</Typography>
-                                    <Typography variant="body2">{path.progress}%</Typography>
-                                  </Box>
-                                  <LinearProgress variant="determinate" value={path.progress} />
-                                </Box>
-                              )}
-                            </CardContent>
-                            <CardActions>
-                              <Button 
-                                size="small" 
-                                color="primary"
-                                component={Link}
-                                href={`/learning-paths/${path.id}/chapters/1`}
-                              >
-                                {path.progress ? '继续学习' : '开始学习'}
-                              </Button>
-                              <Button 
-                                size="small" 
-                                color="primary"
-                                component={Link}
-                                href={`/learning-paths/${path.id}`}
-                              >
-                                查看详情
-                              </Button>
-                            </CardActions>
-                          </Card>
+                          <LearningPathCard
+                            path={path}
+                            onMenuOpen={handleMenuOpen}
+                            color="#4285F4"
+                          />
                         </Grid>
                       ))}
                     </Grid>
                   ) : (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography variant="body1" color="text.secondary" paragraph>
+                    <Box
+                      sx={{
+                        p: 5,
+                        textAlign: 'center',
+                        bgcolor: '#F8F9FA',
+                        borderRadius: 2,
+                        my: 2
+                      }}
+                    >
+                      <SchoolIcon sx={{ fontSize: 60, color: '#DADCE0', mb: 2 }} />
+                      <Typography variant="h6" color="#202124" paragraph>
                         您还没有创建任何学习路径
+                      </Typography>
+                      <Typography variant="body1" color="#5F6368" paragraph sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+                        创建您的第一个学习路径，开始您的学习之旅。我们将帮助您组织和跟踪您的学习进度。
                       </Typography>
                       <Button
                         variant="contained"
+                        disableElevation
                         startIcon={<AddIcon />}
                         onClick={handleCreatePath}
+                        sx={{
+                          borderRadius: 8,
+                          px: 3,
+                          py: 1,
+                          bgcolor: '#4285F4',
+                          '&:hover': { bgcolor: '#3367D6' },
+                          textTransform: 'none',
+                          fontWeight: 500
+                        }}
                       >
                         创建新路径
                       </Button>
                     </Box>
                   )}
                 </TabPanel>
-                
+
                 <TabPanel value={tabValue} index={1}>
                   <Grid container spacing={3}>
                     {filteredPopularPaths.map((path) => (
                       <Grid item key={path.id} xs={12} sm={6} md={4}>
-                        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <CardContent sx={{ flexGrow: 1 }}>
-                            <Typography gutterBottom variant="h6" component="h2">
-                              {path.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" paragraph>
-                              {path.description}
-                            </Typography>
-                            <Divider sx={{ my: 1 }} />
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" color="text.secondary">
-                                难度: {path.level}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                章节: {path.chapters}
-                              </Typography>
-                            </Box>
-                          </CardContent>
-                          <CardActions>
-                            <Button 
-                              size="small" 
-                              color="primary"
-                              component={Link}
-                              href={`/learning-paths/${path.id}/chapters/1`}
-                            >
-                              开始学习
-                            </Button>
-                            <Button 
-                              size="small" 
-                              color="primary"
-                              component={Link}
-                              href={`/learning-paths/${path.id}`}
-                            >
-                              查看详情
-                            </Button>
-                          </CardActions>
-                        </Card>
+                        <LearningPathCard
+                          path={path}
+                          onMenuOpen={handleMenuOpen}
+                          variant="featured"
+                          color="#FBBC04"
+                        />
                       </Grid>
                     ))}
                   </Grid>
@@ -405,35 +414,67 @@ export default function LearningPathsPage() {
             )}
           </Paper>
         </Container>
-        
+
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
+          PaperProps={{
+            elevation: 3,
+            sx: {
+              borderRadius: 2,
+              mt: 1
+            }
+          }}
         >
-          <MenuItem onClick={handleEditClick}>
-            <EditIcon fontSize="small" sx={{ mr: 1 }} />
-            编辑
+          <MenuItem onClick={handleEditClick} sx={{ py: 1.5, px: 2 }}>
+            <EditIcon fontSize="small" sx={{ mr: 1.5, color: '#5F6368' }} />
+            <Typography sx={{ fontWeight: 500 }}>编辑</Typography>
           </MenuItem>
-          <MenuItem onClick={handleDeleteClick}>
-            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-            删除
+          <MenuItem onClick={handleDeleteClick} sx={{ py: 1.5, px: 2 }}>
+            <DeleteIcon fontSize="small" sx={{ mr: 1.5, color: '#5F6368' }} />
+            <Typography sx={{ fontWeight: 500 }}>删除</Typography>
           </MenuItem>
         </Menu>
-        
+
         <Dialog
           open={deleteDialogOpen}
           onClose={handleDeleteCancel}
+          PaperProps={{
+            sx: { borderRadius: 3 }
+          }}
         >
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 500, pb: 1 }}>确认删除</DialogTitle>
           <DialogContent>
-            <DialogContentText>
+            <DialogContentText sx={{ color: '#5F6368' }}>
               您确定要删除这个学习路径吗？此操作无法撤销。
             </DialogContentText>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDeleteCancel}>取消</Button>
-            <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={handleDeleteCancel}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: 6
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              color="error"
+              variant="contained"
+              disableElevation
+              autoFocus
+              sx={{
+                textTransform: 'none',
+                fontWeight: 500,
+                borderRadius: 6,
+                bgcolor: '#EA4335',
+                '&:hover': { bgcolor: '#D93025' }
+              }}
+            >
               删除
             </Button>
           </DialogActions>

@@ -237,11 +237,53 @@ class SupabaseService {
    * @returns The chapter content
    */
   async getChapterContent(chapterId: string): Promise<any> {
+    try {
+      // 尝试通过ID查询
+      const { data, error } = await this.supabase
+        .from('chapter_contents')
+        .select('*')
+        .eq('id', chapterId)
+        .single();
+
+      if (data) {
+        return data;
+      }
+
+      // 如果通过ID查询失败，尝试通过order_index查询
+      // 这假设数字ID实际上是章节的顺序索引
+      if (error && !isNaN(Number(chapterId))) {
+        console.log(`尝试通过order_index=${chapterId}查询章节内容`);
+        const { data: indexData, error: indexError } = await this.supabase
+          .from('chapter_contents')
+          .select('*')
+          .eq('order_index', Number(chapterId))
+          .single();
+
+        if (indexError) {
+          throw indexError;
+        }
+
+        return indexData;
+      }
+
+      throw error || new Error('Chapter content not found');
+    } catch (error) {
+      console.error('获取章节内容失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all chapters for a learning path
+   * @param pathId The learning path ID
+   * @returns The chapters for the learning path
+   */
+  async getChapters(pathId: string): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('chapter_contents')
       .select('*')
-      .eq('id', chapterId)
-      .single();
+      .eq('path_id', pathId)
+      .order('order_index', { ascending: true });
 
     if (error) {
       throw error;

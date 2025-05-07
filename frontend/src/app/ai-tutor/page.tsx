@@ -106,7 +106,7 @@ export default function AITutorPage() {
       setIsLoading(true);
 
       try {
-        const response = await learningPathsApi.getUserPaths();
+        const response = await learningPathsApi.getUserPaths(user.id);
 
         if (response.paths) {
           // 获取每个学习路径的章节列表
