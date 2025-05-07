@@ -115,7 +115,7 @@ class AchievementService {
             throw exerciseError;
           }
 
-          isEarned = count >= achievement.criteria.completed_exercises;
+          isEarned = count !== null && count >= achievement.criteria.completed_exercises;
           break;
         case 'streak':
           // 这里需要实现连续学习天数的检查

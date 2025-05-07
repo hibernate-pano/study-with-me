@@ -25,6 +25,7 @@ const config = {
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   },
+  mermaidApiUrl: process.env.MERMAID_API_URL || 'https://mermaid.ink/svg',
 };
 
 export default config;
