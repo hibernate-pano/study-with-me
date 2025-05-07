@@ -1,67 +1,69 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+  function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+    function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+    function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+  return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const config_1 = __importDefault(require("../config"));
 /**
- * Service for interacting with the AI model (Qwen/Qwen3-235B-A22B)
+ * Service for interacting with the AI model (deepseek-ai/DeepSeek-V3)
  */
 class AIService {
-    constructor() {
-        this.apiUrl = config_1.default.ai.apiUrl;
-        this.apiKey = config_1.default.ai.apiKey;
-        this.modelName = config_1.default.ai.modelName;
-    }
-    /**
-     * Generate content using the AI model
-     * @param prompt The prompt to send to the AI model
-     * @param options Additional options for the API call
-     * @returns The generated content
-     */
-    generateContent(prompt_1) {
-        return __awaiter(this, arguments, void 0, function* (prompt, options = {}) {
-            try {
-                // This is a placeholder implementation
-                // You'll need to adjust this based on the actual API of 硅基流动
-                const response = yield axios_1.default.post(this.apiUrl, Object.assign({ model: this.modelName, messages: [
-                        { role: 'system', content: 'You are a helpful AI assistant for an educational platform.' },
-                        { role: 'user', content: prompt }
-                    ] }, options), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.apiKey}`
-                    }
-                });
-                // Extract the response content based on the API's response format
-                // This might need adjustment based on the actual API response structure
-                return response.data.choices[0].message.content;
-            }
-            catch (error) {
-                console.error('Error generating AI content:', error);
-                throw new Error('Failed to generate content from AI model');
-            }
+  constructor() {
+    this.apiUrl = config_1.default.ai.apiUrl;
+    this.apiKey = config_1.default.ai.apiKey;
+    this.modelName = config_1.default.ai.modelName;
+  }
+  /**
+   * Generate content using the AI model
+   * @param prompt The prompt to send to the AI model
+   * @param options Additional options for the API call
+   * @returns The generated content
+   */
+  generateContent(prompt_1) {
+    return __awaiter(this, arguments, void 0, function* (prompt, options = {}) {
+      try {
+        // This is a placeholder implementation
+        // You'll need to adjust this based on the actual API of 硅基流动
+        const response = yield axios_1.default.post(this.apiUrl, Object.assign({
+          model: this.modelName, messages: [
+            { role: 'system', content: 'You are a helpful AI assistant for an educational platform.' },
+            { role: 'user', content: prompt }
+          ]
+        }, options), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          }
         });
-    }
-    /**
-     * Generate a learning path based on a learning goal
-     * @param goal The learning goal
-     * @param userLevel The user's current knowledge level
-     * @returns The generated learning path
-     */
-    generateLearningPath(goal_1) {
-        return __awaiter(this, arguments, void 0, function* (goal, userLevel = 'beginner') {
-            const prompt = `
+        // Extract the response content based on the API's response format
+        // This might need adjustment based on the actual API response structure
+        return response.data.choices[0].message.content;
+      }
+      catch (error) {
+        console.error('Error generating AI content:', error);
+        throw new Error('Failed to generate content from AI model');
+      }
+    });
+  }
+  /**
+   * Generate a learning path based on a learning goal
+   * @param goal The learning goal
+   * @param userLevel The user's current knowledge level
+   * @returns The generated learning path
+   */
+  generateLearningPath(goal_1) {
+    return __awaiter(this, arguments, void 0, function* (goal, userLevel = 'beginner') {
+      const prompt = `
     作为一名教育专家，请为用户创建一个关于"${goal}"的学习路径。
     用户当前水平：${userLevel}
     请提供以下格式的学习路径：
@@ -92,26 +94,26 @@ class AIService {
       ]
     }
     `;
-            const content = yield this.generateContent(prompt);
-            try {
-                // Parse the JSON response
-                return JSON.parse(content);
-            }
-            catch (error) {
-                console.error('Error parsing AI response as JSON:', error);
-                throw new Error('AI response is not in valid JSON format');
-            }
-        });
-    }
-    /**
-     * Generate chapter content based on a chapter title and key points
-     * @param chapterTitle The chapter title
-     * @param keyPoints The key points to cover
-     * @returns The generated chapter content
-     */
-    generateChapterContent(chapterTitle, keyPoints) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const prompt = `
+      const content = yield this.generateContent(prompt);
+      try {
+        // Parse the JSON response
+        return JSON.parse(content);
+      }
+      catch (error) {
+        console.error('Error parsing AI response as JSON:', error);
+        throw new Error('AI response is not in valid JSON format');
+      }
+    });
+  }
+  /**
+   * Generate chapter content based on a chapter title and key points
+   * @param chapterTitle The chapter title
+   * @param keyPoints The key points to cover
+   * @returns The generated chapter content
+   */
+  generateChapterContent(chapterTitle, keyPoints) {
+    return __awaiter(this, void 0, void 0, function* () {
+      const prompt = `
     请为章节"${chapterTitle}"创建详细的教学内容。
     需要涵盖以下知识点：
     ${keyPoints.map(point => `- ${point}`).join('\n')}
@@ -154,27 +156,27 @@ class AIService {
       ]
     }
     `;
-            const content = yield this.generateContent(prompt);
-            try {
-                // Parse the JSON response
-                return JSON.parse(content);
-            }
-            catch (error) {
-                console.error('Error parsing AI response as JSON:', error);
-                throw new Error('AI response is not in valid JSON format');
-            }
-        });
-    }
-    /**
-     * Generate exercises based on chapter content
-     * @param chapterContent The chapter content
-     * @param difficulty The difficulty level
-     * @param count The number of exercises to generate
-     * @returns The generated exercises
-     */
-    generateExercises(chapterContent_1) {
-        return __awaiter(this, arguments, void 0, function* (chapterContent, difficulty = 'medium', count = 5) {
-            const prompt = `
+      const content = yield this.generateContent(prompt);
+      try {
+        // Parse the JSON response
+        return JSON.parse(content);
+      }
+      catch (error) {
+        console.error('Error parsing AI response as JSON:', error);
+        throw new Error('AI response is not in valid JSON format');
+      }
+    });
+  }
+  /**
+   * Generate exercises based on chapter content
+   * @param chapterContent The chapter content
+   * @param difficulty The difficulty level
+   * @param count The number of exercises to generate
+   * @returns The generated exercises
+   */
+  generateExercises(chapterContent_1) {
+    return __awaiter(this, arguments, void 0, function* (chapterContent, difficulty = 'medium', count = 5) {
+      const prompt = `
     作为教育专家，请基于以下学习内容生成${count}道练习题，难度级别为"${difficulty}"。
     
     章节标题：${chapterContent.title}
@@ -205,26 +207,26 @@ class AIService {
       ]
     }
     `;
-            const content = yield this.generateContent(prompt);
-            try {
-                // Parse the JSON response
-                return JSON.parse(content);
-            }
-            catch (error) {
-                console.error('Error parsing AI response as JSON:', error);
-                throw new Error('AI response is not in valid JSON format');
-            }
-        });
-    }
-    /**
-     * Answer a question based on the learning context
-     * @param question The user's question
-     * @param context The learning context
-     * @returns The AI's answer
-     */
-    answerQuestion(question, context) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const prompt = `
+      const content = yield this.generateContent(prompt);
+      try {
+        // Parse the JSON response
+        return JSON.parse(content);
+      }
+      catch (error) {
+        console.error('Error parsing AI response as JSON:', error);
+        throw new Error('AI response is not in valid JSON format');
+      }
+    });
+  }
+  /**
+   * Answer a question based on the learning context
+   * @param question The user's question
+   * @param context The learning context
+   * @returns The AI's answer
+   */
+  answerQuestion(question, context) {
+    return __awaiter(this, void 0, void 0, function* () {
+      const prompt = `
     作为AI学习助手，请回答用户关于"${context.chapterTitle}"的问题。
     
     用户问题：${question}
@@ -243,8 +245,8 @@ class AIService {
     3. 如有必要，解释相关概念
     4. 建议下一步学习方向
     `;
-            return yield this.generateContent(prompt);
-        });
-    }
+      return yield this.generateContent(prompt);
+    });
+  }
 }
 exports.default = new AIService();

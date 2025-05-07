@@ -16,7 +16,7 @@ const config = {
   ai: {
     apiUrl: process.env.AI_API_URL || '',
     apiKey: process.env.AI_API_KEY || '',
-    modelName: process.env.AI_MODEL_NAME || 'Qwen/Qwen3-235B-A22B',
+    modelName: process.env.AI_MODEL_NAME || 'deepseek-ai/DeepSeek-V3',
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'your-secret-key',

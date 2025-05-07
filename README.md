@@ -37,7 +37,7 @@ Study With Me 是一个利用人工智能技术帮助用户高效学习的在线
 - Supabase (PostgreSQL数据库、认证、存储)
 
 ### AI服务
-- 硅基流动 Qwen/Qwen3-235B-A22B 模型
+- 硅基流动 deepseek-ai/DeepSeek-V3 模型
 
 ## 开发环境设置
 
@@ -90,14 +90,14 @@ npm run dev
    - 前端: http://localhost:3000
    - 后端API: http://localhost:4000
 
-## 配置硅基流动 Qwen/Qwen3-235B-A22B 模型
+## 配置硅基流动 deepseek-ai/DeepSeek-V3 模型
 
 1. 获取硅基流动API密钥
 2. 在`backend/.env`文件中配置以下环境变量:
    ```
    AI_API_URL=your_ai_api_url
    AI_API_KEY=your_ai_api_key
-   AI_MODEL_NAME=Qwen/Qwen3-235B-A22B
+   AI_MODEL_NAME=deepseek-ai/DeepSeek-V3
    ```
 
 ## 开发指南

@@ -3,7 +3,7 @@ import config from '../config';
 import mermaidService from './mermaidService';
 
 /**
- * Service for interacting with the AI model (Qwen/Qwen3-235B-A22B)
+ * Service for interacting with the AI model (deepseek-ai/DeepSeek-V3)
  */
 class AIService {
   private apiUrl: string;
