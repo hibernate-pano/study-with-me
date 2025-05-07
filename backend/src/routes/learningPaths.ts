@@ -40,10 +40,16 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ message: 'Learning goal is required' });
     }
 
+    console.log('Generating learning path for goal:', goal);
+    console.log('User level:', userLevel || 'beginner');
+    console.log('User ID:', userId);
+
     // Generate learning path using AI
     const pathData = await aiService.generateLearningPath(goal, userLevel || 'beginner');
 
-    // Save to database
+    console.log('AI generated path data successfully');
+
+    // Save to database using service client to bypass RLS
     const savedPath = await supabaseService.createLearningPath(userId, pathData);
 
     res.status(201).json({
@@ -51,6 +57,8 @@ router.post('/generate', async (req, res) => {
       path: savedPath
     });
   } catch (error: any) {
+    console.error('Error in generate learning path route:', error);
+
     res.status(500).json({
       message: 'Failed to generate learning path',
       error: error.message

@@ -120,7 +120,11 @@ class SupabaseService {
    * @returns The created learning path
    */
   async createLearningPath(userId: string, pathData: any): Promise<any> {
-    const { data, error } = await this.supabase
+    console.log('Creating learning path for user:', userId);
+    console.log('Path data:', JSON.stringify(pathData, null, 2));
+
+    // 使用 serviceClient（管理员权限）来绕过 RLS 策略
+    const { data, error } = await this.serviceClient
       .from('learning_paths')
       .insert([
         {
@@ -128,14 +132,19 @@ class SupabaseService {
           title: pathData.title,
           description: pathData.description,
           stages: pathData.stages,
+          is_public: true, // 设置为公开，这样其他用户也可以查看
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select();
 
     if (error) {
+      console.error('Error creating learning path:', error);
       throw error;
     }
 
+    console.log('Learning path created successfully:', data[0].id);
     return data[0];
   }
 

@@ -24,32 +24,63 @@ class AIService {
    */
   async generateContent(prompt: string, options: any = {}): Promise<string> {
     try {
+      console.log('AI API Request:');
+      console.log('URL:', this.apiUrl);
+      console.log('Model:', this.modelName);
+      console.log('API Key (first 5 chars):', this.apiKey ? this.apiKey.substring(0, 5) + '...' : 'undefined');
+
+      const requestBody = {
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: 'You are a helpful AI assistant for an educational platform.' },
+          { role: 'user', content: prompt }
+        ],
+        ...options
+      };
+
+      console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+
       // This is a placeholder implementation
       // You'll need to adjust this based on the actual API of 硅基流动
       const response = await axios.post(
         this.apiUrl,
-        {
-          model: this.modelName,
-          messages: [
-            { role: 'system', content: 'You are a helpful AI assistant for an educational platform.' },
-            { role: 'user', content: prompt }
-          ],
-          ...options
-        },
+        requestBody,
         {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
-          }
+          },
+          timeout: 30000 // 30秒超时
         }
       );
+
+      console.log('AI API Response Status:', response.status);
+      console.log('AI API Response Headers:', JSON.stringify(response.headers, null, 2));
+      console.log('AI API Response Data (sample):', JSON.stringify(response.data).substring(0, 200) + '...');
 
       // Extract the response content based on the API's response format
       // This might need adjustment based on the actual API response structure
       return response.data.choices[0].message.content;
-    } catch (error) {
-      console.error('Error generating AI content:', error);
-      throw new Error('Failed to generate content from AI model');
+    } catch (error: any) {
+      console.error('Error generating AI content:');
+      console.error('Error Name:', error.name);
+      console.error('Error Message:', error.message);
+
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Error Status:', error.response.status);
+        console.error('Error Headers:', JSON.stringify(error.response.headers, null, 2));
+        console.error('Error Data:', JSON.stringify(error.response.data, null, 2));
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('Error Request:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error Config:', error.config);
+      }
+
+      throw new Error(`Failed to generate content from AI model: ${error.message}`);
     }
   }
 
@@ -90,15 +121,32 @@ class AIService {
         }
       ]
     }
+
+    请直接返回JSON，不要添加任何其他格式化，如Markdown代码块。
     `;
 
     const content = await this.generateContent(prompt);
 
     try {
+      // 尝试提取JSON内容（处理可能的Markdown代码块）
+      let jsonContent = content;
+
+      // 检查是否包含Markdown代码块
+      const jsonBlockRegex = /```(?:json)?\s*\n([\s\S]*?)\n```/;
+      const match = content.match(jsonBlockRegex);
+
+      if (match && match[1]) {
+        console.log('Found JSON in Markdown code block, extracting...');
+        jsonContent = match[1].trim();
+      }
+
+      console.log('Attempting to parse JSON:', jsonContent.substring(0, 100) + '...');
+
       // Parse the JSON response
-      return JSON.parse(content);
+      return JSON.parse(jsonContent);
     } catch (error) {
       console.error('Error parsing AI response as JSON:', error);
+      console.error('Raw content:', content);
       throw new Error('AI response is not in valid JSON format');
     }
   }
@@ -161,13 +209,29 @@ class AIService {
     - comparison: 适合比较图表、饼图等
     - sequence: 适合时序图、交互图等
     - class: 适合类图、结构图等
+
+    请直接返回JSON，不要添加任何其他格式化，如Markdown代码块。
     `;
 
     const content = await this.generateContent(prompt);
 
     try {
+      // 尝试提取JSON内容（处理可能的Markdown代码块）
+      let jsonContent = content;
+
+      // 检查是否包含Markdown代码块
+      const jsonBlockRegex = /```(?:json)?\s*\n([\s\S]*?)\n```/;
+      const match = content.match(jsonBlockRegex);
+
+      if (match && match[1]) {
+        console.log('Found JSON in Markdown code block, extracting...');
+        jsonContent = match[1].trim();
+      }
+
+      console.log('Attempting to parse JSON:', jsonContent.substring(0, 100) + '...');
+
       // Parse the JSON response
-      const chapterContent = JSON.parse(content);
+      const chapterContent = JSON.parse(jsonContent);
 
       // 如果需要包含可视化内容，为每个概念生成可视化
       if (includeVisuals) {
@@ -177,6 +241,7 @@ class AIService {
       return chapterContent;
     } catch (error) {
       console.error('Error parsing AI response as JSON:', error);
+      console.error('Raw content:', content);
       throw new Error('AI response is not in valid JSON format');
     }
   }
@@ -276,15 +341,32 @@ class AIService {
         }
       ]
     }
+
+    请直接返回JSON，不要添加任何其他格式化，如Markdown代码块。
     `;
 
     const content = await this.generateContent(prompt);
 
     try {
+      // 尝试提取JSON内容（处理可能的Markdown代码块）
+      let jsonContent = content;
+
+      // 检查是否包含Markdown代码块
+      const jsonBlockRegex = /```(?:json)?\s*\n([\s\S]*?)\n```/;
+      const match = content.match(jsonBlockRegex);
+
+      if (match && match[1]) {
+        console.log('Found JSON in Markdown code block, extracting...');
+        jsonContent = match[1].trim();
+      }
+
+      console.log('Attempting to parse JSON:', jsonContent.substring(0, 100) + '...');
+
       // Parse the JSON response
-      return JSON.parse(content);
+      return JSON.parse(jsonContent);
     } catch (error) {
       console.error('Error parsing AI response as JSON:', error);
+      console.error('Raw content:', content);
       throw new Error('AI response is not in valid JSON format');
     }
   }
