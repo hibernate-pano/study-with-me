@@ -131,7 +131,7 @@ class AIService {
           "title": "概念标题",
           "explanation": "概念解释",
           "examples": ["示例1", "示例2"],
-          "visualType": "concept|process|comparison|data|code" // 指明这个概念适合什么类型的可视化
+          "diagramType": "concept|process|comparison|sequence|class" // 指明这个概念适合什么类型的图表
         }
       ],
       "codeExamples": [
@@ -155,12 +155,12 @@ class AIService {
       ]
     }
 
-    对于每个核心概念，请添加一个visualType字段，指明这个概念适合什么类型的可视化：
-    - concept: 适合概念图、思维导图等
+    对于每个核心概念，请添加一个diagramType字段，指明这个概念适合什么类型的图表：
+    - concept: 适合思维导图、概念图等
     - process: 适合流程图、步骤图等
-    - comparison: 适合比较图表、对比图等
-    - data: 适合数据图表、统计图等
-    - code: 适合代码结构图、算法流程图等
+    - comparison: 适合比较图表、饼图等
+    - sequence: 适合时序图、交互图等
+    - class: 适合类图、结构图等
     `;
 
     const content = await this.generateContent(prompt);
@@ -191,19 +191,16 @@ class AIService {
       chapterContent.diagrams = [];
     }
 
-    // 为每个概念生成可视化
+    // 为每个概念生成图表
     if (chapterContent.concepts && Array.isArray(chapterContent.concepts)) {
       for (const concept of chapterContent.concepts) {
-        if (concept.visualType) {
+        if (concept.diagramType) {
           try {
-            // 将visualType映射到mermaid图表类型
-            const diagramType = this.mapVisualTypeToDiagramType(concept.visualType);
-
             // 生成图表内容
             const diagram = await mermaidService.generateDiagramForContent(
               concept.title,
               concept,
-              diagramType
+              concept.diagramType
             );
 
             // 添加到图表列表
@@ -239,27 +236,7 @@ class AIService {
     }
   }
 
-  /**
-   * 将visualType映射到mermaid图表类型
-   * @param visualType 可视化类型
-   * @returns 图表类型
-   */
-  private mapVisualTypeToDiagramType(visualType: string): string {
-    switch (visualType) {
-      case 'concept':
-        return 'concept'; // 思维导图
-      case 'process':
-        return 'process'; // 流程图
-      case 'comparison':
-        return 'comparison'; // 比较图表
-      case 'data':
-        return 'comparison'; // 数据图表，使用比较图表实现
-      case 'code':
-        return 'class'; // 代码结构图，使用类图实现
-      default:
-        return 'concept'; // 默认使用思维导图
-    }
-  }
+
 
   /**
    * Generate exercises based on chapter content
