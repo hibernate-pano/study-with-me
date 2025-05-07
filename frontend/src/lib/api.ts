@@ -183,3 +183,14 @@ export const leaderboardApi = {
   getUserRanking: (userId: string, type: 'time' | 'completion' | 'streak' = 'time', period: 'week' | 'month' | 'all' = 'week') =>
     api.get(`/leaderboard/user/${userId}?type=${type}&period=${period}`),
 };
+
+// Diagrams API
+export const diagramsApi = {
+  generate: (data: any) => api.post('/diagrams/generate', data),
+  getChapterDiagrams: (chapterId: string) => api.get(`/diagrams/chapter/${chapterId}`),
+  generateMindMap: (data: any) => api.post('/diagrams/mindmap', data),
+  generateFlowchart: (data: any) => api.post('/diagrams/flowchart', data),
+  generateSequence: (data: any) => api.post('/diagrams/sequence', data),
+  generateClass: (data: any) => api.post('/diagrams/class', data),
+  generatePie: (data: any) => api.post('/diagrams/pie', data),
+};

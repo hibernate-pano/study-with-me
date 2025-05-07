@@ -37,6 +37,7 @@ app.use('/api/exercises', require('./routes/exercises'));
 app.use('/api/achievements', require('./routes/achievements'));
 app.use('/api/streaks', require('./routes/streaks'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
+app.use('/api/diagrams', require('./routes/diagrams'));
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
