@@ -42,7 +42,7 @@ class SupabaseService {
    * Create a new user
    * @param email The user's email
    * @param password The user's password
-   * @returns The created user
+   * @returns The created user and session
    */
   async createUser(email: string, password: string): Promise<any> {
     const { data, error } = await this.supabase.auth.signUp({
@@ -52,6 +52,18 @@ class SupabaseService {
 
     if (error) {
       throw error;
+    }
+
+    // 如果没有session，尝试立即登录用户
+    if (!data.session) {
+      try {
+        const loginData = await this.signInUser(email, password);
+        return loginData;
+      } catch (loginError) {
+        console.error('Auto login after signup failed:', loginError);
+        // 如果登录失败，仍然返回原始数据
+        return data;
+      }
     }
 
     return data;

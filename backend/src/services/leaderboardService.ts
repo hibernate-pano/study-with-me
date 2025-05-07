@@ -44,7 +44,7 @@ class LeaderboardService {
     }
 
     const { data, error } = await query
-      .group('user_id, users')
+      .select('user_id, users:user_id(id, display_name, avatar_url), total_time:time_spent(sum)')
       .order('total_time', { ascending: false })
       .limit(limit);
 
@@ -73,7 +73,7 @@ class LeaderboardService {
         completed_count:id(count)
       `)
       .eq('completed', true)
-      .group('user_id, users')
+      .select('user_id, users:user_id(id, display_name, avatar_url), completed_count:id(count)')
       .order('completed_count', { ascending: false })
       .limit(limit);
 
@@ -162,7 +162,7 @@ class LeaderboardService {
             throw countError;
           }
 
-          ranking = count + 1;
+          ranking = (count !== null ? count : 0) + 1;
         }
       }
     } else if (type === 'completion') {
@@ -184,7 +184,7 @@ class LeaderboardService {
           `)
           .eq('user_id', userId)
           .eq('completed', true)
-          .group('user_id')
+          .select('user_id, completed_count:id(count)')
           .maybeSingle();
 
         if (error) {
@@ -205,7 +205,7 @@ class LeaderboardService {
             throw countError;
           }
 
-          ranking = count + 1;
+          ranking = (count !== null ? count : 0) + 1;
         }
       }
     } else if (type === 'streak') {
@@ -242,7 +242,7 @@ class LeaderboardService {
             throw countError;
           }
 
-          ranking = count + 1;
+          ranking = (count !== null ? count : 0) + 1;
         }
       }
     }

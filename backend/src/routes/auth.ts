@@ -10,17 +10,19 @@ const router = express.Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, displayName } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
     const data = await supabaseService.createUser(email, password);
-    
+
+    // 确保返回用户和会话信息
     res.status(201).json({
       message: 'User registered successfully',
-      user: data.user
+      user: data.user,
+      session: data.session
     });
   } catch (error: any) {
     res.status(400).json({
@@ -44,7 +46,7 @@ router.post('/login', async (req, res) => {
     }
 
     const data = await supabaseService.signInUser(email, password);
-    
+
     res.status(200).json({
       message: 'Login successful',
       user: data.user,
@@ -66,7 +68,7 @@ router.post('/login', async (req, res) => {
 router.post('/logout', async (req, res) => {
   try {
     await supabaseService.signOutUser();
-    
+
     res.status(200).json({
       message: 'Logout successful'
     });
@@ -86,11 +88,11 @@ router.post('/logout', async (req, res) => {
 router.get('/me', async (req, res) => {
   try {
     const user = await supabaseService.getCurrentUser();
-    
+
     if (!user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
+
     res.status(200).json({
       user
     });
