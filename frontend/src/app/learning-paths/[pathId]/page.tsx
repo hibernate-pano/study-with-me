@@ -41,6 +41,7 @@ export default function LearningPathDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [isStartingLearning, setIsStartingLearning] = useState(false);
   const [learningPath, setLearningPath] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [userProgress, setUserProgress] = useState<any>(null);
@@ -103,8 +104,13 @@ export default function LearningPathDetailPage() {
   }, [params.pathId, user]);
 
   const handleStartLearning = () => {
+    setIsStartingLearning(true);
     const chapterId = userProgress && userProgress.last_chapter_id ? userProgress.last_chapter_id : 1;
-    router.push(`/learning-paths/${params.pathId}/chapters/${chapterId}`);
+
+    // Add a small delay to show the loading state
+    setTimeout(() => {
+      router.push(`/learning-paths/${params.pathId}/chapters/${chapterId}`);
+    }, 300);
   };
 
   const handleBackToList = () => {
@@ -269,11 +275,15 @@ export default function LearningPathDetailPage() {
                       fullWidth
                       variant="contained"
                       size="large"
-                      startIcon={userProgress ? <PlayArrowIcon /> : <SchoolIcon />}
+                      startIcon={isStartingLearning ?
+                        <CircularProgress size={20} color="inherit" /> :
+                        (userProgress ? <PlayArrowIcon /> : <SchoolIcon />)
+                      }
                       onClick={handleStartLearning}
+                      disabled={isStartingLearning}
                       sx={{ mb: 2 }}
                     >
-                      {userProgress ? '继续学习' : '开始学习'}
+                      {isStartingLearning ? '正在加载...' : (userProgress ? '继续学习' : '开始学习')}
                     </Button>
 
                     <Button

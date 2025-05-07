@@ -13,6 +13,7 @@ import {
   ListItem,
   ListItemText,
   ListItemButton,
+  ListItemIcon,
   Divider,
   Card,
   CardContent,
@@ -21,6 +22,7 @@ import {
   Tab,
   Tabs,
   LinearProgress,
+  CircularProgress,
   Chip,
   Alert,
   Snackbar
@@ -188,6 +190,12 @@ export default function ChapterPage() {
   const params = useParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingSteps, setLoadingSteps] = useState({
+    content: { status: 'pending', message: '正在加载章节内容...' },
+    exercises: { status: 'pending', message: '正在加载练习题...' },
+    progress: { status: 'pending', message: '正在更新学习进度...' }
+  });
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [chapterContent, setChapterContent] = useState<any>(null);
   const [exercises, setExercises] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
@@ -203,17 +211,41 @@ export default function ChapterPage() {
   useEffect(() => {
     const fetchChapterContent = async () => {
       setIsLoading(true);
+      setLoadingProgress(0);
+
+      // 重置加载步骤状态
+      setLoadingSteps({
+        content: { status: 'loading', message: '正在加载章节内容...' },
+        exercises: { status: 'pending', message: '正在加载练习题...' },
+        progress: { status: 'pending', message: '正在更新学习进度...' }
+      });
 
       try {
         // 获取章节内容
+        setLoadingProgress(10);
         const contentResponse = await contentApi.getById(params.chapterId as string);
         setChapterContent(contentResponse.content);
+        setLoadingProgress(40);
+        setLoadingSteps(prev => ({
+          ...prev,
+          content: { status: 'completed', message: '章节内容加载完成' },
+          exercises: { status: 'loading', message: '正在加载练习题...' }
+        }));
 
         // 获取章节练习题
+        await new Promise(resolve => setTimeout(resolve, 300)); // 添加短暂延迟以显示进度
+        setLoadingProgress(60);
         const exercisesResponse = await exercisesApi.getChapterExercises(params.chapterId as string);
         setExercises(exercisesResponse.exercises);
+        setLoadingProgress(80);
+        setLoadingSteps(prev => ({
+          ...prev,
+          exercises: { status: 'completed', message: '练习题加载完成' },
+          progress: { status: 'loading', message: '正在更新学习进度...' }
+        }));
 
         // 更新学习进度
+        await new Promise(resolve => setTimeout(resolve, 300)); // 添加短暂延迟以显示进度
         if (user) {
           await progressApi.update({
             userId: user.id,
@@ -221,14 +253,27 @@ export default function ChapterPage() {
             chapterId: params.chapterId as string,
             status: 'started'
           });
+          setLoadingSteps(prev => ({
+            ...prev,
+            progress: { status: 'completed', message: '学习进度更新完成' }
+          }));
         }
+        setLoadingProgress(100);
       } catch (error) {
         console.error('获取章节内容失败:', error);
         // 如果API调用失败，使用模拟数据
         setChapterContent(mockChapterContent);
         setExercises(mockExercises);
+        setLoadingSteps({
+          content: { status: 'error', message: '章节内容加载失败，使用备用数据' },
+          exercises: { status: 'error', message: '练习题加载失败，使用备用数据' },
+          progress: { status: 'error', message: '学习进度更新失败' }
+        });
       } finally {
-        setIsLoading(false);
+        // 添加短暂延迟以显示完成状态
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
       }
     };
 
@@ -423,7 +468,49 @@ export default function ChapterPage() {
               </Box>
 
               {isLoading ? (
-                <LinearProgress />
+                <Paper sx={{ p: 4, borderRadius: 2, mb: 3 }}>
+                  <Typography variant="h5" gutterBottom>
+                    正在加载学习内容
+                  </Typography>
+
+                  <Box sx={{ width: '100%', mb: 4 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={loadingProgress}
+                      sx={{ height: 10, borderRadius: 5 }}
+                    />
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      align="right"
+                      sx={{ mt: 1 }}
+                    >
+                      {loadingProgress}%
+                    </Typography>
+                  </Box>
+
+                  <List>
+                    {Object.entries(loadingSteps).map(([key, step]) => (
+                      <ListItem key={key}>
+                        <ListItemIcon>
+                          {step.status === 'loading' && <CircularProgress size={20} />}
+                          {step.status === 'completed' && <CheckCircleIcon color="success" />}
+                          {step.status === 'error' && <CheckCircleIcon color="error" />}
+                          {step.status === 'pending' && <CircularProgress size={20} color="inherit" sx={{ opacity: 0.3 }} />}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={step.message}
+                          primaryTypographyProps={{
+                            color:
+                              step.status === 'loading' ? 'primary.main' :
+                                step.status === 'completed' ? 'success.main' :
+                                  step.status === 'error' ? 'error.main' : 'text.secondary'
+                          }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
               ) : (
                 <Box>
                   <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
