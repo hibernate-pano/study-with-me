@@ -18,8 +18,8 @@ export class LLMLogger {
   private requestStartTime: number | null = null;
 
   private constructor() {
-    // 使用项目根目录而不是当前工作目录
-    const projectRoot = path.resolve(process.cwd(), '..');
+    // 直接使用项目根目录
+    const projectRoot = process.cwd();
     this.logDir = process.env.LLM_LOG_DIR || path.join(projectRoot, 'logs', 'llm');
     this.sessionId = uuidv4();
 
@@ -33,6 +33,11 @@ export class LLMLogger {
 
     // 记录会话开始
     this.log('SESSION', `New LLM logging session started: ${this.sessionId}`);
+
+    // 记录初始化信息到控制台
+    console.log(`LLMLogger status: enabled=${this.enabled}, consoleEnabled=${this.consoleEnabled}, fileEnabled=${this.fileEnabled}`);
+    console.log(`LLMLogger session ID: ${this.sessionId}`);
+    console.log(`LLMLogger log directory: ${this.logDir}`);
   }
 
   /**
@@ -278,8 +283,30 @@ export class LLMLogger {
 
     // 文件日志
     if (this.fileEnabled) {
-      const logFilePath = path.join(this.logDir, `llm_${new Date().toISOString().split('T')[0]}.log`);
-      fs.appendFileSync(logFilePath, JSON.stringify(logEntry) + '\n');
+      try {
+        // 使用YYYY-MM-DD格式的日期作为文件名
+        const today = new Date();
+        const dateStr = today.getFullYear() + '-' +
+          String(today.getMonth() + 1).padStart(2, '0') + '-' +
+          String(today.getDate()).padStart(2, '0');
+
+        const logFilePath = path.join(this.logDir, `llm_${dateStr}.log`);
+
+        // 确保日志目录存在
+        if (!fs.existsSync(this.logDir)) {
+          fs.mkdirSync(this.logDir, { recursive: true });
+        }
+
+        // 写入日志
+        fs.appendFileSync(logFilePath, JSON.stringify(logEntry) + '\n');
+
+        // 调试信息
+        if (type === 'REQUEST_START') {
+          console.log(`[LLMLogger] Log entry written to ${logFilePath}`);
+        }
+      } catch (error) {
+        console.error(`[LLMLogger] Error writing to log file: ${error}`);
+      }
     }
   }
 }

@@ -4,6 +4,20 @@ import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import LLMLogger from './utils/LLMLogger';
 
+// 导入所有路由
+import authRouter from './routes/auth';
+import learningPathsRouter from './routes/learningPaths';
+import popularLearningPathsRouter from './routes/popularLearningPaths';
+import contentRouter from './routes/content';
+import tutorRouter from './routes/tutor';
+import progressRouter from './routes/progress';
+import exercisesRouter from './routes/exercises';
+import achievementsRouter from './routes/achievements';
+import streaksRouter from './routes/streaks';
+import leaderboardRouter from './routes/leaderboard';
+import diagramsRouter from './routes/diagrams';
+import logsRouter from './routes/logs';
+
 // Load environment variables
 dotenv.config();
 
@@ -29,17 +43,18 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/learning-paths', require('./routes/learningPaths'));
-app.use('/api/popular-learning-paths', require('./routes/popularLearningPaths'));
-app.use('/api/content', require('./routes/content'));
-app.use('/api/tutor', require('./routes/tutor'));
-app.use('/api/progress', require('./routes/progress'));
-app.use('/api/exercises', require('./routes/exercises'));
-app.use('/api/achievements', require('./routes/achievements'));
-app.use('/api/streaks', require('./routes/streaks'));
-app.use('/api/leaderboard', require('./routes/leaderboard'));
-app.use('/api/diagrams', require('./routes/diagrams'));
+app.use('/api/auth', authRouter);
+app.use('/api/learning-paths', learningPathsRouter);
+app.use('/api/popular-learning-paths', popularLearningPathsRouter);
+app.use('/api/content', contentRouter);
+app.use('/api/tutor', tutorRouter);
+app.use('/api/progress', progressRouter);
+app.use('/api/exercises', exercisesRouter);
+app.use('/api/achievements', achievementsRouter);
+app.use('/api/streaks', streaksRouter);
+app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/diagrams', diagramsRouter);
+app.use('/api/logs', logsRouter);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

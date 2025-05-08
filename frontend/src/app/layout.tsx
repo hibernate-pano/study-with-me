@@ -3,6 +3,7 @@ import { Roboto } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import LogServiceInitializer from "@/components/LogServiceInitializer";
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={roboto.className}>
         <ThemeProvider>
           <AuthProvider>
+            <LogServiceInitializer />
             {children}
           </AuthProvider>
         </ThemeProvider>

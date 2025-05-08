@@ -217,7 +217,11 @@ class AIService {
       ]
     }
 
-    非常重要：请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明。
+    非常重要：
+    1. 请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明
+    2. 不要在JSON中的任何字段内容中包含代码块格式，这会导致解析失败
+    3. 所有字段内容应该是纯文本，不包含任何特殊格式标记
+    4. 确保返回的是一个可以直接被JSON.parse()解析的字符串
     `;
 
     const content = await this.generateContent(prompt);
@@ -383,7 +387,12 @@ class AIService {
     - sequence: 适合时序图、交互图等
     - class: 适合类图、结构图等
 
-    请直接返回JSON，不要添加任何其他格式化，如Markdown代码块。
+    非常重要：
+    1. 请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明
+    2. 不要在JSON中的任何字段内容中包含代码块格式，这会导致解析失败
+    3. 所有字段内容应该是纯文本，不包含任何特殊格式标记
+    4. 确保返回的是一个可以直接被JSON.parse()解析的字符串
+    5. 代码示例应该作为纯文本字符串，不要使用Markdown代码块格式
     `;
 
     const content = await this.generateContent(prompt);
@@ -524,7 +533,12 @@ class AIService {
       ]
     }
 
-    请直接返回JSON，不要添加任何其他格式化，如Markdown代码块。
+    非常重要：
+    1. 请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明
+    2. 不要在JSON中的任何字段内容中包含代码块格式，这会导致解析失败
+    3. 所有字段内容应该是纯文本，不包含任何特殊格式标记
+    4. 确保返回的是一个可以直接被JSON.parse()解析的字符串
+    5. 代码示例应该作为纯文本字符串，不要使用Markdown代码块格式
     `;
 
     const content = await this.generateContent(prompt);
