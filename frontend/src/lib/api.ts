@@ -420,6 +420,176 @@ export const learningPathsApi = {
 export const contentApi = {
   generate: (data: any) => api.post('/content/generate', data),
   getById: (id: string) => api.get(`/content/${id}`),
+
+  /**
+   * 流式生成章节内容
+   * @param pathId 学习路径ID
+   * @param chapterId 章节ID
+   * @param onEvent 事件回调函数，用于处理流式响应
+   */
+  generateStream: (pathId: string, chapterId: string, onEvent: (event: any) => void) => {
+    // 使用LLMLogger开始记录API请求
+    const requestId = LLMLogger.startRequest({
+      type: 'api_request_stream',
+      endpoint: `/content/generate-stream/${pathId}/${chapterId}`,
+      method: 'POST',
+      url: `${API_URL}/content/generate-stream/${pathId}/${chapterId}`
+    });
+
+    console.log(`[${requestId}] ===== STREAM API REQUEST START =====`);
+    console.log(`[${requestId}] POST ${API_URL}/content/generate-stream/${pathId}/${chapterId}`);
+    console.log(`[${requestId}] Request Timestamp:`, new Date().toISOString());
+
+    // 获取认证令牌
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // 创建EventSource连接
+    console.log(`创建SSE连接: ${API_URL}/content/generate-stream/${pathId}/${chapterId}`);
+
+    // 注意：我们改为使用GET请求，并且不使用withCredentials，因为它可能与CORS冲突
+    const eventSource = new EventSource(
+      `${API_URL}/content/generate-stream/${pathId}/${chapterId}`
+    );
+
+    // 记录连接开始时间
+    const startTime = Date.now();
+
+    // 处理事件
+    eventSource.onopen = () => {
+      console.log(`[${requestId}] SSE连接已打开`);
+      onEvent({ type: 'connection', status: 'open', timestamp: new Date().toISOString() });
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        console.log(`[${requestId}] 收到SSE消息:`, event.data);
+        const data = JSON.parse(event.data);
+
+        // 使用LLMLogger记录流式响应
+        LLMLogger.logResponse(requestId, {
+          type: 'stream_chunk',
+          data,
+          timestamp: new Date().toISOString()
+        });
+
+        // 调用回调函数处理事件
+        onEvent(data);
+
+        // 如果是完成事件，关闭连接
+        if (data.type === 'complete') {
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+
+          console.log(`[${requestId}] 流式生成完成，总耗时: ${duration}ms`);
+
+          // 结束LLMLogger请求记录
+          LLMLogger.endRequest(requestId, {
+            status: 'success',
+            duration,
+            responseType: 'stream',
+            completionType: 'normal'
+          });
+
+          eventSource.close();
+        }
+      } catch (error) {
+        console.error(`[${requestId}] 解析SSE消息时出错:`, error);
+
+        // 使用LLMLogger记录错误
+        LLMLogger.logError(requestId, error, {
+          phase: 'stream_parsing',
+          rawData: event.data
+        });
+
+        onEvent({
+          type: 'error',
+          message: '解析服务器消息时出错',
+          error: error instanceof Error ? error.message : '未知错误'
+        });
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error(`[${requestId}] SSE连接错误:`, error);
+
+      // 获取更详细的错误信息
+      const errorInfo = {
+        readyState: eventSource.readyState, // 0: connecting, 1: open, 2: closed
+        url: `${API_URL}/content/generate-stream/${pathId}/${chapterId}`,
+        timestamp: new Date().toISOString(),
+        browserInfo: navigator.userAgent,
+        errorObj: error
+      };
+
+      console.error(`[${requestId}] SSE连接错误详情:`, JSON.stringify(errorInfo, (key, value) => {
+        // 处理循环引用和DOM对象
+        if (key === 'errorObj' && value instanceof Event) {
+          return '[Event Object]';
+        }
+        return value;
+      }, 2));
+
+      // 使用LLMLogger记录错误
+      LLMLogger.logError(requestId, error, {
+        phase: 'stream_connection',
+        errorInfo
+      });
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'error',
+        errorType: 'stream_connection_error',
+        errorMessage: 'EventSource连接错误',
+        readyState: eventSource.readyState
+      });
+
+      // 根据readyState提供更具体的错误信息
+      let errorMessage = 'SSE连接错误';
+      if (eventSource.readyState === 0) {
+        errorMessage = 'SSE连接建立中断，可能是网络问题或服务器未响应';
+      } else if (eventSource.readyState === 2) {
+        errorMessage = 'SSE连接已关闭，可能是服务器主动关闭或连接超时';
+      }
+
+      onEvent({
+        type: 'error',
+        message: errorMessage,
+        error: error instanceof Event ? '连接中断' : '未知错误',
+        readyState: eventSource.readyState
+      });
+
+      // 关闭连接
+      eventSource.close();
+
+      // 尝试重新连接（可选）
+      // setTimeout(() => {
+      //   console.log(`[${requestId}] 尝试重新连接SSE...`);
+      //   onEvent({ type: 'status', message: '正在尝试重新连接...' });
+      //   contentApi.generateStream(pathId, chapterId, onEvent);
+      // }, 3000);
+    };
+
+    // 返回一个函数，用于手动关闭连接
+    return () => {
+      console.log(`[${requestId}] 手动关闭SSE连接`);
+
+      // 结束LLMLogger请求记录
+      LLMLogger.endRequest(requestId, {
+        status: 'success',
+        completionType: 'manual_close'
+      });
+
+      eventSource.close();
+    };
+  }
 };
 
 // Tutor API

@@ -210,9 +210,36 @@ class SupabaseService {
    * Create chapter content
    * @param pathId The learning path ID
    * @param chapterData The chapter data
+   * @param orderIndex The order index of the chapter (optional)
    * @returns The created chapter
    */
-  async createChapterContent(pathId: string, chapterData: any): Promise<any> {
+  async createChapterContent(pathId: string, chapterData: any, orderIndex?: number): Promise<any> {
+    // 如果没有提供orderIndex，则获取当前最大的order_index并加1
+    let nextOrderIndex = orderIndex;
+
+    if (nextOrderIndex === undefined) {
+      try {
+        // 获取当前路径下最大的order_index
+        const { data: maxOrderData, error: maxOrderError } = await this.supabase
+          .from('chapter_contents')
+          .select('order_index')
+          .eq('path_id', pathId)
+          .order('order_index', { ascending: false })
+          .limit(1);
+
+        if (maxOrderError) {
+          console.error('获取最大order_index失败:', maxOrderError);
+        }
+
+        // 如果有数据，则取最大值+1，否则从1开始
+        nextOrderIndex = maxOrderData && maxOrderData.length > 0 ? maxOrderData[0].order_index + 1 : 1;
+        console.log(`为新章节设置order_index=${nextOrderIndex}`);
+      } catch (error) {
+        console.error('计算order_index时出错:', error);
+        nextOrderIndex = 1; // 默认从1开始
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('chapter_contents')
       .insert([
@@ -220,6 +247,7 @@ class SupabaseService {
           path_id: pathId,
           title: chapterData.title,
           content: chapterData.content,
+          order_index: nextOrderIndex,
         },
       ])
       .select();
@@ -233,40 +261,48 @@ class SupabaseService {
 
   /**
    * Get chapter content by ID
-   * @param chapterId The chapter ID
+   * @param chapterId The chapter ID (UUID or order_index)
    * @returns The chapter content
    */
   async getChapterContent(chapterId: string): Promise<any> {
     try {
-      // 尝试通过ID查询
-      const { data, error } = await this.supabase
-        .from('chapter_contents')
-        .select('*')
-        .eq('id', chapterId)
-        .single();
+      // 检查是否是UUID格式
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chapterId);
 
-      if (data) {
+      if (isUuid) {
+        // 如果是UUID格式，直接通过ID查询
+        console.log(`通过UUID查询章节内容: ${chapterId}`);
+        const { data, error } = await this.supabase
+          .from('chapter_contents')
+          .select('*')
+          .eq('id', chapterId)
+          .single();
+
+        if (error) {
+          console.error(`通过UUID查询章节内容失败:`, error);
+          throw error;
+        }
+
         return data;
-      }
-
-      // 如果通过ID查询失败，尝试通过order_index查询
-      // 这假设数字ID实际上是章节的顺序索引
-      if (error && !isNaN(Number(chapterId))) {
+      } else if (!isNaN(Number(chapterId))) {
+        // 如果是数字，尝试通过order_index查询
         console.log(`尝试通过order_index=${chapterId}查询章节内容`);
-        const { data: indexData, error: indexError } = await this.supabase
+        const { data, error } = await this.supabase
           .from('chapter_contents')
           .select('*')
           .eq('order_index', Number(chapterId))
           .single();
 
-        if (indexError) {
-          throw indexError;
+        if (error) {
+          console.error(`通过order_index查询章节内容失败:`, error);
+          throw error;
         }
 
-        return indexData;
+        return data;
+      } else {
+        // 既不是UUID也不是数字
+        throw new Error(`无效的章节ID格式: ${chapterId}`);
       }
-
-      throw error || new Error('Chapter content not found');
     } catch (error) {
       console.error('获取章节内容失败:', error);
       throw error;

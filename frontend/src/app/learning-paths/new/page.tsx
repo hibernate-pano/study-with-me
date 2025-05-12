@@ -144,12 +144,28 @@ export default function NewLearningPath() {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  const handleStartLearning = () => {
+  const handleStartLearning = async () => {
     if (learningPath && learningPath.id) {
-      router.push(`/learning-paths/${learningPath.id}/chapters/1`);
+      try {
+        // 获取学习路径的章节列表
+        const chaptersResponse = await learningPathsApi.getChapters(learningPath.id);
+        if (chaptersResponse.chapters && chaptersResponse.chapters.length > 0) {
+          // 获取第一个章节的ID
+          const firstChapter = chaptersResponse.chapters[0];
+          router.push(`/learning-paths/${learningPath.id}/chapters/${firstChapter.id}`);
+        } else {
+          console.error('未找到章节数据');
+          // 如果没有章节数据，使用模拟数据
+          router.push(`/learning-paths/${learningPath.id}/chapters/mock`);
+        }
+      } catch (error) {
+        console.error('获取章节列表失败:', error);
+        // 如果API调用失败，使用模拟数据
+        router.push(`/learning-paths/${learningPath.id}/chapters/mock`);
+      }
     } else {
       // 如果没有真实的学习路径ID，使用模拟ID
-      router.push('/learning-paths/1/chapters/1');
+      router.push('/learning-paths/mock/chapters/mock');
     }
   };
 

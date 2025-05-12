@@ -105,11 +105,27 @@ export default function LearningPathDetailPage() {
 
   const handleStartLearning = () => {
     setIsStartingLearning(true);
-    const chapterId = userProgress && userProgress.last_chapter_id ? userProgress.last_chapter_id : 1;
 
-    // Add a small delay to show the loading state
+    // 如果有用户进度，使用上次学习的章节ID
+    if (userProgress && userProgress.last_chapter_id) {
+      setTimeout(() => {
+        router.push(`/learning-paths/${params.pathId}/chapters/${userProgress.last_chapter_id}`);
+      }, 300);
+      return;
+    }
+
+    // 如果没有用户进度，但有章节列表，使用第一个章节的ID
+    if (chapters && chapters.length > 0) {
+      setTimeout(() => {
+        router.push(`/learning-paths/${params.pathId}/chapters/${chapters[0].id}`);
+      }, 300);
+      return;
+    }
+
+    // 如果没有章节列表，使用模拟数据
+    console.warn('没有找到章节列表，使用模拟数据');
     setTimeout(() => {
-      router.push(`/learning-paths/${params.pathId}/chapters/${chapterId}`);
+      router.push(`/learning-paths/${params.pathId}/chapters/mock`);
     }, 300);
   };
 

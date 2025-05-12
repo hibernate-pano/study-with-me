@@ -52,6 +52,47 @@ router.post('/generate', async (req, res) => {
     // Save to database using service client to bypass RLS
     const savedPath = await supabaseService.createLearningPath(userId, pathData);
 
+    // 为每个阶段的每个章节创建初始内容
+    console.log('开始为学习路径创建章节内容...');
+    try {
+      let chapterIndex = 1;
+      for (const stage of pathData.stages) {
+        for (const chapter of stage.chapters) {
+          console.log(`创建章节: ${chapter.title}, order_index: ${chapterIndex}`);
+
+          // 创建初始章节内容
+          const initialContent = {
+            summary: `这是"${chapter.title}"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(', ')}。`,
+            concepts: chapter.keyPoints.map((point: string) => ({
+              title: point,
+              explanation: `关于"${point}"的详细解释将在这里展开。`,
+              examples: [],
+              diagramType: 'concept'
+            })),
+            codeExamples: [],
+            exercises: [],
+            faq: []
+          };
+
+          // 保存章节内容到数据库
+          await supabaseService.createChapterContent(
+            savedPath.id,
+            {
+              title: chapter.title,
+              content: initialContent
+            },
+            chapterIndex
+          );
+
+          chapterIndex++;
+        }
+      }
+      console.log(`成功创建了${chapterIndex - 1}个章节`);
+    } catch (chapterError: any) {
+      console.error('创建章节内容时出错:', chapterError);
+      // 即使章节创建失败，我们仍然返回成功创建的学习路径
+    }
+
     res.status(201).json({
       message: 'Learning path generated successfully',
       path: savedPath
@@ -131,6 +172,95 @@ router.get('/:pathId/chapters', async (req, res) => {
   } catch (error: any) {
     res.status(500).json({
       message: 'Failed to get chapters',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/learning-paths/:pathId/generate-chapters
+ * @desc Generate chapters for an existing learning path
+ * @access Private
+ */
+router.post('/:pathId/generate-chapters', async (req, res) => {
+  try {
+    const pathId = req.params.pathId;
+
+    // 获取学习路径
+    const path = await supabaseService.getLearningPath(pathId);
+
+    if (!path) {
+      return res.status(404).json({ message: 'Learning path not found' });
+    }
+
+    // 检查是否已有章节
+    const existingChapters = await supabaseService.getChapters(pathId);
+
+    if (existingChapters && existingChapters.length > 0) {
+      return res.status(400).json({
+        message: 'This learning path already has chapters',
+        chapters: existingChapters
+      });
+    }
+
+    // 为每个阶段的每个章节创建初始内容
+    console.log(`开始为学习路径 ${path.title} (${pathId}) 创建章节内容...`);
+
+    try {
+      let chapterIndex = 1;
+      let chaptersCreated = [];
+
+      for (const stage of path.stages) {
+        for (const chapter of stage.chapters) {
+          console.log(`创建章节: ${chapter.title}, order_index: ${chapterIndex}`);
+
+          // 创建初始章节内容
+          const initialContent = {
+            summary: `这是"${chapter.title}"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(', ')}。`,
+            concepts: chapter.keyPoints.map((point: string) => ({
+              title: point,
+              explanation: `关于"${point}"的详细解释将在这里展开。`,
+              examples: [],
+              diagramType: 'concept'
+            })),
+            codeExamples: [],
+            exercises: [],
+            faq: []
+          };
+
+          // 保存章节内容到数据库
+          const savedChapter = await supabaseService.createChapterContent(
+            pathId,
+            {
+              title: chapter.title,
+              content: initialContent
+            },
+            chapterIndex
+          );
+
+          chaptersCreated.push(savedChapter);
+          chapterIndex++;
+        }
+      }
+
+      console.log(`成功为学习路径 ${path.title} 创建了${chaptersCreated.length}个章节`);
+
+      res.status(201).json({
+        message: `Successfully created ${chaptersCreated.length} chapters for learning path`,
+        chapters: chaptersCreated
+      });
+
+    } catch (chapterError: any) {
+      console.error('创建章节内容时出错:', chapterError);
+      res.status(500).json({
+        message: 'Failed to create chapter content',
+        error: chapterError.message
+      });
+    }
+  } catch (error: any) {
+    console.error('Error in generate chapters route:', error);
+    res.status(500).json({
+      message: 'Failed to generate chapters',
       error: error.message
     });
   }

@@ -35,7 +35,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Assignment as AssignmentIcon,
   Feedback as FeedbackIcon,
-  InsertChart as ChartIcon
+  InsertChart as ChartIcon,
+  Error as ErrorIcon
 } from '@mui/icons-material';
 import Navbar from '@/components/Navbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -205,6 +206,7 @@ export default function ChapterPage() {
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [newAchievements, setNewAchievements] = useState<any[]>([]);
   const [achievementAlert, setAchievementAlert] = useState(false);
+  const [retryVisible, setRetryVisible] = useState(false);
 
   const { user } = useAuth();
 
@@ -221,47 +223,147 @@ export default function ChapterPage() {
       });
 
       try {
-        // 获取章节内容
+        // 尝试获取章节内容
         setLoadingProgress(10);
-        const contentResponse = await contentApi.getById(params.chapterId as string);
-        setChapterContent(contentResponse.content);
-        setLoadingProgress(40);
-        setLoadingSteps(prev => ({
-          ...prev,
-          content: { status: 'completed', message: '章节内容加载完成' },
-          exercises: { status: 'loading', message: '正在加载练习题...' }
-        }));
+        console.log(`尝试获取章节内容，章节ID: ${params.chapterId}`);
 
-        // 获取章节练习题
-        await new Promise(resolve => setTimeout(resolve, 300)); // 添加短暂延迟以显示进度
-        setLoadingProgress(60);
-        const exercisesResponse = await exercisesApi.getChapterExercises(params.chapterId as string);
-        setExercises(exercisesResponse.exercises);
-        setLoadingProgress(80);
-        setLoadingSteps(prev => ({
-          ...prev,
-          exercises: { status: 'completed', message: '练习题加载完成' },
-          progress: { status: 'loading', message: '正在更新学习进度...' }
-        }));
+        try {
+          // 首先尝试直接获取章节内容
+          const contentResponse = await contentApi.getById(params.chapterId as string);
 
-        // 更新学习进度
-        await new Promise(resolve => setTimeout(resolve, 300)); // 添加短暂延迟以显示进度
-        if (user) {
-          await progressApi.update({
-            userId: user.id,
-            pathId: params.pathId as string,
-            chapterId: params.chapterId as string,
-            status: 'started'
-          });
+          if (contentResponse && contentResponse.content) {
+            console.log('章节内容已存在，直接加载');
+            setChapterContent(contentResponse.content);
+            setLoadingProgress(40);
+            setLoadingSteps(prev => ({
+              ...prev,
+              content: { status: 'completed', message: '章节内容加载完成' },
+              exercises: { status: 'loading', message: '正在加载练习题...' }
+            }));
+          } else {
+            throw new Error('章节内容不存在，需要生成');
+          }
+        } catch (contentError) {
+          console.log('章节内容不存在，开始流式生成章节内容');
           setLoadingSteps(prev => ({
             ...prev,
-            progress: { status: 'completed', message: '学习进度更新完成' }
+            content: { status: 'loading', message: '正在生成章节内容...' }
+          }));
+
+          // 使用流式API生成章节内容
+          const closeStream = contentApi.generateStream(
+            params.pathId as string,
+            params.chapterId as string,
+            (event) => {
+              console.log('收到流式事件:', event);
+
+              if (event.type === 'status') {
+                // 更新状态消息
+                setLoadingSteps(prev => ({
+                  ...prev,
+                  content: { status: 'loading', message: event.message }
+                }));
+                // 更新进度
+                setLoadingProgress(prev => Math.min(prev + 5, 40));
+              }
+              else if (event.type === 'content_chunk') {
+                // 更新进度
+                setLoadingProgress(prev => Math.min(prev + 2, 40));
+              }
+              else if (event.type === 'complete') {
+                // 章节内容生成完成
+                console.log('章节内容生成完成:', event.content);
+                setChapterContent(event.content.content);
+                setLoadingProgress(40);
+                setLoadingSteps(prev => ({
+                  ...prev,
+                  content: { status: 'completed', message: '章节内容生成完成' },
+                  exercises: { status: 'loading', message: '正在加载练习题...' }
+                }));
+
+                // 关闭流
+                closeStream();
+              }
+              else if (event.type === 'error') {
+                console.error('流式生成章节内容出错:', event.message, event);
+
+                // 显示更详细的错误信息
+                const errorMessage = event.message || '未知错误';
+                const readyStateInfo = event.readyState !== undefined
+                  ? `(连接状态: ${event.readyState === 0 ? '连接中' : event.readyState === 1 ? '已连接' : '已关闭'})`
+                  : '';
+
+                setLoadingSteps(prev => ({
+                  ...prev,
+                  content: {
+                    status: 'error',
+                    message: `生成章节内容出错: ${errorMessage} ${readyStateInfo}`
+                  }
+                }));
+
+                // 显示重试按钮
+                setRetryVisible(true);
+
+                // 使用模拟数据作为回退
+                setChapterContent(mockChapterContent);
+
+                // 关闭流
+                closeStream();
+              }
+            }
+          );
+
+          // 等待一段时间，确保流式生成有足够时间完成
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // 获取章节练习题
+        try {
+          await new Promise(resolve => setTimeout(resolve, 300)); // 添加短暂延迟以显示进度
+          setLoadingProgress(60);
+          const exercisesResponse = await exercisesApi.getChapterExercises(params.chapterId as string);
+          setExercises(exercisesResponse.exercises || []);
+          setLoadingSteps(prev => ({
+            ...prev,
+            exercises: { status: 'completed', message: '练习题加载完成' },
+            progress: { status: 'loading', message: '正在更新学习进度...' }
+          }));
+        } catch (exercisesError) {
+          console.error('获取练习题失败:', exercisesError);
+          setExercises(mockExercises);
+          setLoadingSteps(prev => ({
+            ...prev,
+            exercises: { status: 'error', message: '练习题加载失败，使用备用数据' },
+            progress: { status: 'loading', message: '正在更新学习进度...' }
           }));
         }
-        setLoadingProgress(100);
+
+        // 更新学习进度
+        try {
+          setLoadingProgress(80);
+          if (user) {
+            await progressApi.update({
+              userId: user.id,
+              pathId: params.pathId as string,
+              chapterId: params.chapterId as string,
+              status: 'started'
+            });
+            setLoadingSteps(prev => ({
+              ...prev,
+              progress: { status: 'completed', message: '学习进度更新完成' }
+            }));
+          }
+          setLoadingProgress(100);
+        } catch (progressError) {
+          console.error('更新学习进度失败:', progressError);
+          setLoadingSteps(prev => ({
+            ...prev,
+            progress: { status: 'error', message: '学习进度更新失败' }
+          }));
+        }
       } catch (error) {
-        console.error('获取章节内容失败:', error);
-        // 如果API调用失败，使用模拟数据
+        console.error('整体加载过程失败:', error);
+        // 如果整个过程失败，使用模拟数据
         setChapterContent(mockChapterContent);
         setExercises(mockExercises);
         setLoadingSteps({
@@ -422,7 +524,7 @@ export default function ChapterPage() {
               {chapters.map((chapter) => (
                 <ListItem key={chapter.id} disablePadding>
                   <ListItemButton
-                    selected={chapter.id === Number(params.chapterId)}
+                    selected={chapter.id === params.chapterId}
                     onClick={() => {
                       window.location.href = `/learning-paths/${params.pathId}/chapters/${chapter.id}`;
                     }}
@@ -495,7 +597,7 @@ export default function ChapterPage() {
                         <ListItemIcon>
                           {step.status === 'loading' && <CircularProgress size={20} />}
                           {step.status === 'completed' && <CheckCircleIcon color="success" />}
-                          {step.status === 'error' && <CheckCircleIcon color="error" />}
+                          {step.status === 'error' && <ErrorIcon color="error" />}
                           {step.status === 'pending' && <CircularProgress size={20} color="inherit" sx={{ opacity: 0.3 }} />}
                         </ListItemIcon>
                         <ListItemText
@@ -507,6 +609,64 @@ export default function ChapterPage() {
                                   step.status === 'error' ? 'error.main' : 'text.secondary'
                           }}
                         />
+                        {step.status === 'error' && key === 'content' && retryVisible && (
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={() => {
+                              // 重置状态
+                              setRetryVisible(false);
+                              setLoadingSteps(prev => ({
+                                ...prev,
+                                content: { status: 'loading', message: '正在重新尝试生成章节内容...' }
+                              }));
+
+                              // 重新尝试生成章节内容
+                              const closeStream = contentApi.generateStream(
+                                params.pathId as string,
+                                params.chapterId as string,
+                                (event) => {
+                                  // 复用相同的事件处理逻辑
+                                  if (event.type === 'status') {
+                                    setLoadingSteps(prev => ({
+                                      ...prev,
+                                      content: { status: 'loading', message: event.message }
+                                    }));
+                                    setLoadingProgress(prev => Math.min(prev + 5, 40));
+                                  }
+                                  else if (event.type === 'content_chunk') {
+                                    setLoadingProgress(prev => Math.min(prev + 2, 40));
+                                  }
+                                  else if (event.type === 'complete') {
+                                    setChapterContent(event.content.content);
+                                    setLoadingProgress(40);
+                                    setLoadingSteps(prev => ({
+                                      ...prev,
+                                      content: { status: 'completed', message: '章节内容生成完成' },
+                                      exercises: { status: 'loading', message: '正在加载练习题...' }
+                                    }));
+                                    closeStream();
+                                  }
+                                  else if (event.type === 'error') {
+                                    setLoadingSteps(prev => ({
+                                      ...prev,
+                                      content: {
+                                        status: 'error',
+                                        message: `重试失败: ${event.message}`
+                                      }
+                                    }));
+                                    setRetryVisible(true);
+                                    closeStream();
+                                  }
+                                }
+                              );
+                            }}
+                            sx={{ ml: 1 }}
+                          >
+                            重试
+                          </Button>
+                        )}
                       </ListItem>
                     ))}
                   </List>
@@ -656,11 +816,14 @@ export default function ChapterPage() {
                         <Button
                           variant="outlined"
                           startIcon={<ArrowBackIcon />}
-                          disabled={Number(params.chapterId) <= 1}
+                          disabled={!chapters.length || chapters.findIndex(ch => ch.id === params.chapterId) <= 0}
                           onClick={() => {
-                            const prevChapterId = Number(params.chapterId) - 1;
-                            if (prevChapterId >= 1) {
-                              window.location.href = `/learning-paths/${params.pathId}/chapters/${prevChapterId}`;
+                            if (chapters.length) {
+                              const currentIndex = chapters.findIndex(ch => ch.id === params.chapterId);
+                              if (currentIndex > 0) {
+                                const prevChapter = chapters[currentIndex - 1];
+                                window.location.href = `/learning-paths/${params.pathId}/chapters/${prevChapter.id}`;
+                              }
                             }
                           }}
                         >
@@ -669,11 +832,14 @@ export default function ChapterPage() {
                         <Button
                           variant="contained"
                           endIcon={<ArrowForwardIcon />}
-                          disabled={Number(params.chapterId) >= chapters.length}
+                          disabled={!chapters.length || chapters.findIndex(ch => ch.id === params.chapterId) >= chapters.length - 1}
                           onClick={() => {
-                            const nextChapterId = Number(params.chapterId) + 1;
-                            if (nextChapterId <= chapters.length) {
-                              window.location.href = `/learning-paths/${params.pathId}/chapters/${nextChapterId}`;
+                            if (chapters.length) {
+                              const currentIndex = chapters.findIndex(ch => ch.id === params.chapterId);
+                              if (currentIndex < chapters.length - 1) {
+                                const nextChapter = chapters[currentIndex + 1];
+                                window.location.href = `/learning-paths/${params.pathId}/chapters/${nextChapter.id}`;
+                              }
                             }
                           }}
                         >

@@ -332,10 +332,16 @@ class AIService {
    * Generate chapter content based on a chapter title and key points
    * @param chapterTitle The chapter title
    * @param keyPoints The key points to cover
+   * @param onChunk 可选的回调函数，用于流式处理生成的内容块
    * @param includeVisuals 是否包含可视化内容
    * @returns The generated chapter content
    */
-  async generateChapterContent(chapterTitle: string, keyPoints: string[], includeVisuals: boolean = true): Promise<any> {
+  async generateChapterContent(
+    chapterTitle: string,
+    keyPoints: string[],
+    onChunk?: (chunk: string) => void,
+    includeVisuals: boolean = true
+  ): Promise<any> {
     const prompt = `
     请为章节"${chapterTitle}"创建详细的教学内容。
     需要涵盖以下知识点：
@@ -395,9 +401,30 @@ class AIService {
     5. 代码示例应该作为纯文本字符串，不要使用Markdown代码块格式
     `;
 
+    // 如果提供了onChunk回调，则使用流式生成
+    if (onChunk) {
+      // 发送初始状态更新
+      onChunk(`正在为章节"${chapterTitle}"生成内容...`);
+
+      // 模拟流式生成过程
+      // 注意：这里只是模拟，实际实现需要根据您使用的AI API的流式能力来调整
+      await new Promise(resolve => setTimeout(resolve, 500));
+      onChunk(`已确定章节结构，开始生成章节概述...`);
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      onChunk(`正在生成核心概念解释，处理知识点: ${keyPoints[0]}...`);
+
+      // 继续生成内容...
+    }
+
     const content = await this.generateContent(prompt);
 
     try {
+      // 如果提供了onChunk回调，发送进度更新
+      if (onChunk) {
+        onChunk(`内容生成完成，正在处理JSON格式...`);
+      }
+
       // 尝试提取JSON内容（处理可能的Markdown代码块）
       let jsonContent = content;
 
@@ -424,15 +451,31 @@ class AIService {
       // Parse the JSON response
       const chapterContent = JSON.parse(jsonContent);
 
+      // 如果提供了onChunk回调，发送进度更新
+      if (onChunk) {
+        onChunk(`JSON解析成功，正在生成可视化内容...`);
+      }
+
       // 如果需要包含可视化内容，为每个概念生成可视化
       if (includeVisuals) {
         await this.enrichWithVisualizations(chapterContent);
+      }
+
+      // 如果提供了onChunk回调，发送完成消息
+      if (onChunk) {
+        onChunk(`章节内容生成完成！`);
       }
 
       return chapterContent;
     } catch (error) {
       console.error('Error parsing AI response as JSON:', error);
       console.error('Raw content:', content);
+
+      // 如果提供了onChunk回调，发送错误消息
+      if (onChunk) {
+        onChunk(`生成内容时出错: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
+
       throw new Error('AI response is not in valid JSON format');
     }
   }
