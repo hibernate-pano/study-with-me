@@ -267,85 +267,112 @@ export default function ChapterPage() {
           } else {
             throw new Error("章节内容不存在，需要生成");
           }
-        } catch (contentError) {
-          console.log("章节内容不存在，开始流式生成章节内容");
-          setLoadingSteps((prev) => ({
-            ...prev,
-            content: { status: "loading", message: "正在生成章节内容..." },
-          }));
+        } catch (contentError: any) {
+          console.log("获取章节内容失败:", contentError);
 
-          // 使用流式API生成章节内容
-          const closeStream = contentApi.generateStream(
-            params.pathId as string,
-            params.chapterId as string,
-            (event) => {
-              console.log("收到流式事件:", event);
+          // 检查错误信息，判断是否是UUID格式问题
+          const isUuidFormatError = contentError
+            .toString()
+            .includes("invalid input syntax for type uuid");
 
-              if (event.type === "status") {
-                // 更新状态消息
-                setLoadingSteps((prev) => ({
-                  ...prev,
-                  content: { status: "loading", message: event.message },
-                }));
-                // 更新进度
-                setLoadingProgress((prev) => Math.min(prev + 5, 40));
-              } else if (event.type === "content_chunk") {
-                // 更新进度
-                setLoadingProgress((prev) => Math.min(prev + 2, 40));
-              } else if (event.type === "complete") {
-                // 章节内容生成完成
-                console.log("章节内容生成完成:", event.content);
-                setChapterContent(event.content.content);
-                setLoadingProgress(40);
-                setLoadingSteps((prev) => ({
-                  ...prev,
-                  content: { status: "completed", message: "章节内容生成完成" },
-                  exercises: {
-                    status: "loading",
-                    message: "正在加载练习题...",
-                  },
-                }));
+          if (isUuidFormatError) {
+            console.error(
+              "章节ID格式错误，需要UUID格式。当前ID:",
+              params.chapterId
+            );
+            setLoadingSteps((prev) => ({
+              ...prev,
+              content: {
+                status: "error",
+                message: "章节ID格式错误，请确保使用正确的学习路径和章节",
+              },
+            }));
+            // 使用模拟数据
+            setChapterContent(mockChapterContent);
+            setLoadingProgress(40);
+          } else {
+            console.log("章节内容不存在，开始流式生成章节内容");
+            setLoadingSteps((prev) => ({
+              ...prev,
+              content: { status: "loading", message: "正在生成章节内容..." },
+            }));
 
-                // 关闭流
-                closeStream();
-              } else if (event.type === "error") {
-                console.error("流式生成章节内容出错:", event.message, event);
+            // 使用流式API生成章节内容
+            const closeStream = contentApi.generateStream(
+              params.pathId as string,
+              params.chapterId as string,
+              (event) => {
+                console.log("收到流式事件:", event);
 
-                // 显示更详细的错误信息
-                const errorMessage = event.message || "未知错误";
-                const readyStateInfo =
-                  event.readyState !== undefined
-                    ? `(连接状态: ${
-                        event.readyState === 0
-                          ? "连接中"
-                          : event.readyState === 1
-                          ? "已连接"
-                          : "已关闭"
-                      })`
-                    : "";
+                if (event.type === "status") {
+                  // 更新状态消息
+                  setLoadingSteps((prev) => ({
+                    ...prev,
+                    content: { status: "loading", message: event.message },
+                  }));
+                  // 更新进度
+                  setLoadingProgress((prev) => Math.min(prev + 5, 40));
+                } else if (event.type === "content_chunk") {
+                  // 更新进度
+                  setLoadingProgress((prev) => Math.min(prev + 2, 40));
+                } else if (event.type === "complete") {
+                  // 章节内容生成完成
+                  console.log("章节内容生成完成:", event.content);
+                  setChapterContent(event.content.content);
+                  setLoadingProgress(40);
+                  setLoadingSteps((prev) => ({
+                    ...prev,
+                    content: {
+                      status: "completed",
+                      message: "章节内容生成完成",
+                    },
+                    exercises: {
+                      status: "loading",
+                      message: "正在加载练习题...",
+                    },
+                  }));
 
-                setLoadingSteps((prev) => ({
-                  ...prev,
-                  content: {
-                    status: "error",
-                    message: `生成章节内容出错: ${errorMessage} ${readyStateInfo}`,
-                  },
-                }));
+                  // 关闭流
+                  closeStream();
+                } else if (event.type === "error") {
+                  console.error("流式生成章节内容出错:", event.message, event);
 
-                // 显示重试按钮
-                setRetryVisible(true);
+                  // 显示更详细的错误信息
+                  const errorMessage = event.message || "未知错误";
+                  const readyStateInfo =
+                    event.readyState !== undefined
+                      ? `(连接状态: ${
+                          event.readyState === 0
+                            ? "连接中"
+                            : event.readyState === 1
+                            ? "已连接"
+                            : "已关闭"
+                        })`
+                      : "";
 
-                // 使用模拟数据作为回退
-                setChapterContent(mockChapterContent);
+                  setLoadingSteps((prev) => ({
+                    ...prev,
+                    content: {
+                      status: "error",
+                      message: `生成章节内容出错: ${errorMessage} ${readyStateInfo}`,
+                    },
+                  }));
 
-                // 关闭流
-                closeStream();
+                  // 显示重试按钮
+                  setRetryVisible(true);
+
+                  // 使用模拟数据作为回退
+                  setChapterContent(mockChapterContent);
+
+                  // 关闭流
+                  closeStream();
+                }
               }
-            }
-          );
+            );
 
-          // 等待一段时间，确保流式生成有足够时间完成
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+            // 等待一段时间，确保流式生成有足够时间完成
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
         }
 
         // 获取章节练习题
@@ -612,7 +639,7 @@ export default function ChapterPage() {
             {chapters.map((chapter) => (
               <ListItem key={chapter.id} disablePadding>
                 <ListItemButton
-                  selected={chapter.id === params.chapterId}
+                  selected={String(chapter.id) === String(params.chapterId)}
                   onClick={() => {
                     window.location.href = `/learning-paths/${params.pathId}/chapters/${chapter.id}`;
                   }}
@@ -622,7 +649,9 @@ export default function ChapterPage() {
                     primaryTypographyProps={{
                       color: chapter.completed ? "primary" : "inherit",
                       fontWeight:
-                        chapter.id === Number(params.chapterId) ? 500 : 400,
+                        String(chapter.id) === String(params.chapterId)
+                          ? 500
+                          : 400,
                     }}
                   />
                   {chapter.completed && (
@@ -723,13 +752,14 @@ export default function ChapterPage() {
                     startIcon={<ArrowBackIcon />}
                     disabled={
                       !chapters.length ||
-                      chapters.findIndex((ch) => ch.id === params.chapterId) <=
-                        0
+                      chapters.findIndex(
+                        (ch) => String(ch.id) === String(params.chapterId)
+                      ) <= 0
                     }
                     onClick={() => {
                       if (chapters.length) {
                         const currentIndex = chapters.findIndex(
-                          (ch) => ch.id === params.chapterId
+                          (ch) => String(ch.id) === String(params.chapterId)
                         );
                         if (currentIndex > 0) {
                           const prevChapter = chapters[currentIndex - 1];
@@ -745,13 +775,15 @@ export default function ChapterPage() {
                     endIcon={<ArrowForwardIcon />}
                     disabled={
                       !chapters.length ||
-                      chapters.findIndex((ch) => ch.id === params.chapterId) >=
+                      chapters.findIndex(
+                        (ch) => String(ch.id) === String(params.chapterId)
+                      ) >=
                         chapters.length - 1
                     }
                     onClick={() => {
                       if (chapters.length) {
                         const currentIndex = chapters.findIndex(
-                          (ch) => ch.id === params.chapterId
+                          (ch) => String(ch.id) === String(params.chapterId)
                         );
                         if (currentIndex < chapters.length - 1) {
                           const nextChapter = chapters[currentIndex + 1];
