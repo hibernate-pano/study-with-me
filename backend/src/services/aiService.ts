@@ -345,7 +345,7 @@ class AIService {
     const prompt = `
     请为章节"${chapterTitle}"创建详细的教学内容。
     需要涵盖以下知识点：
-    ${keyPoints.map(point => `- ${point}`).join('\n')}
+    ${keyPoints.map(point => `- ${point}`).join('\\n')}
 
     请按照以下结构组织内容：
     1. 章节概述（200-300字）
@@ -429,7 +429,7 @@ class AIService {
       let jsonContent = content;
 
       // 检查是否包含Markdown代码块 - 使用更宽松的正则表达式
-      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
+      const jsonBlockRegex = /```(?:json)?([\\s\\S]*?)```/;
       const match = content.match(jsonBlockRegex);
 
       if (match && match[1]) {
@@ -476,7 +476,17 @@ class AIService {
         onChunk(`生成内容时出错: ${error instanceof Error ? error.message : '未知错误'}`);
       }
 
-      throw new Error('AI response is not in valid JSON format');
+      // 返回一个更结构化的错误响应
+      return {
+        summary: `无法生成章节概述（错误：${error instanceof Error ? error.message : '未知错误'}）`,
+        concepts: keyPoints.map((point, index) => ({
+          title: `概念 ${index + 1}: ${point}`,
+          explanation: `无法生成关于“${point}”的概念解释`
+        })),
+        codeExamples: [],
+        exercises: [],
+        faq: []
+      };
     }
   }
 
@@ -535,90 +545,6 @@ class AIService {
     }
   }
 
-
-
-  /**
-   * Generate exercises based on chapter content
-   * @param chapterContent The chapter content
-   * @param difficulty The difficulty level
-   * @param count The number of exercises to generate
-   * @returns The generated exercises
-   */
-  async generateExercises(chapterContent: any, difficulty: string = 'medium', count: number = 5): Promise<any> {
-    const prompt = `
-    作为教育专家，请基于以下学习内容生成${count}道练习题，难度级别为"${difficulty}"。
-
-    章节标题：${chapterContent.title}
-    章节概述：${chapterContent.summary}
-    核心概念：
-    ${chapterContent.concepts.map((concept: any) => `- ${concept.title}: ${concept.explanation.substring(0, 100)}...`).join('\n')}
-
-    请生成多种类型的题目，包括：选择题、判断题、填空题、简答题
-
-    对于每道题目，请提供：
-    1. 题目内容
-    2. 题目类型
-    3. 难度级别
-    4. 正确答案
-    5. 详细解析
-
-    请以JSON格式返回，结构如下：
-    {
-      "exercises": [
-        {
-          "question": "题目内容",
-          "type": "multiple_choice|true_false|fill_blank|short_answer",
-          "difficulty": "easy|medium|hard",
-          "options": ["选项A", "选项B", "选项C", "选项D"],
-          "answer": "正确答案",
-          "explanation": "解析"
-        }
-      ]
-    }
-
-    非常重要：
-    1. 请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明
-    2. 不要在JSON中的任何字段内容中包含代码块格式，这会导致解析失败
-    3. 所有字段内容应该是纯文本，不包含任何特殊格式标记
-    4. 确保返回的是一个可以直接被JSON.parse()解析的字符串
-    5. 代码示例应该作为纯文本字符串，不要使用Markdown代码块格式
-    `;
-
-    const content = await this.generateContent(prompt);
-
-    try {
-      // 尝试提取JSON内容（处理可能的Markdown代码块）
-      let jsonContent = content;
-
-      // 检查是否包含Markdown代码块 - 使用更宽松的正则表达式
-      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
-      const match = content.match(jsonBlockRegex);
-
-      if (match && match[1]) {
-        console.log('Found JSON in Markdown code block, extracting...');
-        jsonContent = match[1].trim();
-
-        // 如果提取的内容不是以 { 开头，尝试在内容中查找 JSON
-        if (!jsonContent.trim().startsWith('{')) {
-          const innerJsonStart = jsonContent.indexOf('{');
-          const innerJsonEnd = jsonContent.lastIndexOf('}');
-          if (innerJsonStart !== -1 && innerJsonEnd !== -1 && innerJsonEnd > innerJsonStart) {
-            jsonContent = jsonContent.substring(innerJsonStart, innerJsonEnd + 1);
-          }
-        }
-      }
-
-      console.log('Attempting to parse JSON:', jsonContent.substring(0, 100) + '...');
-
-      // Parse the JSON response
-      return JSON.parse(jsonContent);
-    } catch (error) {
-      console.error('Error parsing AI response as JSON:', error);
-      console.error('Raw content:', content);
-      throw new Error('AI response is not in valid JSON format');
-    }
-  }
-
   /**
    * Answer a question based on the learning context
    * @param question The user's question
@@ -657,7 +583,7 @@ class AIService {
     4. 建议下一步学习方向
     5. 使用标准Markdown格式，确保代码块、列表和标题格式正确
     6. 避免使用复杂的HTML或非标准Markdown语法
-    7. 确保代码示例使用正确的语法高亮标记（如\`\`\`javascript\`\`\`）
+    7. 确保代码示例使用正确的语法高亮标记（如\`\`javascript\`\`）
     8. 使用简洁明了的表达方式
     9. 非常重要：请直接返回纯文本回答，不要返回JSON格式
 
@@ -699,7 +625,7 @@ class AIService {
       let cleanResponse = rawResponse;
 
       // Remove any JSON-like wrapping if present
-      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
+      const jsonBlockRegex = /```(?:json)?([\\s\\S]*?)```/;
       const match = rawResponse.match(jsonBlockRegex);
       if (match && match[0] === rawResponse.trim()) {
         console.log(`[${requestId}] Found JSON code block, extracting content`);
@@ -798,36 +724,25 @@ class AIService {
         processingDuration,
         responseLength: cleanResponse.length,
         question: {
-          length: question.length,
-          type: 'tutor'
+          question,
+          pathTitle: context.pathTitle,
+          chapterTitle: context.chapterTitle
         }
       });
 
       return cleanResponse;
-    } catch (error: any) {
-      console.error(`[${requestId}] ===== AI TUTOR ERROR =====`);
-      console.error(`[${requestId}] Error in answerQuestion:`, error);
-      console.error(`[${requestId}] Error stack:`, error.stack);
-      console.error(`[${requestId}] ===== AI TUTOR ERROR END =====`);
-
-      // 使用LLMLogger记录错误
-      LLMLogger.logError(requestId, error, {
-        errorPhase: 'tutor_response_processing',
-        question,
-        context: {
-          chapterTitle: context.chapterTitle,
-          pathTitle: context.pathTitle
-        }
-      });
+    } catch (error) {
+      console.error('Error processing AI response:', error);
+      console.error('Raw content:', error instanceof Error ? error.message : String(error));
 
       // 结束LLMLogger请求记录
       LLMLogger.endRequest(requestId, {
         status: 'error',
-        errorMessage: error.message,
-        errorType: error.name || 'Unknown'
+        errorType: 'response_processing_error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      return '抱歉，我无法回答这个问题。请尝试重新表述或询问其他问题。错误信息：' + error.message;
+      throw new Error('AI response is not in valid JSON format');
     }
   }
 }

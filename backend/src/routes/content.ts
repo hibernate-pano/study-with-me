@@ -30,10 +30,11 @@ router.post('/generate', async (req, res) => {
       message: 'Chapter content generated successfully',
       content: savedContent
     });
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Error generating chapter content:', error);
     res.status(500).json({
       message: 'Failed to generate chapter content',
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -56,10 +57,11 @@ router.get('/:id', async (req, res) => {
     res.status(200).json({
       content
     });
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Error getting chapter content:', error);
     res.status(500).json({
       message: 'Failed to get chapter content',
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -109,7 +111,7 @@ router.get('/generate-stream/:pathId/:chapterId', async (req, res) => {
         for (const stage of path.stages) {
           for (const ch of stage.chapters) {
             if (ch.title.toLowerCase().includes(chapterId.toLowerCase()) ||
-              ch.keyPoints.some((kp: string) => kp.toLowerCase().includes(chapterId.toLowerCase()))) {
+                ch.keyPoints.some((kp: string) => kp.toLowerCase().includes(chapterId.toLowerCase()))) {
               targetChapter = ch;
               break;
             }
@@ -175,21 +177,21 @@ router.get('/generate-stream/:pathId/:chapterId', async (req, res) => {
           content: chapter
         })}\n\n`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('获取或生成章节内容时出错:', error);
       res.write(`data: ${JSON.stringify({
         type: 'error',
-        message: `生成章节内容时出错: ${error.message}`
+        message: `生成章节内容时出错: ${error instanceof Error ? error.message : '未知错误'} `
       })}\n\n`);
     }
 
     // 结束响应
     res.end();
-  } catch (error: any) {
+  } catch (error) {
     console.error('流式生成章节内容时出错:', error);
     res.write(`data: ${JSON.stringify({
       type: 'error',
-      message: `服务器错误: ${error.message}`
+      message: `服务器错误: ${error instanceof Error ? error.message : '未知错误'} `
     })}\n\n`);
     res.end();
   }
