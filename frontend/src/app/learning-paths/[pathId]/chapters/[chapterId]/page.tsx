@@ -61,6 +61,7 @@ import {
   AITutorSkeleton,
 } from "@/components/SkeletonLoaders";
 import ContentDisplay from "@/components/ContentDisplay";
+import StreamingContentDisplay from "@/components/StreamingContentDisplay";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -121,6 +122,8 @@ export default function ChapterPage() {
   const [loadingExercises, setLoadingExercises] = useState(false);
   const [newAchievements, setNewAchievements] = useState<any[]>([]);
   const [achievementAlert, setAchievementAlert] = useState(false);
+  const [useStreamingContent, setUseStreamingContent] = useState(false);
+  const [contentNotFound, setContentNotFound] = useState(false);
 
   const params = useParams();
   const pathId = params.pathId as string;
@@ -158,7 +161,16 @@ export default function ChapterPage() {
     try {
       // 获取章节内容
       const response = await contentApi.getById(chapterId);
-      setChapterContent(response.content);
+
+      if (response && response.content) {
+        setChapterContent(response.content);
+        setContentNotFound(false);
+      } else {
+        console.log("章节内容不存在，将使用流式生成");
+        setChapterContent(null);
+        setContentNotFound(true);
+        setUseStreamingContent(true);
+      }
 
       // 获取练习题
       setLoadingExercises(true);
@@ -203,6 +215,8 @@ export default function ChapterPage() {
     } catch (error) {
       console.error("获取章节内容失败:", error);
       setChapterContent(null);
+      setContentNotFound(true);
+      setUseStreamingContent(true);
     } finally {
       setIsLoading(false);
     }
@@ -349,10 +363,44 @@ export default function ChapterPage() {
     }
   };
 
+  // 处理流式内容生成完成事件
+  const handleStreamingComplete = (content: any) => {
+    setChapterContent(content);
+    setContentNotFound(false);
+    setUseStreamingContent(false);
+
+    // 更新学习进度
+    if (user) {
+      try {
+        progressApi.update({
+          userId: user.id,
+          pathId,
+          chapterId,
+          action: "view",
+        });
+
+        // 检查是否有新的成就
+        checkAchievements();
+      } catch (progressError) {
+        console.error("更新学习进度失败:", progressError);
+      }
+    }
+  };
+
   // 渲染章节内容
   const renderChapterContent = () => {
     if (isLoading) {
       return <ChapterContentSkeleton />;
+    }
+
+    if (useStreamingContent || contentNotFound) {
+      return (
+        <StreamingContentDisplay
+          pathId={pathId}
+          chapterId={chapterId}
+          onComplete={handleStreamingComplete}
+        />
+      );
     }
 
     if (!chapterContent) {

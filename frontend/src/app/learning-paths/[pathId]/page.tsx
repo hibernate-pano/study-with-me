@@ -125,6 +125,7 @@ export default function LearningPathDetailPage() {
 
     // 如果没有用户进度，但有章节列表，使用第一个章节的ID
     if (chapters && chapters.length > 0) {
+      console.log("跳转到第一章:", chapters[0].id);
       setTimeout(() => {
         router.push(
           `/learning-paths/${params.pathId}/chapters/${chapters[0].id}`
@@ -133,12 +134,31 @@ export default function LearningPathDetailPage() {
       return;
     }
 
-    // 如果没有章节列表，显示错误消息并重定向到学习路径列表
-    console.warn("没有找到章节列表，无法开始学习");
-    setTimeout(() => {
-      alert("无法找到章节内容，请尝试重新选择学习路径");
-      router.push("/learning-paths");
-    }, 300);
+    // 如果没有章节列表，尝试获取章节列表
+    console.log("尝试获取章节列表");
+    learningPathsApi
+      .getChapters(params.pathId as string)
+      .then((response) => {
+        if (response.chapters && response.chapters.length > 0) {
+          console.log(
+            "成功获取章节列表，跳转到第一章:",
+            response.chapters[0].id
+          );
+          router.push(
+            `/learning-paths/${params.pathId}/chapters/${response.chapters[0].id}`
+          );
+        } else {
+          // 如果仍然没有章节，尝试跳转到第一章（使用序号1）
+          console.log("没有找到章节列表，尝试使用序号1作为章节ID");
+          router.push(`/learning-paths/${params.pathId}/chapters/1`);
+        }
+      })
+      .catch((error) => {
+        console.error("获取章节列表失败:", error);
+        // 如果获取失败，尝试跳转到第一章（使用序号1）
+        console.log("获取章节列表失败，尝试使用序号1作为章节ID");
+        router.push(`/learning-paths/${params.pathId}/chapters/1`);
+      });
   };
 
   const handleBackToList = () => {
