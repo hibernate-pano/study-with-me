@@ -1,6 +1,6 @@
-import express from 'express';
-import aiService from '../services/aiService';
-import supabaseService from '../services/supabaseService';
+import express from "express";
+import aiService from "../services/aiService";
+import supabaseService from "../services/supabaseService";
 
 const router = express.Router();
 
@@ -9,19 +9,19 @@ const router = express.Router();
  * @desc Get popular learning paths
  * @access Public
  */
-router.get('/popular', async (req, res) => {
+router.get("/popular", async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 3;
 
     const paths = await supabaseService.getPopularLearningPaths(limit);
 
     res.status(200).json({
-      paths
+      paths,
     });
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to get learning path',
-      error: error.message
+      message: "Failed to get learning path",
+      error: error.message,
     });
   }
 });
@@ -31,78 +31,121 @@ router.get('/popular', async (req, res) => {
  * @desc Generate a learning path
  * @access Private
  */
-router.post('/generate', async (req, res) => {
+router.post("/generate", async (req, res) => {
   try {
     const { goal, userLevel } = req.body;
     const userId = req.body.userId; // In a real app, get this from auth middleware
 
     if (!goal) {
-      return res.status(400).json({ message: 'Learning goal is required' });
+      return res.status(400).json({ message: "Learning goal is required" });
     }
 
-    console.log('Generating learning path for goal:', goal);
-    console.log('User level:', userLevel || 'beginner');
-    console.log('User ID:', userId);
+    console.log("Generating learning path for goal:", goal);
+    console.log("User level:", userLevel || "beginner");
+    console.log("User ID:", userId);
 
     // Generate learning path using AI
-    const pathData = await aiService.generateLearningPath(goal, userLevel || 'beginner');
+    const pathData = await aiService.generateLearningPath(
+      goal,
+      userLevel || "beginner"
+    );
 
-    console.log('AI generated path data successfully');
+    console.log("AI generated path data successfully");
 
     // Save to database using service client to bypass RLS
-    const savedPath = await supabaseService.createLearningPath(userId, pathData);
+    const savedPath = await supabaseService.createLearningPath(
+      userId,
+      pathData
+    );
 
     // 为每个阶段的每个章节创建初始内容
-    console.log('开始为学习路径创建章节内容...');
+    console.log("开始为学习路径创建章节内容...");
+    console.log("学习路径ID:", savedPath.id);
+    console.log("学习路径阶段数量:", pathData.stages.length);
+
     try {
       let chapterIndex = 1;
+      let createdChapters = [];
+
       for (const stage of pathData.stages) {
+        console.log(
+          `处理阶段: ${stage.title}, 包含章节数: ${stage.chapters.length}`
+        );
+
         for (const chapter of stage.chapters) {
-          console.log(`创建章节: ${chapter.title}, order_index: ${chapterIndex}`);
+          console.log(
+            `创建章节: ${chapter.title}, order_index: ${chapterIndex}`
+          );
 
           // 创建初始章节内容
           const initialContent = {
-            summary: `这是"${chapter.title}"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(', ')}。`,
+            summary: `这是"${
+              chapter.title
+            }"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(
+              ", "
+            )}。`,
             concepts: chapter.keyPoints.map((point: string) => ({
               title: point,
               explanation: `关于"${point}"的详细解释将在这里展开。`,
               examples: [],
-              diagramType: 'concept'
+              diagramType: "concept",
             })),
             codeExamples: [],
             exercises: [],
-            faq: []
+            faq: [],
           };
 
-          // 保存章节内容到数据库
-          await supabaseService.createChapterContent(
-            savedPath.id,
-            {
-              title: chapter.title,
-              content: initialContent
-            },
-            chapterIndex
-          );
+          try {
+            // 保存章节内容到数据库
+            const savedChapter = await supabaseService.createChapterContent(
+              savedPath.id,
+              {
+                title: chapter.title,
+                content: initialContent,
+              },
+              chapterIndex
+            );
 
-          chapterIndex++;
+            createdChapters.push(savedChapter);
+            console.log(
+              `章节创建成功: ${chapter.title}, ID: ${savedChapter.id}`
+            );
+
+            chapterIndex++;
+          } catch (innerError: any) {
+            console.error(`创建章节 "${chapter.title}" 时出错:`, innerError);
+            console.error("错误详情:", innerError.message);
+          }
         }
       }
-      console.log(`成功创建了${chapterIndex - 1}个章节`);
+
+      console.log(`成功创建了${createdChapters.length}个章节`);
+
+      // 验证章节是否真的创建成功
+      try {
+        const verifyChapters = await supabaseService.getChapters(savedPath.id);
+        console.log(`验证: 数据库中存在${verifyChapters.length}个章节`);
+        if (verifyChapters.length === 0) {
+          console.error("警告: 章节似乎没有成功保存到数据库!");
+        }
+      } catch (verifyError: any) {
+        console.error("验证章节创建时出错:", verifyError);
+      }
     } catch (chapterError: any) {
-      console.error('创建章节内容时出错:', chapterError);
+      console.error("创建章节内容时出错:", chapterError);
       // 即使章节创建失败，我们仍然返回成功创建的学习路径
     }
 
     res.status(201).json({
-      message: 'Learning path generated successfully',
-      path: savedPath
+      message: "Learning path generated successfully",
+      path: savedPath,
     });
   } catch (error: any) {
-    console.error('Error in generate learning path route:', error);
+    console.error("Error in generate learning path route:", error);
 
     res.status(500).json({
-      message: 'Failed to generate learning path',
-      error: error.message
+      message: "Failed to generate learning path",
+      error: error.message,
     });
   }
 });
@@ -112,19 +155,19 @@ router.post('/generate', async (req, res) => {
  * @desc Get all learning paths for a user
  * @access Private
  */
-router.get('/user/:userId', async (req, res) => {
+router.get("/user/:userId", async (req, res) => {
   try {
     const userId = req.params.userId;
 
     const paths = await supabaseService.getUserLearningPaths(userId);
 
     res.status(200).json({
-      paths
+      paths,
     });
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to get learning paths',
-      error: error.message
+      message: "Failed to get learning paths",
+      error: error.message,
     });
   }
 });
@@ -134,23 +177,23 @@ router.get('/user/:userId', async (req, res) => {
  * @desc Get a learning path by ID
  * @access Private
  */
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const pathId = req.params.id;
 
     const path = await supabaseService.getLearningPath(pathId);
 
     if (!path) {
-      return res.status(404).json({ message: 'Learning path not found' });
+      return res.status(404).json({ message: "Learning path not found" });
     }
 
     res.status(200).json({
-      path
+      path,
     });
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to get learning path',
-      error: error.message
+      message: "Failed to get learning path",
+      error: error.message,
     });
   }
 });
@@ -160,19 +203,19 @@ router.get('/:id', async (req, res) => {
  * @desc Get all chapters for a learning path
  * @access Private
  */
-router.get('/:pathId/chapters', async (req, res) => {
+router.get("/:pathId/chapters", async (req, res) => {
   try {
     const pathId = req.params.pathId;
 
     const chapters = await supabaseService.getChapters(pathId);
 
     res.status(200).json({
-      chapters
+      chapters,
     });
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to get chapters',
-      error: error.message
+      message: "Failed to get chapters",
+      error: error.message,
     });
   }
 });
@@ -182,7 +225,7 @@ router.get('/:pathId/chapters', async (req, res) => {
  * @desc Generate chapters for an existing learning path
  * @access Private
  */
-router.post('/:pathId/generate-chapters', async (req, res) => {
+router.post("/:pathId/generate-chapters", async (req, res) => {
   try {
     const pathId = req.params.pathId;
 
@@ -190,7 +233,7 @@ router.post('/:pathId/generate-chapters', async (req, res) => {
     const path = await supabaseService.getLearningPath(pathId);
 
     if (!path) {
-      return res.status(404).json({ message: 'Learning path not found' });
+      return res.status(404).json({ message: "Learning path not found" });
     }
 
     // 检查是否已有章节
@@ -198,8 +241,8 @@ router.post('/:pathId/generate-chapters', async (req, res) => {
 
     if (existingChapters && existingChapters.length > 0) {
       return res.status(400).json({
-        message: 'This learning path already has chapters',
-        chapters: existingChapters
+        message: "This learning path already has chapters",
+        chapters: existingChapters,
       });
     }
 
@@ -212,20 +255,26 @@ router.post('/:pathId/generate-chapters', async (req, res) => {
 
       for (const stage of path.stages) {
         for (const chapter of stage.chapters) {
-          console.log(`创建章节: ${chapter.title}, order_index: ${chapterIndex}`);
+          console.log(
+            `创建章节: ${chapter.title}, order_index: ${chapterIndex}`
+          );
 
           // 创建初始章节内容
           const initialContent = {
-            summary: `这是"${chapter.title}"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(', ')}。`,
+            summary: `这是"${
+              chapter.title
+            }"章节的概述。本章将涵盖以下要点: ${chapter.keyPoints.join(
+              ", "
+            )}。`,
             concepts: chapter.keyPoints.map((point: string) => ({
               title: point,
               explanation: `关于"${point}"的详细解释将在这里展开。`,
               examples: [],
-              diagramType: 'concept'
+              diagramType: "concept",
             })),
             codeExamples: [],
             exercises: [],
-            faq: []
+            faq: [],
           };
 
           // 保存章节内容到数据库
@@ -233,7 +282,7 @@ router.post('/:pathId/generate-chapters', async (req, res) => {
             pathId,
             {
               title: chapter.title,
-              content: initialContent
+              content: initialContent,
             },
             chapterIndex
           );
@@ -243,25 +292,26 @@ router.post('/:pathId/generate-chapters', async (req, res) => {
         }
       }
 
-      console.log(`成功为学习路径 ${path.title} 创建了${chaptersCreated.length}个章节`);
+      console.log(
+        `成功为学习路径 ${path.title} 创建了${chaptersCreated.length}个章节`
+      );
 
       res.status(201).json({
         message: `Successfully created ${chaptersCreated.length} chapters for learning path`,
-        chapters: chaptersCreated
+        chapters: chaptersCreated,
       });
-
     } catch (chapterError: any) {
-      console.error('创建章节内容时出错:', chapterError);
+      console.error("创建章节内容时出错:", chapterError);
       res.status(500).json({
-        message: 'Failed to create chapter content',
-        error: chapterError.message
+        message: "Failed to create chapter content",
+        error: chapterError.message,
       });
     }
   } catch (error: any) {
-    console.error('Error in generate chapters route:', error);
+    console.error("Error in generate chapters route:", error);
     res.status(500).json({
-      message: 'Failed to generate chapters',
-      error: error.message
+      message: "Failed to generate chapters",
+      error: error.message,
     });
   }
 });

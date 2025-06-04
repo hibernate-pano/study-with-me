@@ -1,5 +1,5 @@
 // 使用与api.ts相同的API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
 /**
  * 日志服务 - 用于从后端获取日志并显示在浏览器控制台
@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 class LogService {
   private static instance: LogService;
   private pollingInterval: NodeJS.Timeout | null = null;
-  private lastLogTimestamp: string = '';
+  private lastLogTimestamp: string = "";
   private isPolling: boolean = false;
   private pollIntervalMs: number = 2000; // 默认2秒轮询一次
 
@@ -31,7 +31,7 @@ class LogService {
    */
   public startPolling(intervalMs: number = 2000): void {
     if (this.isPolling) {
-      console.log('[LogService] Already polling logs');
+      console.log("[LogService] Already polling logs");
       return;
     }
 
@@ -46,7 +46,9 @@ class LogService {
       this.fetchLogs();
     }, this.pollIntervalMs);
 
-    console.log(`[LogService] Started polling logs every ${this.pollIntervalMs}ms`);
+    console.log(
+      `[LogService] Started polling logs every ${this.pollIntervalMs}ms`
+    );
   }
 
   /**
@@ -58,7 +60,7 @@ class LogService {
       this.pollingInterval = null;
     }
     this.isPolling = false;
-    console.log('[LogService] Stopped polling logs');
+    console.log("[LogService] Stopped polling logs");
   }
 
   /**
@@ -70,7 +72,9 @@ class LogService {
       const response = await fetch(`${API_URL}/logs?limit=${limit}`);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch logs: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch logs: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -78,7 +82,9 @@ class LogService {
       if (data.logs && Array.isArray(data.logs) && data.logs.length > 0) {
         // 过滤出新日志
         const newLogs = this.lastLogTimestamp
-          ? data.logs.filter((log: any) => log.timestamp > this.lastLogTimestamp)
+          ? data.logs.filter(
+              (log: any) => log.timestamp > this.lastLogTimestamp
+            )
           : data.logs;
 
         // 更新最后一条日志的时间戳
@@ -90,7 +96,7 @@ class LogService {
         this.printLogs(newLogs);
       }
     } catch (error) {
-      console.error('[LogService] Error fetching logs:', error);
+      console.error("[LogService] Error fetching logs:", error);
     }
   }
 
@@ -102,27 +108,28 @@ class LogService {
     if (!logs || logs.length === 0) return;
 
     // 按时间戳排序（从旧到新）
-    const sortedLogs = [...logs].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    const sortedLogs = [...logs].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
     // 打印日志
-    sortedLogs.forEach(log => {
+    sortedLogs.forEach((log) => {
       const timestamp = new Date(log.timestamp).toLocaleTimeString();
       const prefix = `[${timestamp}] [${log.level.toUpperCase()}]`;
 
       switch (log.level) {
-        case 'error':
-          console.error(`${prefix} ${log.message}`, log.meta || '');
+        case "error":
+          console.error(`${prefix} ${log.message}`, log.meta || "");
           break;
-        case 'warn':
-          console.warn(`${prefix} ${log.message}`, log.meta || '');
+        case "warn":
+          console.warn(`${prefix} ${log.message}`, log.meta || "");
           break;
-        case 'info':
-          console.info(`${prefix} ${log.message}`, log.meta || '');
+        case "info":
+          console.info(`${prefix} ${log.message}`, log.meta || "");
           break;
         default:
-          console.log(`${prefix} ${log.message}`, log.meta || '');
+          console.log(`${prefix} ${log.message}`, log.meta || "");
           break;
       }
     });
@@ -134,16 +141,18 @@ class LogService {
   public async clearLogs(): Promise<void> {
     try {
       const response = await fetch(`${API_URL}/logs`, {
-        method: 'DELETE'
+        method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to clear logs: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to clear logs: ${response.status} ${response.statusText}`
+        );
       }
 
-      console.log('[LogService] Logs cleared successfully');
+      console.log("[LogService] Logs cleared successfully");
     } catch (error) {
-      console.error('[LogService] Error clearing logs:', error);
+      console.error("[LogService] Error clearing logs:", error);
     }
   }
 }

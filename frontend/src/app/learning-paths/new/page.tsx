@@ -119,6 +119,17 @@ export default function NewLearningPath() {
 
   const steps = ["输入学习目标", "生成学习路径", "开始学习"];
 
+  // 检查是否有从首页直接生成的学习路径ID
+  useEffect(() => {
+    const newPathId = sessionStorage.getItem("newPathId");
+    if (newPathId) {
+      // 清除会话存储中的学习路径ID
+      sessionStorage.removeItem("newPathId");
+      // 直接跳转到学习路径详情页
+      router.push(`/learning-paths/${newPathId}`);
+    }
+  }, [router]);
+
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
   };
