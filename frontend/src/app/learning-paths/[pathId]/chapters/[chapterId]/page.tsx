@@ -50,6 +50,7 @@ import {
   learningPathsApi,
   achievementsApi,
   diagramsApi,
+  feedbackApi,
 } from "@/lib/api";
 import FeedbackDialog from "@/components/FeedbackDialog";
 import AITutor from "@/components/AITutor";
@@ -83,17 +84,33 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+// 定义组件接口
+interface Chapter {
+  id: string;
+  title: string;
+  completed?: boolean;
+}
+
+interface Exercise {
+  id: number;
+  question: string;
+  type: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+}
+
 export default function ChapterPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [chapterContent, setChapterContent] = useState<any>(null);
-  const [exercises, setExercises] = useState<any[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [userAnswers, setUserAnswers] = useState<{ [key: number]: string }>({});
   const [answerResults, setAnswerResults] = useState<{
     [key: number]: boolean;
   }>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [chapters, setChapters] = useState<any[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -185,7 +202,6 @@ export default function ChapterPage() {
       }
     } catch (error) {
       console.error("获取章节内容失败:", error);
-      // 在实际应用中，这里应该显示错误消息而不是使用模拟数据
       setChapterContent(null);
     } finally {
       setIsLoading(false);
@@ -241,7 +257,16 @@ export default function ChapterPage() {
     try {
       // 获取学习路径的所有章节
       const chaptersResponse = await learningPathsApi.getChapters(pathId);
-      setChapters(chaptersResponse.chapters || []);
+      const chaptersData = chaptersResponse.chapters || [];
+      setChapters(chaptersData);
+
+      // 设置当前章节索引
+      const currentIndex = chaptersData.findIndex(
+        (chapter: Chapter) => chapter.id === chapterId
+      );
+      if (currentIndex !== -1) {
+        setCurrentChapterIndex(currentIndex);
+      }
 
       // 获取用户学习进度
       if (user) {
@@ -253,18 +278,13 @@ export default function ChapterPage() {
       }
     } catch (error) {
       console.error("获取章节列表失败:", error);
-      // 如果API调用失败，使用模拟数据
-      setChapters([
-        { id: 1, title: "React简介", completed: true },
-        { id: 2, title: "JSX语法", completed: false },
-        { id: 3, title: "组件基础", completed: false },
-        { id: 4, title: "组件生命周期", completed: false },
-        { id: 5, title: "状态管理", completed: false },
-        { id: 6, title: "Context API", completed: false },
-        { id: 7, title: "React Router", completed: false },
-        { id: 8, title: "API集成", completed: false },
-        { id: 9, title: "项目实战", completed: false },
-      ]);
+      // 如果API调用失败，显示错误消息
+      setSnackbar({
+        open: true,
+        message: "获取章节列表失败，请稍后再试",
+        severity: "error",
+      });
+      setChapters([]);
     }
   };
 
@@ -287,6 +307,45 @@ export default function ChapterPage() {
       }
     } catch (error) {
       console.error("检查成就失败:", error);
+    }
+  };
+
+  // 处理反馈提交
+  const handleFeedbackSubmit = async (data: any) => {
+    // 实现反馈提交逻辑
+    try {
+      if (!user) {
+        throw new Error("用户未登录");
+      }
+
+      // 使用feedbackApi提交反馈
+      await feedbackApi.submit({
+        userId: user.id,
+        contentId: data.contentId,
+        contentType: data.contentType,
+        feedbackType: data.feedbackType,
+        feedbackText: data.feedbackText,
+        pathId: pathId,
+        chapterId: chapterId,
+      });
+
+      // 显示成功消息
+      setSnackbar({
+        open: true,
+        message: "感谢您的反馈！我们会认真考虑您的建议",
+        severity: "success",
+      });
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error("提交反馈失败:", error);
+      // 显示错误消息
+      setSnackbar({
+        open: true,
+        message: "提交反馈失败，请稍后再试",
+        severity: "error",
+      });
+      return Promise.reject(error);
     }
   };
 
@@ -320,11 +379,13 @@ export default function ChapterPage() {
   return (
     <ProtectedRoute>
       <Navbar />
-      <LearningTimeTracker
-        userId={user?.id}
-        pathId={pathId}
-        chapterId={chapterId}
-      />
+      {user && (
+        <LearningTimeTracker
+          pathId={pathId}
+          chapterId={chapterId}
+          showTimer={true}
+        />
+      )}
 
       {/* 移动端抽屉菜单按钮 */}
       {isMobile && (
@@ -547,7 +608,6 @@ export default function ChapterPage() {
                                   onClick={() =>
                                     handleAnswerSelect(exercise.id, option)
                                   }
-                                  selected={userAnswers[exercise.id] === option}
                                   disabled={
                                     answerResults[exercise.id] !== undefined
                                   }
@@ -585,16 +645,12 @@ export default function ChapterPage() {
 
               {/* AI辅导标签页 */}
               <TabPanel value={tabValue} index={2}>
-                <AITutor
-                  userId={user?.id}
-                  pathId={pathId}
-                  chapterId={chapterId}
-                />
+                {user && <AITutor pathId={pathId} chapterId={chapterId} />}
               </TabPanel>
 
               {/* 图表标签页 */}
               <TabPanel value={tabValue} index={3}>
-                <ChapterDiagrams pathId={pathId} chapterId={chapterId} />
+                <ChapterDiagrams chapterId={chapterId} />
               </TabPanel>
             </Paper>
 
@@ -632,8 +688,7 @@ export default function ChapterPage() {
         onClose={() => setFeedbackDialogOpen(false)}
         contentType="chapter"
         contentId={chapterId}
-        pathId={pathId}
-        chapterId={chapterId}
+        onSubmit={handleFeedbackSubmit}
       />
 
       {/* 成就提醒 */}

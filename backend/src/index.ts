@@ -18,6 +18,7 @@ import leaderboardRouter from "./routes/leaderboard";
 import diagramsRouter from "./routes/diagrams";
 import logsRouter from "./routes/logs";
 import adaptiveRouter from "./routes/adaptiveRoutes";
+import feedbackRouter from "./routes/feedback";
 
 // Load environment variables
 dotenv.config();
@@ -66,6 +67,7 @@ app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/diagrams", diagramsRouter);
 app.use("/api/logs", logsRouter);
 app.use("/api/adaptive", adaptiveRouter);
+app.use("/api/feedback", feedbackRouter);
 
 // Error handling middleware
 app.use(

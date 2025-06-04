@@ -866,3 +866,29 @@ export const diagramsApi = {
   generateBar: (data: any) => api.post("/diagrams/bar", data),
   generateAuto: (data: any) => api.post("/diagrams/auto", data),
 };
+
+// Feedback API
+export const feedbackApi = {
+  /**
+   * 提交内容反馈
+   * @param data 反馈数据
+   * @returns 提交结果
+   */
+  submit: (data: any) => api.post("/feedback/submit", data),
+
+  /**
+   * 获取特定内容的反馈统计
+   * @param contentId 内容ID
+   * @param contentType 内容类型
+   * @returns 反馈统计数据
+   */
+  getStats: (contentId: string, contentType: string) =>
+    api.get(`/feedback/stats/${contentType}/${contentId}`),
+
+  /**
+   * 获取用户提交的反馈历史
+   * @param userId 用户ID
+   * @returns 用户反馈历史
+   */
+  getUserFeedback: (userId: string) => api.get(`/feedback/user/${userId}`),
+};
