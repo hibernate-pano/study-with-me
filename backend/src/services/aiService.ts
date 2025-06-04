@@ -1,7 +1,7 @@
-import axios from 'axios';
-import config from '../config';
-import mermaidService from './mermaidService';
-import LLMLogger from '../utils/LLMLogger';
+import axios from "axios";
+import config from "../config";
+import mermaidService from "./mermaidService";
+import LLMLogger from "../utils/LLMLogger";
 
 /**
  * Service for interacting with the AI model (deepseek-ai/DeepSeek-V3)
@@ -28,33 +28,55 @@ class AIService {
     const requestId = LLMLogger.startRequest({
       apiUrl: this.apiUrl,
       model: this.modelName,
-      options
+      options,
     });
 
     console.log(`[${requestId}] ===== AI API REQUEST START =====`);
     try {
       console.log(`[${requestId}] API URL:`, this.apiUrl);
       console.log(`[${requestId}] Model:`, this.modelName);
-      console.log(`[${requestId}] API Key (first 5 chars):`, this.apiKey ? this.apiKey.substring(0, 5) + '...' : 'undefined');
-      console.log(`[${requestId}] Request Timestamp:`, new Date().toISOString());
+      console.log(
+        `[${requestId}] API Key (first 5 chars):`,
+        this.apiKey ? this.apiKey.substring(0, 5) + "..." : "undefined"
+      );
+      console.log(
+        `[${requestId}] Request Timestamp:`,
+        new Date().toISOString()
+      );
 
       const requestBody = {
         model: this.modelName,
         messages: [
-          { role: 'system', content: 'You are a helpful AI assistant for an educational platform.' },
-          { role: 'user', content: prompt }
+          {
+            role: "system",
+            content:
+              "You are a helpful AI assistant for an educational platform.",
+          },
+          { role: "user", content: prompt },
         ],
-        ...options
+        ...options,
       };
 
       // 记录完整的请求内容，但对于长提示词只记录前500个字符
-      console.log(`[${requestId}] Request Body (partial):`, JSON.stringify({
-        ...requestBody,
-        messages: requestBody.messages.map((msg: { role: string, content: string }) => ({
-          ...msg,
-          content: msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content
-        }))
-      }, null, 2));
+      console.log(
+        `[${requestId}] Request Body (partial):`,
+        JSON.stringify(
+          {
+            ...requestBody,
+            messages: requestBody.messages.map(
+              (msg: { role: string; content: string }) => ({
+                ...msg,
+                content:
+                  msg.content.length > 500
+                    ? msg.content.substring(0, 500) + "..."
+                    : msg.content,
+              })
+            ),
+          },
+          null,
+          2
+        )
+      );
 
       console.log(`[${requestId}] Full Prompt Length:`, prompt.length);
       console.log(`[${requestId}] Making API call to:`, this.apiUrl);
@@ -63,7 +85,7 @@ class AIService {
       LLMLogger.logPrompt(requestId, prompt, {
         model: this.modelName,
         temperature: options.temperature,
-        maxTokens: options.max_tokens
+        maxTokens: options.max_tokens,
       });
 
       // 记录请求开始时间
@@ -71,17 +93,13 @@ class AIService {
 
       // This is a placeholder implementation
       // You'll need to adjust this based on the actual API of 硅基流动
-      const response = await axios.post(
-        this.apiUrl,
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
-          },
-          timeout: 60000 // 60秒超时
-        }
-      );
+      const response = await axios.post(this.apiUrl, requestBody, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        timeout: 60000, // 60秒超时
+      });
 
       // 记录请求耗时
       const endTime = Date.now();
@@ -90,42 +108,69 @@ class AIService {
       console.log(`[${requestId}] ===== AI API RESPONSE START =====`);
       console.log(`[${requestId}] Response Time: ${duration}ms`);
       console.log(`[${requestId}] Response Status:`, response.status);
-      console.log(`[${requestId}] Response Headers:`, JSON.stringify(response.headers, null, 2));
+      console.log(
+        `[${requestId}] Response Headers:`,
+        JSON.stringify(response.headers, null, 2)
+      );
 
       // 记录完整的响应数据结构，但对于长内容只记录部分
       const responseDataStr = JSON.stringify(response.data);
-      console.log(`[${requestId}] Response Data Structure:`, Object.keys(response.data));
-      console.log(`[${requestId}] Response Data Length:`, responseDataStr.length);
-      console.log(`[${requestId}] Response Data Sample:`, responseDataStr.substring(0, 500) + (responseDataStr.length > 500 ? '...' : ''));
+      console.log(
+        `[${requestId}] Response Data Structure:`,
+        Object.keys(response.data)
+      );
+      console.log(
+        `[${requestId}] Response Data Length:`,
+        responseDataStr.length
+      );
+      console.log(
+        `[${requestId}] Response Data Sample:`,
+        responseDataStr.substring(0, 500) +
+          (responseDataStr.length > 500 ? "..." : "")
+      );
 
       // 使用LLMLogger记录原始响应
       LLMLogger.logResponse(requestId, response.data);
 
       // 检查响应结构
-      if (!response.data.choices || !response.data.choices[0] || !response.data.choices[0].message) {
-        console.error(`[${requestId}] Unexpected response structure:`, JSON.stringify(response.data, null, 2));
-        LLMLogger.logError(requestId, new Error('Unexpected response structure from AI API'), response.data);
-        throw new Error('Unexpected response structure from AI API');
+      if (
+        !response.data.choices ||
+        !response.data.choices[0] ||
+        !response.data.choices[0].message
+      ) {
+        console.error(
+          `[${requestId}] Unexpected response structure:`,
+          JSON.stringify(response.data, null, 2)
+        );
+        LLMLogger.logError(
+          requestId,
+          new Error("Unexpected response structure from AI API"),
+          response.data
+        );
+        throw new Error("Unexpected response structure from AI API");
       }
 
       const content = response.data.choices[0].message.content;
       console.log(`[${requestId}] Extracted Content Length:`, content.length);
-      console.log(`[${requestId}] Extracted Content Sample:`, content.substring(0, 500) + (content.length > 500 ? '...' : ''));
+      console.log(
+        `[${requestId}] Extracted Content Sample:`,
+        content.substring(0, 500) + (content.length > 500 ? "..." : "")
+      );
       console.log(`[${requestId}] ===== AI API RESPONSE END =====`);
 
       // 使用LLMLogger记录处理后的内容
       LLMLogger.logProcessedContent(requestId, content, {
-        processingMethod: 'direct extraction',
-        sourceField: 'choices[0].message.content',
-        tokenCount: response.data.usage?.total_tokens || 'unknown'
+        processingMethod: "direct extraction",
+        sourceField: "choices[0].message.content",
+        tokenCount: response.data.usage?.total_tokens || "unknown",
       });
 
       // 结束LLMLogger请求记录
       LLMLogger.endRequest(requestId, {
-        status: 'success',
+        status: "success",
         duration: duration,
         tokenUsage: response.data.usage,
-        contentLength: content.length
+        contentLength: content.length,
       });
 
       // Extract the response content based on the API's response format
@@ -138,29 +183,43 @@ class AIService {
 
       // 记录详细错误信息
       const errorContext: any = {
-        errorType: 'api_call_error',
+        errorType: "api_call_error",
         errorName: error.name,
-        errorMessage: error.message
+        errorMessage: error.message,
       };
 
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         console.error(`[${requestId}] Error Status:`, error.response.status);
-        console.error(`[${requestId}] Error Headers:`, JSON.stringify(error.response.headers, null, 2));
-        console.error(`[${requestId}] Error Data:`, JSON.stringify(error.response.data, null, 2));
+        console.error(
+          `[${requestId}] Error Headers:`,
+          JSON.stringify(error.response.headers, null, 2)
+        );
+        console.error(
+          `[${requestId}] Error Data:`,
+          JSON.stringify(error.response.data, null, 2)
+        );
 
         errorContext.responseStatus = error.response.status;
         errorContext.responseData = error.response.data;
       } else if (error.request) {
         // The request was made but no response was received
-        console.error(`[${requestId}] Error Request:`, JSON.stringify(error.request, null, 2));
+        console.error(
+          `[${requestId}] Error Request:`,
+          JSON.stringify(error.request, null, 2)
+        );
         errorContext.requestInfo = error.request;
-        errorContext.errorType = 'network_error';
+        errorContext.errorType = "network_error";
       } else {
         // Something happened in setting up the request that triggered an Error
-        console.error(`[${requestId}] Error Config:`, error.config ? JSON.stringify(error.config, null, 2) : 'No config available');
-        errorContext.errorType = 'request_setup_error';
+        console.error(
+          `[${requestId}] Error Config:`,
+          error.config
+            ? JSON.stringify(error.config, null, 2)
+            : "No config available"
+        );
+        errorContext.errorType = "request_setup_error";
       }
 
       console.error(`[${requestId}] ===== AI API ERROR END =====`);
@@ -170,12 +229,14 @@ class AIService {
 
       // 结束LLMLogger请求记录
       LLMLogger.endRequest(requestId, {
-        status: 'error',
+        status: "error",
         errorType: errorContext.errorType,
-        errorMessage: error.message
+        errorMessage: error.message,
       });
 
-      throw new Error(`Failed to generate content from AI model: ${error.message}`);
+      throw new Error(
+        `Failed to generate content from AI model: ${error.message}`
+      );
     }
   }
 
@@ -185,7 +246,10 @@ class AIService {
    * @param userLevel The user's current knowledge level
    * @returns The generated learning path
    */
-  async generateLearningPath(goal: string, userLevel: string = 'beginner'): Promise<any> {
+  async generateLearningPath(
+    goal: string,
+    userLevel: string = "beginner"
+  ): Promise<any> {
     const prompt = `
     作为一名教育专家，请为用户创建一个关于"${goal}"的学习路径。
     用户当前水平：${userLevel}
@@ -229,7 +293,7 @@ class AIService {
     try {
       // 尝试提取JSON内容（处理各种可能的格式）
       let jsonContent = content;
-      console.log('Raw AI response:', content);
+      console.log("Raw AI response:", content);
 
       // 1. 检查是否包含Markdown代码块 - 使用更宽松的正则表达式
       // 这个正则表达式可以匹配多种格式的代码块，包括有无语言标识符
@@ -237,30 +301,44 @@ class AIService {
       const match = content.match(jsonBlockRegex);
 
       if (match && match[1]) {
-        console.log('Found JSON in Markdown code block, extracting...');
+        console.log("Found JSON in Markdown code block, extracting...");
         jsonContent = match[1].trim();
 
         // 如果提取的内容不是以 { 开头，尝试在内容中查找 JSON
-        if (!jsonContent.trim().startsWith('{')) {
-          const innerJsonStart = jsonContent.indexOf('{');
-          const innerJsonEnd = jsonContent.lastIndexOf('}');
-          if (innerJsonStart !== -1 && innerJsonEnd !== -1 && innerJsonEnd > innerJsonStart) {
-            jsonContent = jsonContent.substring(innerJsonStart, innerJsonEnd + 1);
+        if (!jsonContent.trim().startsWith("{")) {
+          const innerJsonStart = jsonContent.indexOf("{");
+          const innerJsonEnd = jsonContent.lastIndexOf("}");
+          if (
+            innerJsonStart !== -1 &&
+            innerJsonEnd !== -1 &&
+            innerJsonEnd > innerJsonStart
+          ) {
+            jsonContent = jsonContent.substring(
+              innerJsonStart,
+              innerJsonEnd + 1
+            );
           }
         }
       } else {
         // 2. 尝试查找JSON的开始和结束位置
-        const jsonStartIndex = content.indexOf('{');
-        const jsonEndIndex = content.lastIndexOf('}');
+        const jsonStartIndex = content.indexOf("{");
+        const jsonEndIndex = content.lastIndexOf("}");
 
-        if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-          console.log('Found JSON by brackets, extracting...');
+        if (
+          jsonStartIndex !== -1 &&
+          jsonEndIndex !== -1 &&
+          jsonEndIndex > jsonStartIndex
+        ) {
+          console.log("Found JSON by brackets, extracting...");
           jsonContent = content.substring(jsonStartIndex, jsonEndIndex + 1);
         }
       }
 
       // 打印提取的JSON内容
-      console.log('Extracted JSON content:', jsonContent.substring(0, 100) + '...');
+      console.log(
+        "Extracted JSON content:",
+        jsonContent.substring(0, 100) + "..."
+      );
 
       // 3. 清理可能的非JSON字符
       jsonContent = jsonContent.trim();
@@ -270,45 +348,56 @@ class AIService {
       jsonContent = jsonContent.replace(/'/g, '"');
 
       // 移除可能的尾随逗号
-      jsonContent = jsonContent.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+      jsonContent = jsonContent.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
 
-      console.log('Cleaned JSON content:', jsonContent.substring(0, 100) + '...');
+      console.log(
+        "Cleaned JSON content:",
+        jsonContent.substring(0, 100) + "..."
+      );
 
       // 5. 尝试解析JSON
       try {
         const parsedJson = JSON.parse(jsonContent);
-        console.log('Successfully parsed JSON');
+        console.log("Successfully parsed JSON");
 
         // 6. 验证JSON结构
-        if (!parsedJson.title || !parsedJson.description || !Array.isArray(parsedJson.stages)) {
-          console.warn('JSON missing required fields');
+        if (
+          !parsedJson.title ||
+          !parsedJson.description ||
+          !Array.isArray(parsedJson.stages)
+        ) {
+          console.warn("JSON missing required fields");
           // 创建一个基本的结构以避免错误
           if (!parsedJson.title) parsedJson.title = goal;
-          if (!parsedJson.description) parsedJson.description = `关于${goal}的学习路径`;
+          if (!parsedJson.description)
+            parsedJson.description = `关于${goal}的学习路径`;
           if (!Array.isArray(parsedJson.stages)) parsedJson.stages = [];
         }
 
         return parsedJson;
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
+        console.error("JSON parse error:", parseError);
 
         // 7. 如果解析失败，尝试使用更宽松的方法
         try {
           // 使用Function构造函数尝试解析（注意：这在生产环境中可能有安全风险）
-          const relaxedParse = new Function('return ' + jsonContent);
+          const relaxedParse = new Function("return " + jsonContent);
           const result = relaxedParse();
-          console.log('Parsed JSON using relaxed method');
+          console.log("Parsed JSON using relaxed method");
           return result;
         } catch (relaxedError: any) {
-          throw new Error('Failed to parse JSON with relaxed method: ' + (relaxedError.message || 'Unknown error'));
+          throw new Error(
+            "Failed to parse JSON with relaxed method: " +
+              (relaxedError.message || "Unknown error")
+          );
         }
       }
     } catch (error) {
-      console.error('Error processing AI response:', error);
-      console.error('Raw content:', content);
+      console.error("Error processing AI response:", error);
+      console.error("Raw content:", content);
 
       // 8. 如果所有方法都失败，创建一个基本的学习路径
-      console.log('Creating fallback learning path');
+      console.log("Creating fallback learning path");
       return {
         title: `${goal} 学习路径`,
         description: `这是一个关于 ${goal} 的基础学习路径。由于AI生成内容解析错误，这是一个简化版本。`,
@@ -319,11 +408,11 @@ class AIService {
             chapters: [
               {
                 title: `${goal} 入门`,
-                keyPoints: ["基础知识", "核心概念", "实践应用"]
-              }
-            ]
-          }
-        ]
+                keyPoints: ["基础知识", "核心概念", "实践应用"],
+              },
+            ],
+          },
+        ],
       };
     }
   }
@@ -345,7 +434,7 @@ class AIService {
     const prompt = `
     请为章节"${chapterTitle}"创建详细的教学内容。
     需要涵盖以下知识点：
-    ${keyPoints.map(point => `- ${point}`).join('\\n')}
+    ${keyPoints.map((point) => `- ${point}`).join("\\n")}
 
     请按照以下结构组织内容：
     1. 章节概述（200-300字）
@@ -408,18 +497,17 @@ class AIService {
 
       // 模拟流式生成过程
       // 注意：这里只是模拟，实际实现需要根据您使用的AI API的流式能力来调整
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       onChunk(`已确定章节结构，开始生成章节概述...`);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       onChunk(`正在生成核心概念解释，处理知识点: ${keyPoints[0]}...`);
-
-      // 继续生成内容...
     }
 
-    const content = await this.generateContent(prompt);
-
+    let content = "";
     try {
+      content = await this.generateContent(prompt);
+
       // 如果提供了onChunk回调，发送进度更新
       if (onChunk) {
         onChunk(`内容生成完成，正在处理JSON格式...`);
@@ -429,63 +517,185 @@ class AIService {
       let jsonContent = content;
 
       // 检查是否包含Markdown代码块 - 使用更宽松的正则表达式
-      const jsonBlockRegex = /```(?:json)?([\\s\\S]*?)```/;
+      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
       const match = content.match(jsonBlockRegex);
 
       if (match && match[1]) {
-        console.log('Found JSON in Markdown code block, extracting...');
+        console.log("Found JSON in Markdown code block, extracting...");
         jsonContent = match[1].trim();
 
         // 如果提取的内容不是以 { 开头，尝试在内容中查找 JSON
-        if (!jsonContent.trim().startsWith('{')) {
-          const innerJsonStart = jsonContent.indexOf('{');
-          const innerJsonEnd = jsonContent.lastIndexOf('}');
-          if (innerJsonStart !== -1 && innerJsonEnd !== -1 && innerJsonEnd > innerJsonStart) {
-            jsonContent = jsonContent.substring(innerJsonStart, innerJsonEnd + 1);
+        if (!jsonContent.trim().startsWith("{")) {
+          const innerJsonStart = jsonContent.indexOf("{");
+          const innerJsonEnd = jsonContent.lastIndexOf("}");
+          if (
+            innerJsonStart !== -1 &&
+            innerJsonEnd !== -1 &&
+            innerJsonEnd > innerJsonStart
+          ) {
+            jsonContent = jsonContent.substring(
+              innerJsonStart,
+              innerJsonEnd + 1
+            );
           }
+        }
+      } else {
+        // 如果没有找到代码块，尝试直接在内容中查找JSON对象
+        const jsonStart = content.indexOf("{");
+        const jsonEnd = content.lastIndexOf("}");
+
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          console.log("Extracting JSON directly from content...");
+          jsonContent = content.substring(jsonStart, jsonEnd + 1);
         }
       }
 
-      console.log('Attempting to parse JSON:', jsonContent.substring(0, 100) + '...');
+      console.log(
+        "Attempting to parse JSON:",
+        jsonContent.substring(0, 100) + "..."
+      );
 
-      // Parse the JSON response
-      const chapterContent = JSON.parse(jsonContent);
+      try {
+        // 尝试解析JSON
+        const chapterContent = JSON.parse(jsonContent);
 
-      // 如果提供了onChunk回调，发送进度更新
-      if (onChunk) {
-        onChunk(`JSON解析成功，正在生成可视化内容...`);
+        // 验证JSON结构
+        if (
+          !chapterContent.summary ||
+          !Array.isArray(chapterContent.concepts)
+        ) {
+          console.error("Invalid chapter content structure:", chapterContent);
+          throw new Error("章节内容结构无效");
+        }
+
+        // 确保每个概念都有必要的字段
+        if (chapterContent.concepts) {
+          chapterContent.concepts = chapterContent.concepts.map(
+            (concept: any) => {
+              if (!concept.diagramType) {
+                concept.diagramType = "concept"; // 默认图表类型
+              }
+              if (!Array.isArray(concept.examples)) {
+                concept.examples = [];
+              }
+              return concept;
+            }
+          );
+        }
+
+        // 确保其他字段存在
+        if (!Array.isArray(chapterContent.codeExamples)) {
+          chapterContent.codeExamples = [];
+        }
+
+        if (!Array.isArray(chapterContent.exercises)) {
+          chapterContent.exercises = [];
+        }
+
+        if (!Array.isArray(chapterContent.faq)) {
+          chapterContent.faq = [];
+        }
+
+        // 如果提供了onChunk回调，发送进度更新
+        if (onChunk) {
+          onChunk(`JSON解析成功，正在生成可视化内容...`);
+        }
+
+        // 如果需要包含可视化内容，为每个概念生成可视化
+        if (includeVisuals) {
+          await this.enrichWithVisualizations(chapterContent);
+        }
+
+        // 如果提供了onChunk回调，发送完成消息
+        if (onChunk) {
+          onChunk(`章节内容生成完成！`);
+        }
+
+        return chapterContent;
+      } catch (parseError) {
+        console.error("Error parsing AI response as JSON:", parseError);
+
+        // 尝试修复常见的JSON格式问题
+        let fixedJson = jsonContent;
+        // 替换不正确的引号
+        fixedJson = fixedJson.replace(/[']/g, '"');
+        // 替换多余的逗号（如数组或对象末尾的逗号）
+        fixedJson = fixedJson.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+
+        try {
+          const chapterContent = JSON.parse(fixedJson);
+          console.log("Successfully parsed JSON after fixing format issues");
+
+          // 如果提供了onChunk回调，发送进度更新
+          if (onChunk) {
+            onChunk(`JSON格式修复成功，正在生成可视化内容...`);
+          }
+
+          // 如果需要包含可视化内容，为每个概念生成可视化
+          if (includeVisuals) {
+            await this.enrichWithVisualizations(chapterContent);
+          }
+
+          return chapterContent;
+        } catch (fixError) {
+          console.error("Failed to fix and parse JSON:", fixError);
+          console.error("Raw content:", content);
+
+          // 如果提供了onChunk回调，发送错误消息
+          if (onChunk) {
+            onChunk(
+              `生成内容时出错: ${
+                parseError instanceof Error ? parseError.message : "未知错误"
+              }`
+            );
+          }
+
+          // 创建一个基本的章节内容作为后备方案
+          const fallbackContent = {
+            summary: `本章节"${chapterTitle}"将介绍以下知识点：${keyPoints.join(
+              "、"
+            )}`,
+            concepts: keyPoints.map((point) => ({
+              title: point,
+              explanation: `关于"${point}"的详细解释将在这里展开。`,
+              examples: [],
+              diagramType: "concept",
+            })),
+            codeExamples: [],
+            exercises: [],
+            faq: [],
+          };
+
+          return fallbackContent;
+        }
       }
-
-      // 如果需要包含可视化内容，为每个概念生成可视化
-      if (includeVisuals) {
-        await this.enrichWithVisualizations(chapterContent);
-      }
-
-      // 如果提供了onChunk回调，发送完成消息
-      if (onChunk) {
-        onChunk(`章节内容生成完成！`);
-      }
-
-      return chapterContent;
     } catch (error) {
-      console.error('Error parsing AI response as JSON:', error);
-      console.error('Raw content:', content);
+      console.error("Error generating chapter content:", error);
+      console.error("Raw content:", content);
 
       // 如果提供了onChunk回调，发送错误消息
       if (onChunk) {
-        onChunk(`生成内容时出错: ${error instanceof Error ? error.message : '未知错误'}`);
+        onChunk(
+          `生成内容时出错: ${
+            error instanceof Error ? error.message : "未知错误"
+          }`
+        );
       }
 
       // 返回一个更结构化的错误响应
       return {
-        summary: `无法生成章节概述（错误：${error instanceof Error ? error.message : '未知错误'}）`,
+        summary: `无法生成章节概述（错误：${
+          error instanceof Error ? error.message : "未知错误"
+        }）`,
         concepts: keyPoints.map((point, index) => ({
           title: `概念 ${index + 1}: ${point}`,
-          explanation: `无法生成关于“${point}”的概念解释`
+          explanation: `无法生成关于"${point}"的概念解释`,
+          examples: [],
+          diagramType: "concept",
         })),
         codeExamples: [],
         exercises: [],
-        faq: []
+        faq: [],
       };
     }
   }
@@ -515,13 +725,16 @@ class AIService {
             // 添加到图表列表
             chapterContent.diagrams.push({
               ...diagram,
-              conceptTitle: concept.title
+              conceptTitle: concept.title,
             });
 
             // 在概念中添加图表引用
             concept.diagramRef = diagram.type;
           } catch (error) {
-            console.error(`Error generating diagram for concept "${concept.title}":`, error);
+            console.error(
+              `Error generating diagram for concept "${concept.title}":`,
+              error
+            );
             // 继续处理其他概念，不中断流程
           }
         }
@@ -531,218 +744,454 @@ class AIService {
     // 为章节概述生成一个总体思维导图
     try {
       const summaryDiagram = await mermaidService.generateDiagramForContent(
-        '章节概述',
+        "章节概述",
         chapterContent,
-        'concept'
+        "concept"
       );
 
       chapterContent.diagrams.unshift({
         ...summaryDiagram,
-        conceptTitle: '章节概述'
+        conceptTitle: "章节概述",
       });
     } catch (error) {
-      console.error('Error generating summary diagram:', error);
+      console.error("Error generating summary diagram:", error);
     }
   }
 
   /**
-   * Answer a question based on the learning context
-   * @param question The user's question
-   * @param context The learning context
-   * @returns The AI's answer
+   * 回答问题，支持上下文
+   * @param question 问题
+   * @param context 上下文信息
+   * @returns 回答
    */
   async answerQuestion(question: string, context: any): Promise<string> {
-    // 使用LLMLogger开始记录请求
-    const requestId = LLMLogger.startRequest({
-      type: 'tutor_question',
-      question,
-      contextType: context.chapterTitle ? 'chapter' : 'general'
+    // 构建提示词
+    const prompt = this.buildTutorPrompt(question, context);
+
+    // 调用AI生成内容
+    const answer = await this.generateContent(prompt, {
+      temperature: 0.7,
+      max_tokens: 1500,
     });
 
-    console.log(`[${requestId}] ===== AI TUTOR QUESTION START =====`);
-    console.log(`[${requestId}] Question:`, question);
-    console.log(`[${requestId}] Context:`, JSON.stringify(context, null, 2));
+    return answer;
+  }
 
+  /**
+   * 流式回答问题，支持上下文
+   * @param question 问题
+   * @param context 上下文信息
+   * @param onChunk 处理流式响应块的回调函数
+   * @returns Promise<void>
+   */
+  async answerQuestionStream(
+    question: string,
+    context: any,
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    // 构建提示词
+    const prompt = this.buildTutorPrompt(question, context);
+
+    // 调用AI生成流式内容
+    await this.generateContentStream(prompt, onChunk, {
+      temperature: 0.7,
+      max_tokens: 1500,
+    });
+  }
+
+  /**
+   * 构建辅导提示词
+   * @param question 问题
+   * @param context 上下文信息
+   * @returns 完整的提示词
+   */
+  private buildTutorPrompt(question: string, context: any): string {
+    // 提取上下文信息
+    const { chapterTitle, chapterContent, learningPath, previousMessages } =
+      context;
+
+    // 构建提示词
+    let prompt = `你是一位AI学习辅导助手，正在帮助学生学习"${
+      learningPath?.title || "未知学习路径"
+    }"中的"${chapterTitle || "未知章节"}"内容。
+请根据以下章节内容和学生的问题，提供专业、准确、有帮助的回答。
+
+章节内容概要：
+${chapterContent?.summary || "无章节概要"}
+
+`;
+
+    // 添加核心概念
+    if (chapterContent?.concepts && chapterContent.concepts.length > 0) {
+      prompt += "核心概念：\n";
+      chapterContent.concepts.forEach((concept: any, index: number) => {
+        prompt += `${index + 1}. ${
+          concept.title
+        }: ${concept.explanation.substring(0, 200)}${
+          concept.explanation.length > 200 ? "..." : ""
+        }\n`;
+      });
+      prompt += "\n";
+    }
+
+    // 添加代码示例
+    if (
+      chapterContent?.codeExamples &&
+      chapterContent.codeExamples.length > 0
+    ) {
+      prompt += "代码示例参考：\n";
+      chapterContent.codeExamples.forEach((example: any, index: number) => {
+        prompt += `示例${index + 1}: ${example.title}\n`;
+      });
+      prompt += "\n";
+    }
+
+    // 添加之前的对话历史
+    if (previousMessages && previousMessages.length > 0) {
+      prompt += "之前的对话：\n";
+      previousMessages.slice(-5).forEach((msg: any) => {
+        prompt += `${msg.role === "user" ? "学生" : "助手"}: ${msg.content}\n`;
+      });
+      prompt += "\n";
+    }
+
+    // 添加学生的问题
+    prompt += `学生的问题：${question}\n\n`;
+
+    // 添加回答指导
+    prompt += `请提供详细、准确的回答，必要时可以包含代码示例、类比或图表描述。如果问题超出章节范围，可以提供相关知识，但请说明这部分内容不在当前章节中。
+回答应该清晰、结构化，使用Markdown格式提高可读性。`;
+
+    return prompt;
+  }
+
+  /**
+   * 生成流式内容
+   * @param prompt 提示词
+   * @param onChunk 处理流式响应块的回调函数
+   * @param options 选项
+   * @returns Promise<void>
+   */
+  async generateContentStream(
+    prompt: string,
+    onChunk: (chunk: string) => void,
+    options: any = {}
+  ): Promise<void> {
+    const requestId = LLMLogger.startRequest({
+      apiUrl: this.apiUrl,
+      model: this.modelName,
+      options: { ...options, stream: true },
+    });
+
+    console.log(`[${requestId}] ===== AI STREAM API REQUEST START =====`);
+    try {
+      console.log(`[${requestId}] API URL:`, this.apiUrl);
+      console.log(`[${requestId}] Model:`, this.modelName);
+      console.log(
+        `[${requestId}] Request Timestamp:`,
+        new Date().toISOString()
+      );
+
+      const requestBody = {
+        model: this.modelName,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful AI assistant for an educational platform.",
+          },
+          { role: "user", content: prompt },
+        ],
+        stream: true,
+        ...options,
+      };
+
+      // 记录请求内容
+      LLMLogger.logPrompt(requestId, prompt, {
+        model: this.modelName,
+        temperature: options.temperature,
+        maxTokens: options.max_tokens,
+        stream: true,
+      });
+
+      // 记录请求开始时间
+      const startTime = Date.now();
+
+      // 发起流式请求
+      const response = await fetch(this.apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `[${requestId}] Stream API Error:`,
+          response.status,
+          errorText
+        );
+
+        LLMLogger.logError(
+          requestId,
+          new Error(`HTTP Error: ${response.status}`),
+          {
+            responseStatus: response.status,
+            responseText: errorText,
+          }
+        );
+
+        LLMLogger.endRequest(requestId, {
+          status: "error",
+          statusCode: response.status,
+          errorType: "http_error",
+        });
+
+        throw new Error(
+          `HTTP Error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      // 确保响应是可读流
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let totalContent = "";
+
+      // 读取流
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 解码二进制数据
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // 处理SSE格式的数据
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+
+            // 处理结束标记
+            if (data === "[DONE]") {
+              console.log(`[${requestId}] Stream completed`);
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (
+                parsed.choices &&
+                parsed.choices[0] &&
+                parsed.choices[0].delta &&
+                parsed.choices[0].delta.content
+              ) {
+                const contentChunk = parsed.choices[0].delta.content;
+                totalContent += contentChunk;
+
+                // 调用回调函数处理内容块
+                onChunk(contentChunk);
+
+                // 记录流式响应块
+                LLMLogger.logResponse(requestId, {
+                  type: "stream_chunk",
+                  content: contentChunk,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            } catch (e) {
+              console.error(`[${requestId}] Error parsing stream data:`, e);
+              LLMLogger.logError(requestId, e, {
+                phase: "stream_parsing",
+                data: data,
+              });
+            }
+          }
+        }
+      }
+
+      // 记录请求结束时间和总耗时
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      console.log(`[${requestId}] ===== AI STREAM API COMPLETE =====`);
+      console.log(`[${requestId}] Total duration: ${duration}ms`);
+      console.log(
+        `[${requestId}] Total content length: ${totalContent.length}`
+      );
+
+      // 记录完整的生成内容
+      LLMLogger.logProcessedContent(requestId, totalContent, {
+        processingMethod: "stream aggregation",
+        duration: duration,
+        contentLength: totalContent.length,
+      });
+
+      // 结束请求记录
+      LLMLogger.endRequest(requestId, {
+        status: "success",
+        duration: duration,
+        contentLength: totalContent.length,
+        streamMode: true,
+      });
+    } catch (error: any) {
+      console.error(`[${requestId}] ===== AI STREAM API ERROR =====`);
+      console.error(`[${requestId}] Error:`, error);
+
+      // 记录错误
+      LLMLogger.logError(requestId, error, {
+        phase: "stream_processing",
+      });
+
+      // 结束请求记录
+      LLMLogger.endRequest(requestId, {
+        status: "error",
+        errorType: "stream_error",
+        errorMessage: error.message,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Generate exercises for a chapter
+   * @param chapterContent The chapter content
+   * @param difficulty The difficulty level (easy, medium, hard)
+   * @param count The number of exercises to generate
+   * @returns The generated exercises
+   */
+  async generateExercises(
+    chapterContent: any,
+    difficulty: string = "medium",
+    count: number = 5
+  ): Promise<any> {
     const prompt = `
-    作为AI学习助手，请回答用户关于"${context.chapterTitle || '当前主题'}"的问题。
-
-    用户问题：${question}
-
-    当前学习上下文：
-    - 学习路径：${context.pathTitle || '未指定'}
-    - 当前章节：${context.chapterTitle || '未指定'}
-    - 相关知识点：${context.conceptTitle || '未指定'}
-
-    请基于以下相关知识提供准确、清晰的回答：
-    ${context.conceptContent || ''}
-
-    回答要求：
-    1. 直接解答问题，使用清晰的语言
-    2. 提供具体例子，帮助理解
-    3. 如有必要，解释相关概念
-    4. 建议下一步学习方向
-    5. 使用标准Markdown格式，确保代码块、列表和标题格式正确
-    6. 避免使用复杂的HTML或非标准Markdown语法
-    7. 确保代码示例使用正确的语法高亮标记（如\`\`javascript\`\`）
-    8. 使用简洁明了的表达方式
-    9. 非常重要：请直接返回纯文本回答，不要返回JSON格式
-
-    请注意：你的回答将直接显示在学习平台上，不需要额外的格式化或包装。请确保回答是完整且独立的。
+    请为章节"${chapterContent.title}"创建${count}道练习题。
+    
+    章节内容概述：
+    ${chapterContent.content.summary}
+    
+    核心概念：
+    ${chapterContent.content.concepts
+      .map((c: any) => `- ${c.title}: ${c.explanation.substring(0, 100)}...`)
+      .join("\n")}
+    
+    难度级别：${difficulty}（easy=简单, medium=中等, hard=困难）
+    
+    请生成多选题，每道题应包含：
+    1. 问题描述
+    2. 4个选项
+    3. 正确答案
+    4. 解析说明
+    
+    请以JSON格式返回，结构如下：
+    {
+      "exercises": [
+        {
+          "id": 1,
+          "question": "问题描述",
+          "type": "multiple_choice",
+          "options": ["选项1", "选项2", "选项3", "选项4"],
+          "answer": "正确选项的文本",
+          "explanation": "答案解析"
+        }
+      ]
+    }
+    
+    非常重要：
+    1. 请直接返回有效的JSON格式，不要添加任何其他格式化，如Markdown代码块、前导文本或结尾说明
+    2. 确保返回的是一个可以直接被JSON.parse()解析的字符串
+    3. 确保生成的练习题与章节内容直接相关，能够测试对核心概念的理解
+    4. 根据指定的难度调整问题的复杂度
     `;
 
-    console.log(`[${requestId}] Prompt Length:`, prompt.length);
-    console.log(`[${requestId}] Prompt Sample:`, prompt.substring(0, 200) + '...');
-
-    // 使用LLMLogger记录提示词
-    LLMLogger.logPrompt(requestId, prompt, {
-      questionType: 'tutor',
-      chapterTitle: context.chapterTitle,
-      pathTitle: context.pathTitle
-    });
-
+    let content = "";
     try {
-      // 记录处理开始时间
-      const processingStartTime = Date.now();
+      content = await this.generateContent(prompt);
 
-      // Get the raw response from the AI
-      console.log(`[${requestId}] Calling generateContent...`);
-      const rawResponse = await this.generateContent(prompt);
+      // 尝试提取JSON内容（处理可能的Markdown代码块）
+      let jsonContent = content;
 
-      console.log(`[${requestId}] ===== AI TUTOR RESPONSE PROCESSING START =====`);
-      console.log(`[${requestId}] Raw Response Length:`, rawResponse.length);
-      console.log(`[${requestId}] Raw Response Sample:`, rawResponse.substring(0, 500) + (rawResponse.length > 500 ? '...' : ''));
-      console.log(`[${requestId}] Raw Response First 20 chars:`, JSON.stringify(rawResponse.substring(0, 20)));
-      console.log(`[${requestId}] Raw Response Last 20 chars:`, JSON.stringify(rawResponse.substring(rawResponse.length - 20)));
+      // 检查是否包含Markdown代码块
+      const jsonBlockRegex = /```(?:json)?([\s\S]*?)```/;
+      const match = content.match(jsonBlockRegex);
 
-      // 使用LLMLogger记录原始响应
-      LLMLogger.logResponse(requestId, rawResponse);
+      if (match && match[1]) {
+        console.log("Found JSON in Markdown code block, extracting...");
+        jsonContent = match[1].trim();
+      } else {
+        // 如果没有找到代码块，尝试直接在内容中查找JSON对象
+        const jsonStart = content.indexOf("{");
+        const jsonEnd = content.lastIndexOf("}");
 
-      // 记录处理步骤
-      const processingSteps: any[] = [];
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          console.log("Extracting JSON directly from content...");
+          jsonContent = content.substring(jsonStart, jsonEnd + 1);
+        }
+      }
 
-      // Clean up the response to ensure it's valid markdown
-      // Remove any potential JSON formatting or code blocks that might be wrapping the entire response
-      let cleanResponse = rawResponse;
+      try {
+        // 尝试解析JSON
+        const exercisesData = JSON.parse(jsonContent);
 
-      // Remove any JSON-like wrapping if present
-      const jsonBlockRegex = /```(?:json)?([\\s\\S]*?)```/;
-      const match = rawResponse.match(jsonBlockRegex);
-      if (match && match[0] === rawResponse.trim()) {
-        console.log(`[${requestId}] Found JSON code block, extracting content`);
-        cleanResponse = match[1].trim();
-        console.log(`[${requestId}] Extracted content length:`, cleanResponse.length);
-        console.log(`[${requestId}] Extracted content sample:`, cleanResponse.substring(0, 200) + '...');
+        // 验证JSON结构
+        if (!Array.isArray(exercisesData.exercises)) {
+          throw new Error("练习题数据结构无效");
+        }
 
-        processingSteps.push({
-          step: 'extract_from_code_block',
-          pattern: 'code block with triple backticks',
-          success: true,
-          resultLength: cleanResponse.length
+        // 确保每个练习题都有必要的字段
+        const validatedExercises = exercisesData.exercises.map(
+          (exercise: any, index: number) => {
+            return {
+              id: exercise.id || index + 1,
+              question: exercise.question || `问题 ${index + 1}`,
+              type: exercise.type || "multiple_choice",
+              options: Array.isArray(exercise.options)
+                ? exercise.options
+                : ["选项A", "选项B", "选项C", "选项D"],
+              answer: exercise.answer || exercise.options[0],
+              explanation: exercise.explanation || "暂无解析",
+            };
+          }
+        );
+
+        return {
+          exercises: validatedExercises,
+        };
+      } catch (parseError) {
+        console.error("Error parsing exercises JSON:", parseError);
+        throw new Error("解析练习题数据失败");
+      }
+    } catch (error) {
+      console.error("Error generating exercises:", error);
+
+      // 创建基本的练习题作为后备方案
+      const fallbackExercises = [];
+      for (let i = 0; i < count; i++) {
+        fallbackExercises.push({
+          id: i + 1,
+          question: `关于"${chapterContent.title}"的问题 ${i + 1}`,
+          type: "multiple_choice",
+          options: ["选项A", "选项B", "选项C", "选项D"],
+          answer: "选项A",
+          explanation: "由于生成失败，这是一个占位练习题。",
         });
       }
 
-      // If the response looks like it might be JSON but isn't wrapped in code blocks
-      if (rawResponse.trim().startsWith('{') && rawResponse.trim().endsWith('}')) {
-        console.log(`[${requestId}] Response appears to be JSON, attempting to parse`);
-        try {
-          // Try to parse it as JSON
-          const jsonObj = JSON.parse(rawResponse);
-          console.log(`[${requestId}] Successfully parsed as JSON:`, JSON.stringify(Object.keys(jsonObj)));
-
-          processingSteps.push({
-            step: 'parse_json',
-            success: true,
-            fields: Object.keys(jsonObj)
-          });
-
-          // If it has a content or text field, use that
-          let fieldUsed = null;
-          if (jsonObj.content) {
-            console.log(`[${requestId}] Using 'content' field from JSON`);
-            cleanResponse = jsonObj.content;
-            fieldUsed = 'content';
-          } else if (jsonObj.text) {
-            console.log(`[${requestId}] Using 'text' field from JSON`);
-            cleanResponse = jsonObj.text;
-            fieldUsed = 'text';
-          } else if (jsonObj.answer) {
-            console.log(`[${requestId}] Using 'answer' field from JSON`);
-            cleanResponse = jsonObj.answer;
-            fieldUsed = 'answer';
-          } else if (jsonObj.message) {
-            console.log(`[${requestId}] Using 'message' field from JSON`);
-            cleanResponse = jsonObj.message;
-            fieldUsed = 'message';
-          } else {
-            // Otherwise stringify it nicely
-            console.log(`[${requestId}] No recognized field found, stringifying entire JSON`);
-            cleanResponse = JSON.stringify(jsonObj, null, 2);
-            fieldUsed = 'full_json_stringify';
-          }
-
-          processingSteps.push({
-            step: 'extract_field',
-            field: fieldUsed,
-            success: true,
-            resultLength: cleanResponse.length
-          });
-        } catch (e) {
-          // Not valid JSON, keep the original response
-          console.log(`[${requestId}] Response looked like JSON but failed to parse:`, e);
-          console.log(`[${requestId}] Keeping original response`);
-
-          processingSteps.push({
-            step: 'parse_json',
-            success: false,
-            error: e instanceof Error ? e.message : 'Unknown error'
-          });
-        }
-      }
-
-      // 记录处理结束时间和总耗时
-      const processingEndTime = Date.now();
-      const processingDuration = processingEndTime - processingStartTime;
-
-      console.log(`[${requestId}] Final cleaned response length:`, cleanResponse.length);
-      console.log(`[${requestId}] Final cleaned response sample:`, cleanResponse.substring(0, 200) + '...');
-      console.log(`[${requestId}] Processing time: ${processingDuration}ms`);
-      console.log(`[${requestId}] ===== AI TUTOR RESPONSE PROCESSING END =====`);
-
-      // 使用LLMLogger记录处理后的内容
-      LLMLogger.logProcessedContent(requestId, cleanResponse, {
-        processingSteps,
-        processingDuration,
-        originalLength: rawResponse.length,
-        processedLength: cleanResponse.length,
-        containsCodeBlocks: cleanResponse.includes('```'),
-        containsMarkdown: cleanResponse.includes('#') || cleanResponse.includes('*') || cleanResponse.includes('>')
-      });
-
-      // 结束LLMLogger请求记录
-      LLMLogger.endRequest(requestId, {
-        status: 'success',
-        processingDuration,
-        responseLength: cleanResponse.length,
-        question: {
-          question,
-          pathTitle: context.pathTitle,
-          chapterTitle: context.chapterTitle
-        }
-      });
-
-      return cleanResponse;
-    } catch (error) {
-      console.error('Error processing AI response:', error);
-      console.error('Raw content:', error instanceof Error ? error.message : String(error));
-
-      // 结束LLMLogger请求记录
-      LLMLogger.endRequest(requestId, {
-        status: 'error',
-        errorType: 'response_processing_error',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error'
-      });
-
-      throw new Error('AI response is not in valid JSON format');
+      return {
+        exercises: fallbackExercises,
+      };
     }
   }
 }

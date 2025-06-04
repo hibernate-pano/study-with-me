@@ -16,23 +16,23 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { progressApi } from "@/lib/api";
 
-// 模拟数据，用于开发阶段
-const mockHeatmapData = Array.from({ length: 60 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - i);
-  const dateString = date.toISOString().split("T")[0];
-
-  // 随机生成学习时间，周末概率更高
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  const probability = isWeekend ? 0.8 : 0.5;
-  const hasActivity = Math.random() < probability;
-
-  return {
-    date: dateString,
-    count: hasActivity ? Math.floor(Math.random() * 5) + 1 : 0,
-    minutes: hasActivity ? Math.floor(Math.random() * 180) : 0,
-  };
-});
+// 删除模拟数据
+// const mockHeatmapData = Array.from({ length: 60 }, (_, i) => {
+//   const date = new Date();
+//   date.setDate(date.getDate() - i);
+//   const dateString = date.toISOString().split("T")[0];
+//
+//   // 随机生成学习时间，周末概率更高
+//   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+//   const probability = isWeekend ? 0.8 : 0.5;
+//   const hasActivity = Math.random() < probability;
+//
+//   return {
+//     date: dateString,
+//     count: hasActivity ? Math.floor(Math.random() * 5) + 1 : 0,
+//     minutes: hasActivity ? Math.floor(Math.random() * 180) : 0,
+//   };
+// });
 
 interface HeatmapDay {
   date: string;
@@ -47,10 +47,10 @@ interface HeatmapDay {
 export default function LearningHeatmap() {
   const theme = useTheme();
   const { user } = useAuth();
-  const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>(mockHeatmapData);
+  const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [period, setPeriod] = useState<"month" | "quarter" | "year">("month");
+  const [period, setPeriod] = useState<"day" | "week" | "month">("month");
 
   // 获取热图数据
   useEffect(() => {
@@ -61,24 +61,30 @@ export default function LearningHeatmap() {
       setError("");
 
       try {
-        // 在实际应用中，这里会调用API获取学习活动数据
-        // const response = await progressApi.getLearningActivityHeatmap(user.id, period);
-        // setHeatmapData(response.heatmap || []);
+        // 调用API获取学习活动数据
+        const response = await progressApi.getLearningTimeHistory(
+          user.id,
+          period
+        );
 
-        // 使用模拟数据
-        // 根据选择的时间段过滤数据
-        let days = 30;
-        if (period === "quarter") days = 90;
-        if (period === "year") days = 365;
+        if (response && response.timeHistory) {
+          // 转换API返回的数据为热图所需格式
+          const formattedData = response.timeHistory.map((item: any) => ({
+            date: item.date,
+            count: item.sessions || 0,
+            minutes: item.minutes || 0,
+          }));
 
-        const filteredData = mockHeatmapData.slice(0, days);
-        setHeatmapData(filteredData);
-
-        // 模拟API延迟
-        await new Promise((resolve) => setTimeout(resolve, 500));
+          setHeatmapData(formattedData);
+        } else {
+          // 如果API返回数据为空，设置空数组
+          setHeatmapData([]);
+        }
       } catch (error: any) {
         console.error("获取学习热图数据失败:", error);
         setError("获取学习活动数据失败，请稍后再试");
+        // 出错时设置空数组，而不是使用模拟数据
+        setHeatmapData([]);
       } finally {
         setIsLoading(false);
       }
@@ -89,7 +95,7 @@ export default function LearningHeatmap() {
 
   // 处理周期选择变更
   const handlePeriodChange = (event: SelectChangeEvent<string>) => {
-    setPeriod(event.target.value as "month" | "quarter" | "year");
+    setPeriod(event.target.value as "day" | "week" | "month");
   };
 
   // 获取日期范围
@@ -97,12 +103,12 @@ export default function LearningHeatmap() {
     const now = new Date();
     let startDate = new Date();
 
-    if (period === "month") {
-      startDate.setMonth(now.getMonth() - 1);
-    } else if (period === "quarter") {
-      startDate.setMonth(now.getMonth() - 3);
-    } else {
-      startDate.setFullYear(now.getFullYear() - 1);
+    if (period === "day") {
+      startDate.setDate(now.getDate() - 7); // 一周内的每日数据
+    } else if (period === "week") {
+      startDate.setDate(now.getDate() - 28); // 4周数据
+    } else if (period === "month") {
+      startDate.setMonth(now.getMonth() - 3); // 3个月数据
     }
 
     return {
@@ -284,6 +290,30 @@ export default function LearningHeatmap() {
     );
   };
 
+  // 渲染周期选择器
+  const renderPeriodSelector = () => {
+    return (
+      <FormControl
+        variant="outlined"
+        size="small"
+        sx={{ minWidth: 120, ml: 2 }}
+      >
+        <InputLabel id="period-select-label">时间范围</InputLabel>
+        <Select
+          labelId="period-select-label"
+          id="period-select"
+          value={period}
+          onChange={handlePeriodChange}
+          label="时间范围"
+        >
+          <MenuItem value="day">每日</MenuItem>
+          <MenuItem value="week">每周</MenuItem>
+          <MenuItem value="month">每月</MenuItem>
+        </Select>
+      </FormControl>
+    );
+  };
+
   return (
     <Paper sx={{ p: 3, borderRadius: 2 }}>
       <Box
@@ -298,20 +328,7 @@ export default function LearningHeatmap() {
           学习活动热图
         </Typography>
 
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="period-select-label">时间范围</InputLabel>
-          <Select
-            labelId="period-select-label"
-            id="period-select"
-            value={period}
-            label="时间范围"
-            onChange={handlePeriodChange}
-          >
-            <MenuItem value="month">最近一个月</MenuItem>
-            <MenuItem value="quarter">最近三个月</MenuItem>
-            <MenuItem value="year">最近一年</MenuItem>
-          </Select>
-        </FormControl>
+        {renderPeriodSelector()}
       </Box>
 
       {isLoading ? (

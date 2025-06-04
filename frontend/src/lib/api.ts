@@ -470,38 +470,8 @@ export const learningPathsApi = {
       return api.get("/learning-paths/user");
     }
   },
-  // Temporary mock implementation for popular paths
-  getPopularPaths: (_limit: number = 3) => {
-    // Return mock data
-    return Promise.resolve({
-      paths: [
-        {
-          id: "1",
-          title: "JavaScript 基础",
-          description: "学习JavaScript的核心概念和基础知识",
-          level: "初级",
-          chapters: 8,
-          users: 1250,
-        },
-        {
-          id: "2",
-          title: "Python 入门",
-          description: "从零开始学习Python编程",
-          level: "初级",
-          chapters: 10,
-          users: 980,
-        },
-        {
-          id: "3",
-          title: "机器学习基础",
-          description: "了解机器学习的核心概念和算法",
-          level: "中级",
-          chapters: 12,
-          users: 750,
-        },
-      ],
-    });
-  },
+  getPopularPaths: (limit: number = 3) =>
+    api.get(`/learning-paths/popular?limit=${limit}`),
   getChapters: (pathId: string) =>
     api.get(`/learning-paths/${pathId}/chapters`),
   getChapter: (pathId: string, chapterId: string) =>
@@ -729,6 +699,102 @@ export const tutorApi = {
     api.delete(`/tutor/history/${userId}/${pathId}/${chapterId}`),
   getRecommendedQuestions: (pathId: string, chapterId: string) =>
     api.get(`/tutor/recommended-questions/${pathId}/${chapterId}`),
+
+  // 流式聊天API
+  chatStream: (
+    data: any,
+    onEvent: (event: {
+      type: "connection" | "status" | "content_chunk" | "complete" | "error";
+      message?: string;
+      content?: string;
+      requestId?: string;
+      error?: string;
+      processingTime?: number;
+    }) => void
+  ) => {
+    // 生成请求ID用于日志记录
+    const requestId = `stream_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 10)}`;
+    console.log(`[${requestId}] 开始流式辅导请求`);
+
+    // 创建SSE连接
+    const eventSource = new EventSource(`${API_URL}/tutor/chat-stream`, {
+      withCredentials: true,
+    });
+
+    // 设置连接打开回调
+    eventSource.onopen = () => {
+      console.log(`[${requestId}] SSE连接已打开`);
+
+      // 发送请求数据
+      fetch(`${API_URL}/tutor/chat-stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...data,
+          requestId,
+        }),
+        credentials: "include",
+      }).catch((error) => {
+        console.error(`[${requestId}] 发送请求数据失败:`, error);
+        onEvent({
+          type: "error",
+          message: "发送请求数据失败",
+          error: error instanceof Error ? error.message : "未知错误",
+        });
+        eventSource.close();
+      });
+    };
+
+    // 设置消息接收回调
+    eventSource.onmessage = (event) => {
+      console.log(
+        `[${requestId}] 收到SSE消息:`,
+        event.data.substring(0, 50) + (event.data.length > 50 ? "..." : "")
+      );
+
+      try {
+        const data = JSON.parse(event.data);
+        onEvent(data);
+
+        // 如果收到完成或错误事件，关闭连接
+        if (data.type === "complete" || data.type === "error") {
+          console.log(`[${requestId}] 收到${data.type}事件，关闭SSE连接`);
+          eventSource.close();
+        }
+      } catch (error) {
+        console.error(`[${requestId}] 解析SSE消息时出错:`, error);
+        onEvent({
+          type: "error",
+          message: "解析服务器消息时出错",
+          error: error instanceof Error ? error.message : "未知错误",
+        });
+      }
+    };
+
+    // 设置错误回调
+    eventSource.onerror = (error) => {
+      console.error(`[${requestId}] SSE连接错误:`, error);
+
+      onEvent({
+        type: "error",
+        message: "SSE连接错误",
+        error: error instanceof Event ? "连接中断" : "未知错误",
+      });
+
+      // 关闭连接
+      eventSource.close();
+    };
+
+    // 返回一个函数，用于手动关闭连接
+    return () => {
+      console.log(`[${requestId}] 手动关闭SSE连接`);
+      eventSource.close();
+    };
+  },
 };
 
 // Progress API

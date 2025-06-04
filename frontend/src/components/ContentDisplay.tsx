@@ -199,14 +199,14 @@ export function EnhancedConceptCard({
 }
 
 interface ContentDisplayProps {
-  title: string;
-  summary: string;
-  concepts: {
+  title?: string;
+  summary?: string;
+  concepts?: {
     title: string;
     explanation: string;
     examples: string[];
   }[];
-  codeExamples: {
+  codeExamples?: {
     title: string;
     code: string;
     explanation: string;
@@ -217,6 +217,7 @@ interface ContentDisplayProps {
     answer: string;
   }[];
   onFeedback?: () => void;
+  content?: any;
 }
 
 /**
@@ -229,7 +230,34 @@ export default function ContentDisplay({
   codeExamples,
   faq = [],
   onFeedback,
+  content,
 }: ContentDisplayProps) {
+  const displayTitle = title || (content && content.title) || "";
+  const displaySummary = summary || (content && content.summary) || "";
+  const displayConcepts = concepts || (content && content.concepts) || [];
+  const displayCodeExamples =
+    codeExamples || (content && content.codeExamples) || [];
+  const displayFaq = faq.length > 0 ? faq : (content && content.faq) || [];
+
+  // 定义类型，用于数组映射函数
+  type Concept = {
+    title: string;
+    explanation: string;
+    examples: string[];
+  };
+
+  type CodeExample = {
+    title: string;
+    code: string;
+    explanation: string;
+    language?: string;
+  };
+
+  type FaqItem = {
+    question: string;
+    answer: string;
+  };
+
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
       <Box
@@ -246,7 +274,7 @@ export default function ContentDisplay({
           fontWeight="bold"
           color="primary.main"
         >
-          概述
+          {displayTitle || "概述"}
         </Typography>
         {onFeedback && (
           <Button
@@ -270,30 +298,34 @@ export default function ContentDisplay({
           mb: 3,
         }}
       >
-        {summary}
+        {displaySummary}
       </Typography>
 
-      <Divider sx={{ my: 3 }} />
+      {displayConcepts.length > 0 && (
+        <>
+          <Divider sx={{ my: 3 }} />
 
-      <Typography
-        variant="h5"
-        gutterBottom
-        fontWeight="bold"
-        color="primary.main"
-      >
-        核心概念
-      </Typography>
+          <Typography
+            variant="h5"
+            gutterBottom
+            fontWeight="bold"
+            color="primary.main"
+          >
+            核心概念
+          </Typography>
 
-      {concepts.map((concept, index) => (
-        <EnhancedConceptCard
-          key={index}
-          title={concept.title}
-          explanation={concept.explanation}
-          examples={concept.examples}
-        />
-      ))}
+          {displayConcepts.map((concept: Concept, index: number) => (
+            <EnhancedConceptCard
+              key={index}
+              title={concept.title}
+              explanation={concept.explanation}
+              examples={concept.examples}
+            />
+          ))}
+        </>
+      )}
 
-      {codeExamples.length > 0 && (
+      {displayCodeExamples.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Typography
             variant="h5"
@@ -304,7 +336,7 @@ export default function ContentDisplay({
             代码示例
           </Typography>
 
-          {codeExamples.map((example, index) => (
+          {displayCodeExamples.map((example: CodeExample, index: number) => (
             <Box key={index} sx={{ mb: 4 }}>
               <EnhancedCodeBlock
                 title={example.title}
@@ -319,7 +351,7 @@ export default function ContentDisplay({
         </Box>
       )}
 
-      {faq.length > 0 && (
+      {displayFaq.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Typography
             variant="h5"
@@ -330,7 +362,7 @@ export default function ContentDisplay({
             常见问题
           </Typography>
 
-          {faq.map((item, index) => (
+          {displayFaq.map((item: FaqItem, index: number) => (
             <Card
               key={index}
               sx={{
