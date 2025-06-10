@@ -19,6 +19,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  ToggleButtonGroup,
+  ToggleButton,
+  Tooltip,
 } from "@mui/material";
 import {
   School as SchoolIcon,
@@ -26,6 +29,8 @@ import {
   Psychology as PsychologyIcon,
   Assignment as AssignmentIcon,
   ArrowForward as ArrowForwardIcon,
+  EmojiPeople as BeginnerIcon,
+  WorkspacePremium as AdvancedIcon,
 } from "@mui/icons-material";
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
@@ -41,6 +46,26 @@ export default function Home() {
   const [error, setError] = useState("");
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+
+  // 定义不同级别的颜色和描述
+  const levelInfo = {
+    beginner: {
+      color: "#4CAF50", // 绿色，表示友好、入门
+      description: "适合刚开始学习的人，内容会更加基础，解释更加详细。",
+      icon: <BeginnerIcon />,
+    },
+    intermediate: {
+      color: "#2196F3", // 蓝色，表示进阶
+      description: "适合有一定基础的人，会略过最基础的内容，更注重实践应用。",
+      icon: <PsychologyIcon />,
+    },
+    advanced: {
+      color: "#9C27B0", // 紫色，表示专业、高级
+      description:
+        "适合有丰富经验的人，内容会更加深入，涵盖高级主题和最佳实践。",
+      icon: <AdvancedIcon />,
+    },
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +121,16 @@ export default function Home() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLevelChange = (
+    _: React.MouseEvent<HTMLElement>,
+    newLevel: string | null
+  ) => {
+    // 如果用户点击当前选中的按钮，不改变选择
+    if (newLevel !== null) {
+      setUserLevel(newLevel);
     }
   };
 
@@ -160,7 +195,7 @@ export default function Home() {
         const response = await learningPathsApi.getPopularPaths(3);
         if (response.paths && response.paths.length > 0) {
           // 将API返回的数据转换为前端需要的格式
-          const formattedPaths = response.paths.map((path) => ({
+          const formattedPaths = response.paths.map((path: any) => ({
             id: path.id,
             title: path.title,
             description: path.description,
@@ -226,32 +261,246 @@ export default function Home() {
                       disabled={isLoading}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel id="user-level-label">
-                        您的当前水平
-                      </InputLabel>
-                      <Select
-                        labelId="user-level-label"
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      选择您的学习级别:
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 1,
+                        display: "flex",
+                        justifyContent: "center",
+                        bgcolor: "background.default",
+                      }}
+                    >
+                      <ToggleButtonGroup
                         value={userLevel}
-                        label="您的当前水平"
-                        onChange={(e) => setUserLevel(e.target.value as string)}
+                        exclusive
+                        onChange={handleLevelChange}
+                        aria-label="学习级别"
                         disabled={isLoading}
+                        sx={{
+                          width: "100%",
+                          "& .MuiToggleButtonGroup-grouped": {
+                            flex: 1,
+                            "&:not(:first-of-type)": {
+                              borderLeft:
+                                "1px solid rgba(0, 0, 0, 0.12) !important",
+                            },
+                          },
+                        }}
                       >
-                        <MenuItem value="beginner">初学者</MenuItem>
-                        <MenuItem value="intermediate">中级</MenuItem>
-                        <MenuItem value="advanced">高级</MenuItem>
-                      </Select>
-                    </FormControl>
+                        <ToggleButton
+                          value="beginner"
+                          aria-label="初学者"
+                          sx={{
+                            py: 2,
+                            flexDirection: "column",
+                            gap: 1,
+                            borderColor:
+                              userLevel === "beginner"
+                                ? levelInfo.beginner.color
+                                : "rgba(0, 0, 0, 0.12)",
+                            borderWidth: userLevel === "beginner" ? 2 : 1,
+                            "&.Mui-selected": {
+                              bgcolor: `${levelInfo.beginner.color}10`,
+                              "&:hover": {
+                                bgcolor: `${levelInfo.beginner.color}20`,
+                              },
+                            },
+                          }}
+                        >
+                          <Tooltip title={levelInfo.beginner.description}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                              }}
+                            >
+                              <BeginnerIcon
+                                sx={{
+                                  color:
+                                    userLevel === "beginner"
+                                      ? levelInfo.beginner.color
+                                      : "action.active",
+                                }}
+                              />
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  mt: 1,
+                                  color:
+                                    userLevel === "beginner"
+                                      ? levelInfo.beginner.color
+                                      : "text.primary",
+                                  fontWeight:
+                                    userLevel === "beginner"
+                                      ? "bold"
+                                      : "normal",
+                                }}
+                              >
+                                初学者
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        </ToggleButton>
+                        <ToggleButton
+                          value="intermediate"
+                          aria-label="中级"
+                          sx={{
+                            py: 2,
+                            flexDirection: "column",
+                            gap: 1,
+                            borderColor:
+                              userLevel === "intermediate"
+                                ? levelInfo.intermediate.color
+                                : "rgba(0, 0, 0, 0.12)",
+                            borderWidth: userLevel === "intermediate" ? 2 : 1,
+                            "&.Mui-selected": {
+                              bgcolor: `${levelInfo.intermediate.color}10`,
+                              "&:hover": {
+                                bgcolor: `${levelInfo.intermediate.color}20`,
+                              },
+                            },
+                          }}
+                        >
+                          <Tooltip title={levelInfo.intermediate.description}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                              }}
+                            >
+                              <PsychologyIcon
+                                sx={{
+                                  color:
+                                    userLevel === "intermediate"
+                                      ? levelInfo.intermediate.color
+                                      : "action.active",
+                                }}
+                              />
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  mt: 1,
+                                  color:
+                                    userLevel === "intermediate"
+                                      ? levelInfo.intermediate.color
+                                      : "text.primary",
+                                  fontWeight:
+                                    userLevel === "intermediate"
+                                      ? "bold"
+                                      : "normal",
+                                }}
+                              >
+                                中级
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        </ToggleButton>
+                        <ToggleButton
+                          value="advanced"
+                          aria-label="高级"
+                          sx={{
+                            py: 2,
+                            flexDirection: "column",
+                            gap: 1,
+                            borderColor:
+                              userLevel === "advanced"
+                                ? levelInfo.advanced.color
+                                : "rgba(0, 0, 0, 0.12)",
+                            borderWidth: userLevel === "advanced" ? 2 : 1,
+                            "&.Mui-selected": {
+                              bgcolor: `${levelInfo.advanced.color}10`,
+                              "&:hover": {
+                                bgcolor: `${levelInfo.advanced.color}20`,
+                              },
+                            },
+                          }}
+                        >
+                          <Tooltip title={levelInfo.advanced.description}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                              }}
+                            >
+                              <AdvancedIcon
+                                sx={{
+                                  color:
+                                    userLevel === "advanced"
+                                      ? levelInfo.advanced.color
+                                      : "action.active",
+                                }}
+                              />
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  mt: 1,
+                                  color:
+                                    userLevel === "advanced"
+                                      ? levelInfo.advanced.color
+                                      : "text.primary",
+                                  fontWeight:
+                                    userLevel === "advanced"
+                                      ? "bold"
+                                      : "normal",
+                                }}
+                              >
+                                高级
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                    </Paper>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          color:
+                            levelInfo[userLevel as keyof typeof levelInfo]
+                              .color,
+                        }}
+                      >
+                        {levelInfo[userLevel as keyof typeof levelInfo].icon}
+                      </Box>
+                      {
+                        levelInfo[userLevel as keyof typeof levelInfo]
+                          .description
+                      }
+                    </Typography>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <Button
                       type="submit"
                       fullWidth
                       variant="contained"
                       size="large"
                       disabled={isLoading || !learningGoal.trim()}
-                      sx={{ height: "56px" }}
+                      sx={{
+                        height: "56px",
+                        bgcolor:
+                          levelInfo[userLevel as keyof typeof levelInfo].color,
+                        "&:hover": {
+                          bgcolor: `${
+                            levelInfo[userLevel as keyof typeof levelInfo].color
+                          }CC`, // 添加透明度
+                        },
+                      }}
                       endIcon={
                         isLoading ? (
                           <CircularProgress size={24} color="inherit" />

@@ -250,9 +250,53 @@ class AIService {
     goal: string,
     userLevel: string = "beginner"
   ): Promise<any> {
+    // 根据用户级别调整提示词的内容和要求
+    let levelSpecificInstructions = "";
+    let levelSpecificStages = "";
+    let levelSpecificDepth = "";
+
+    // 根据用户级别调整学习路径的内容
+    switch (userLevel) {
+      case "beginner":
+        levelSpecificInstructions =
+          "请确保内容对初学者友好，使用简单易懂的语言，避免过于专业的术语。";
+        levelSpecificStages =
+          "从最基础的概念开始，逐步引导用户进入更复杂的内容。第一阶段应该完全专注于基础知识和入门概念。";
+        levelSpecificDepth =
+          "重点关注基础概念的理解，提供更多的示例和实践机会，确保初学者能够牢固掌握基础知识。";
+        break;
+      case "intermediate":
+        levelSpecificInstructions =
+          "用户已经具备基础知识，可以使用适当的专业术语，但仍需要对复杂概念进行解释。";
+        levelSpecificStages =
+          "可以略过最基础的入门内容，直接从中级概念开始，但仍需要简要回顾关键基础知识。";
+        levelSpecificDepth =
+          "平衡基础知识和高级概念，提供更多实际应用场景和案例分析，帮助用户将知识应用到实践中。";
+        break;
+      case "advanced":
+        levelSpecificInstructions =
+          "用户已经具备扎实的知识基础，可以使用专业术语和深入的技术讨论。";
+        levelSpecificStages =
+          "专注于高级概念、最佳实践和前沿技术，可以假设用户已经掌握了基础和中级知识。";
+        levelSpecificDepth =
+          "深入探讨高级主题、性能优化、架构设计等内容，提供复杂场景的解决方案和最佳实践指南。";
+        break;
+      default:
+        // 默认为初学者
+        levelSpecificInstructions =
+          "请确保内容对初学者友好，使用简单易懂的语言，避免过于专业的术语。";
+        levelSpecificStages =
+          "从最基础的概念开始，逐步引导用户进入更复杂的内容。";
+        levelSpecificDepth =
+          "重点关注基础概念的理解，提供更多的示例和实践机会。";
+    }
+
     const prompt = `
     作为一名教育专家，请为用户创建一个关于"${goal}"的学习路径。
     用户当前水平：${userLevel}
+    
+    ${levelSpecificInstructions}
+    
     请提供以下格式的学习路径：
     1. 路径标题
     2. 简短描述
@@ -262,11 +306,16 @@ class AIService {
        - 每个阶段包含的章节（3-7个）
          - 章节标题
          - 章节要点（3-5个）
+    
+    ${levelSpecificStages}
+    
+    ${levelSpecificDepth}
 
     请以JSON格式返回，结构如下：
     {
       "title": "路径标题",
       "description": "路径描述",
+      "level": "${userLevel}", 
       "stages": [
         {
           "title": "阶段标题",
@@ -286,6 +335,7 @@ class AIService {
     2. 不要在JSON中的任何字段内容中包含代码块格式，这会导致解析失败
     3. 所有字段内容应该是纯文本，不包含任何特殊格式标记
     4. 确保返回的是一个可以直接被JSON.parse()解析的字符串
+    5. 请根据用户级别(${userLevel})调整内容的深度和复杂度
     `;
 
     const content = await this.generateContent(prompt);
@@ -374,6 +424,11 @@ class AIService {
           if (!Array.isArray(parsedJson.stages)) parsedJson.stages = [];
         }
 
+        // 确保level字段存在
+        if (!parsedJson.level) {
+          parsedJson.level = userLevel;
+        }
+
         return parsedJson;
       } catch (parseError) {
         console.error("JSON parse error:", parseError);
@@ -384,6 +439,12 @@ class AIService {
           const relaxedParse = new Function("return " + jsonContent);
           const result = relaxedParse();
           console.log("Parsed JSON using relaxed method");
+
+          // 确保level字段存在
+          if (!result.level) {
+            result.level = userLevel;
+          }
+
           return result;
         } catch (relaxedError: any) {
           throw new Error(
@@ -401,6 +462,7 @@ class AIService {
       return {
         title: `${goal} 学习路径`,
         description: `这是一个关于 ${goal} 的基础学习路径。由于AI生成内容解析错误，这是一个简化版本。`,
+        level: userLevel,
         stages: [
           {
             title: "基础阶段",
