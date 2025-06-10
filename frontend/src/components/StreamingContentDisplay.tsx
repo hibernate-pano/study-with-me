@@ -82,6 +82,31 @@ export default function StreamingContentDisplay({
     startStreaming();
   };
 
+  // 开始流式生成
+  const startStreaming = () => {
+    setIsGenerating(true);
+    console.log(`开始流式生成内容 - 路径ID: ${pathId}, 章节ID: ${chapterId}`);
+
+    try {
+      // 调用API开始流式生成
+      const closeStream = contentApi.generateStream(
+        pathId,
+        chapterId,
+        (event) => {
+          console.log(`收到流式事件: ${event.type}`, event);
+          handleStreamEvent(event);
+        }
+      );
+
+      // 保存关闭函数的引用
+      closeStreamRef.current = closeStream;
+    } catch (error) {
+      console.error("启动流式生成失败:", error);
+      setError("无法启动内容生成，请检查网络连接");
+      setIsGenerating(false);
+    }
+  };
+
   // 处理流式事件
   const handleStreamEvent = (event: any) => {
     switch (event.type) {
@@ -96,6 +121,7 @@ export default function StreamingContentDisplay({
         break;
 
       case "complete":
+        console.log(`内容生成完成 - 路径ID: ${pathId}, 章节ID: ${chapterId}`);
         setIsGenerating(false);
         setTypingComplete(true);
         setStatus("内容生成完成");
@@ -104,39 +130,22 @@ export default function StreamingContentDisplay({
         if (event.content) {
           setGeneratedContent(event.content);
           if (onComplete) {
+            console.log(`调用onComplete回调 - 内容ID: ${event.content.id}`);
             onComplete(event.content);
           }
+        } else {
+          console.warn("生成完成事件中没有内容数据");
         }
         break;
 
       case "error":
+        console.error(`流式生成错误: ${event.message}`, event);
         setIsGenerating(false);
         setError(event.message || "生成内容时发生错误");
         break;
 
       default:
-        console.log("未处理的事件类型:", event.type);
-    }
-  };
-
-  // 开始流式生成
-  const startStreaming = () => {
-    setIsGenerating(true);
-
-    try {
-      // 调用API开始流式生成
-      const closeStream = contentApi.generateStream(
-        pathId,
-        chapterId,
-        handleStreamEvent
-      );
-
-      // 保存关闭函数的引用
-      closeStreamRef.current = closeStream;
-    } catch (error) {
-      console.error("启动流式生成失败:", error);
-      setError("无法启动内容生成，请检查网络连接");
-      setIsGenerating(false);
+        console.log("未处理的事件类型:", event.type, event);
     }
   };
 
