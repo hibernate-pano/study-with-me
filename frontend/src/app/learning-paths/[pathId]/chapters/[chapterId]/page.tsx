@@ -159,12 +159,16 @@ export default function ChapterPage() {
   const fetchChapterContent = async () => {
     setIsLoading(true);
     try {
-      // 获取章节内容
-      const response = await contentApi.getById(chapterId);
+      // 获取章节内容，传递pathId以确保获取正确的章节
+      const response = await contentApi.getById(chapterId, pathId);
 
       if (response && response.content) {
+        console.log(
+          `章节内容获取成功 - ID: ${response.content.id}, 标题: ${response.content.title}`
+        );
         setChapterContent(response.content);
         setContentNotFound(false);
+        setUseStreamingContent(false);
       } else {
         console.log("章节内容不存在，将使用流式生成");
         setChapterContent(null);
@@ -182,6 +186,7 @@ export default function ChapterPage() {
           setExercises(exercisesResponse.exercises);
         } else {
           // 如果没有现成的练习题，可以尝试生成
+          console.log("没有找到现成练习题，尝试生成新的练习题");
           const generatedExercises = await exercisesApi.generate({
             chapterId,
             count: 3,
@@ -192,6 +197,13 @@ export default function ChapterPage() {
       } catch (exerciseError) {
         console.error("获取练习题失败:", exerciseError);
         setExercises([]);
+
+        // 显示错误提示
+        setSnackbar({
+          open: true,
+          message: "获取练习题失败，请稍后再试",
+          severity: "warning",
+        });
       } finally {
         setLoadingExercises(false);
       }
@@ -207,13 +219,22 @@ export default function ChapterPage() {
           });
 
           // 检查是否有新的成就
-          await checkAchievements();
+          checkAchievements();
         } catch (progressError) {
           console.error("更新学习进度失败:", progressError);
         }
       }
     } catch (error) {
       console.error("获取章节内容失败:", error);
+
+      // 显示错误提示
+      setSnackbar({
+        open: true,
+        message: "获取章节内容失败，将尝试流式生成",
+        severity: "error",
+      });
+
+      // 设置为使用流式生成
       setChapterContent(null);
       setContentNotFound(true);
       setUseStreamingContent(true);

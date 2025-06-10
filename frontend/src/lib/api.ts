@@ -484,18 +484,38 @@ export const learningPathsApi = {
 // Content API
 export const contentApi = {
   generate: (data: any) => api.post("/content/generate", data),
-  getById: (id: string) => {
+
+  /**
+   * 获取章节内容
+   * @param id 章节ID (UUID或数字索引)
+   * @param pathId 可选的学习路径ID
+   * @returns 章节内容
+   */
+  getById: (id: string, pathId?: string) => {
+    // 如果同时提供了pathId和id，使用新的路径API
+    if (pathId) {
+      console.log(`通过路径API获取章节内容: pathId=${pathId}, chapterId=${id}`);
+      return api.get(`/content/path/${pathId}/chapter/${id}`);
+    }
+
     // Validate if the ID looks like a UUID before making the request
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         id
       );
+
+    // 如果不是UUID但是数字，添加警告日志
     if (!isUuid && !isNaN(Number(id))) {
       console.warn(
-        `ID ${id} is not in UUID format, this may cause errors with the backend`
+        `ID ${id} is not in UUID format, this may cause errors with the backend. Consider providing pathId for more accurate results.`
       );
     }
-    return api.get(`/content/${id}`);
+
+    // 使用查询参数传递pathId（如果有）
+    const endpoint = pathId
+      ? `/content/${id}?pathId=${pathId}`
+      : `/content/${id}`;
+    return api.get(endpoint);
   },
 
   /**

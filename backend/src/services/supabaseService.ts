@@ -1,5 +1,5 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import config from '../config';
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import config from "../config";
 
 /**
  * Service for interacting with Supabase
@@ -10,10 +10,7 @@ class SupabaseService {
 
   constructor() {
     // Regular client with anon key (limited permissions)
-    this.supabase = createClient(
-      config.supabase.url,
-      config.supabase.key
-    );
+    this.supabase = createClient(config.supabase.url, config.supabase.key);
 
     // Service client with service_role key (admin permissions)
     this.serviceClient = createClient(
@@ -60,7 +57,7 @@ class SupabaseService {
         const loginData = await this.signInUser(email, password);
         return loginData;
       } catch (loginError) {
-        console.error('Auto login after signup failed:', loginError);
+        console.error("Auto login after signup failed:", loginError);
         // 如果登录失败，仍然返回原始数据
         return data;
       }
@@ -120,12 +117,12 @@ class SupabaseService {
    * @returns The created learning path
    */
   async createLearningPath(userId: string, pathData: any): Promise<any> {
-    console.log('Creating learning path for user:', userId);
-    console.log('Path data:', JSON.stringify(pathData, null, 2));
+    console.log("Creating learning path for user:", userId);
+    console.log("Path data:", JSON.stringify(pathData, null, 2));
 
     // 使用 serviceClient（管理员权限）来绕过 RLS 策略
     const { data, error } = await this.serviceClient
-      .from('learning_paths')
+      .from("learning_paths")
       .insert([
         {
           user_id: userId,
@@ -140,11 +137,11 @@ class SupabaseService {
       .select();
 
     if (error) {
-      console.error('Error creating learning path:', error);
+      console.error("Error creating learning path:", error);
       throw error;
     }
 
-    console.log('Learning path created successfully:', data[0].id);
+    console.log("Learning path created successfully:", data[0].id);
     return data[0];
   }
 
@@ -155,9 +152,9 @@ class SupabaseService {
    */
   async getLearningPath(pathId: string): Promise<any> {
     const { data, error } = await this.supabase
-      .from('learning_paths')
-      .select('*')
-      .eq('id', pathId)
+      .from("learning_paths")
+      .select("*")
+      .eq("id", pathId)
       .single();
 
     if (error) {
@@ -174,9 +171,9 @@ class SupabaseService {
    */
   async getUserLearningPaths(userId: string): Promise<any[]> {
     const { data, error } = await this.supabase
-      .from('learning_paths')
-      .select('*')
-      .eq('user_id', userId);
+      .from("learning_paths")
+      .select("*")
+      .eq("user_id", userId);
 
     if (error) {
       throw error;
@@ -194,9 +191,9 @@ class SupabaseService {
     // In a real app, this would use metrics like views, completions, ratings, etc.
     // For now, we'll just get the most recent paths as a simple implementation
     const { data, error } = await this.supabase
-      .from('learning_paths')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("learning_paths")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -213,7 +210,11 @@ class SupabaseService {
    * @param orderIndex The order index of the chapter (optional)
    * @returns The created chapter
    */
-  async createChapterContent(pathId: string, chapterData: any, orderIndex?: number): Promise<any> {
+  async createChapterContent(
+    pathId: string,
+    chapterData: any,
+    orderIndex?: number
+  ): Promise<any> {
     // 如果没有提供orderIndex，则获取当前最大的order_index并加1
     let nextOrderIndex = orderIndex;
 
@@ -221,27 +222,30 @@ class SupabaseService {
       try {
         // 获取当前路径下最大的order_index
         const { data: maxOrderData, error: maxOrderError } = await this.supabase
-          .from('chapter_contents')
-          .select('order_index')
-          .eq('path_id', pathId)
-          .order('order_index', { ascending: false })
+          .from("chapter_contents")
+          .select("order_index")
+          .eq("path_id", pathId)
+          .order("order_index", { ascending: false })
           .limit(1);
 
         if (maxOrderError) {
-          console.error('获取最大order_index失败:', maxOrderError);
+          console.error("获取最大order_index失败:", maxOrderError);
         }
 
         // 如果有数据，则取最大值+1，否则从1开始
-        nextOrderIndex = maxOrderData && maxOrderData.length > 0 ? maxOrderData[0].order_index + 1 : 1;
+        nextOrderIndex =
+          maxOrderData && maxOrderData.length > 0
+            ? maxOrderData[0].order_index + 1
+            : 1;
         console.log(`为新章节设置order_index=${nextOrderIndex}`);
       } catch (error) {
-        console.error('计算order_index时出错:', error);
+        console.error("计算order_index时出错:", error);
         nextOrderIndex = 1; // 默认从1开始
       }
     }
 
     const { data, error } = await this.supabase
-      .from('chapter_contents')
+      .from("chapter_contents")
       .insert([
         {
           path_id: pathId,
@@ -262,49 +266,78 @@ class SupabaseService {
   /**
    * Get chapter content by ID
    * @param chapterId The chapter ID (UUID or order_index)
+   * @param pathId Optional path ID to ensure correct chapter is returned
    * @returns The chapter content
    */
-  async getChapterContent(chapterId: string): Promise<any> {
+  async getChapterContent(chapterId: string, pathId?: string): Promise<any> {
+    const requestId = `req_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 10)}`;
+    console.log(
+      `[${requestId}] 开始获取章节内容 - chapterId=${chapterId}${
+        pathId ? `, pathId=${pathId}` : ""
+      }`
+    );
+
     try {
       // 检查是否是UUID格式
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chapterId);
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          chapterId
+        );
+      console.log(
+        `[${requestId}] 章节ID格式: ${
+          isUuid ? "UUID" : !isNaN(Number(chapterId)) ? "数字" : "无效"
+        }`
+      );
+
+      let query = this.supabase.from("chapter_contents").select("*");
 
       if (isUuid) {
         // 如果是UUID格式，直接通过ID查询
-        console.log(`通过UUID查询章节内容: ${chapterId}`);
-        const { data, error } = await this.supabase
-          .from('chapter_contents')
-          .select('*')
-          .eq('id', chapterId)
-          .single();
-
-        if (error) {
-          console.error(`通过UUID查询章节内容失败:`, error);
-          throw error;
-        }
-
-        return data;
+        console.log(`[${requestId}] 通过UUID查询章节内容: ${chapterId}`);
+        query = query.eq("id", chapterId);
       } else if (!isNaN(Number(chapterId))) {
         // 如果是数字，尝试通过order_index查询
-        console.log(`尝试通过order_index=${chapterId}查询章节内容`);
-        const { data, error } = await this.supabase
-          .from('chapter_contents')
-          .select('*')
-          .eq('order_index', Number(chapterId))
-          .single();
+        console.log(
+          `[${requestId}] 尝试通过order_index=${chapterId}查询章节内容`
+        );
+        query = query.eq("order_index", Number(chapterId));
 
-        if (error) {
-          console.error(`通过order_index查询章节内容失败:`, error);
-          throw error;
+        // 如果提供了pathId，添加路径过滤条件
+        if (pathId) {
+          console.log(`[${requestId}] 添加路径过滤条件: pathId=${pathId}`);
+          query = query.eq("path_id", pathId);
         }
-
-        return data;
       } else {
         // 既不是UUID也不是数字
+        console.error(`[${requestId}] 无效的章节ID格式: ${chapterId}`);
         throw new Error(`无效的章节ID格式: ${chapterId}`);
       }
+
+      console.log(`[${requestId}] 执行数据库查询`);
+      const { data, error } = await query.maybeSingle();
+
+      if (error) {
+        console.error(`[${requestId}] 查询章节内容失败:`, error);
+        throw error;
+      }
+
+      if (!data) {
+        console.log(
+          `[${requestId}] 未找到章节内容: chapterId=${chapterId}${
+            pathId ? `, pathId=${pathId}` : ""
+          }`
+        );
+        return null;
+      }
+
+      console.log(
+        `[${requestId}] 成功获取章节内容 - id=${data.id}, title=${data.title}`
+      );
+      return data;
     } catch (error) {
-      console.error('获取章节内容失败:', error);
+      console.error(`[${requestId}] 获取章节内容失败:`, error);
       throw error;
     }
   }
@@ -316,10 +349,10 @@ class SupabaseService {
    */
   async getChapters(pathId: string): Promise<any[]> {
     const { data, error } = await this.supabase
-      .from('chapter_contents')
-      .select('*')
-      .eq('path_id', pathId)
-      .order('order_index', { ascending: true });
+      .from("chapter_contents")
+      .select("*")
+      .eq("path_id", pathId)
+      .order("order_index", { ascending: true });
 
     if (error) {
       throw error;
@@ -335,13 +368,13 @@ class SupabaseService {
    * @returns The created exercises
    */
   async createExercises(chapterId: string, exercises: any[]): Promise<any[]> {
-    const exercisesWithChapterId = exercises.map(exercise => ({
+    const exercisesWithChapterId = exercises.map((exercise) => ({
       ...exercise,
       chapter_id: chapterId,
     }));
 
     const { data, error } = await this.supabase
-      .from('exercises')
+      .from("exercises")
       .insert(exercisesWithChapterId)
       .select();
 
@@ -359,9 +392,9 @@ class SupabaseService {
    */
   async getChapterExercises(chapterId: string): Promise<any[]> {
     const { data, error } = await this.supabase
-      .from('exercises')
-      .select('*')
-      .eq('chapter_id', chapterId);
+      .from("exercises")
+      .select("*")
+      .eq("chapter_id", chapterId);
 
     if (error) {
       throw error;
@@ -378,26 +411,31 @@ class SupabaseService {
    * @param progress The progress data
    * @returns The updated progress
    */
-  async updateUserProgress(userId: string, pathId: string, chapterId: string, progress: any): Promise<any> {
+  async updateUserProgress(
+    userId: string,
+    pathId: string,
+    chapterId: string,
+    progress: any
+  ): Promise<any> {
     // Check if progress record exists
     const { data: existingProgress } = await this.supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('path_id', pathId)
-      .eq('chapter_id', chapterId)
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("path_id", pathId)
+      .eq("chapter_id", chapterId)
       .maybeSingle();
 
     if (existingProgress) {
       // Update existing progress
       const { data, error } = await this.supabase
-        .from('user_progress')
+        .from("user_progress")
         .update({
           completed: progress.completed,
           last_accessed: new Date().toISOString(),
           ...progress,
         })
-        .eq('id', existingProgress.id)
+        .eq("id", existingProgress.id)
         .select();
 
       if (error) {
@@ -408,7 +446,7 @@ class SupabaseService {
     } else {
       // Create new progress record
       const { data, error } = await this.supabase
-        .from('user_progress')
+        .from("user_progress")
         .insert([
           {
             user_id: userId,
@@ -437,10 +475,10 @@ class SupabaseService {
    */
   async getUserProgress(userId: string, pathId: string): Promise<any[]> {
     const { data, error } = await this.supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('path_id', pathId);
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("path_id", pathId);
 
     if (error) {
       throw error;
@@ -457,9 +495,9 @@ class SupabaseService {
   async getUserLearningStats(userId: string): Promise<any> {
     // Get all user progress records
     const { data: progressData, error: progressError } = await this.supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId);
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId);
 
     if (progressError) {
       throw progressError;
@@ -467,9 +505,14 @@ class SupabaseService {
 
     // Get all learning paths the user has started
     const { data: pathsData, error: pathsError } = await this.supabase
-      .from('learning_paths')
-      .select('id, title')
-      .in('id', progressData.map(p => p.path_id).filter((v, i, a) => a.indexOf(v) === i));
+      .from("learning_paths")
+      .select("id, title")
+      .in(
+        "id",
+        progressData
+          .map((p) => p.path_id)
+          .filter((v, i, a) => a.indexOf(v) === i)
+      );
 
     if (pathsError) {
       throw pathsError;
@@ -477,25 +520,34 @@ class SupabaseService {
 
     // Calculate statistics
     const totalPaths = pathsData.length;
-    const completedChapters = progressData.filter(p => p.completed).length;
+    const completedChapters = progressData.filter((p) => p.completed).length;
     const totalChapters = progressData.length;
-    const completionRate = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+    const completionRate =
+      totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
 
     // Get average score if available
-    const scores = progressData.filter(p => p.score !== null).map(p => p.score);
-    const averageScore = scores.length > 0
-      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
-      : null;
+    const scores = progressData
+      .filter((p) => p.score !== null)
+      .map((p) => p.score);
+    const averageScore =
+      scores.length > 0
+        ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+        : null;
 
     // Calculate learning time (if time_spent is tracked)
     const totalTimeSpent = progressData
-      .filter(p => p.time_spent)
+      .filter((p) => p.time_spent)
       .reduce((sum, p) => sum + (p.time_spent || 0), 0);
 
     // Get last accessed date
-    const lastAccessed = progressData.length > 0
-      ? new Date(Math.max(...progressData.map(p => new Date(p.last_accessed).getTime())))
-      : null;
+    const lastAccessed =
+      progressData.length > 0
+        ? new Date(
+            Math.max(
+              ...progressData.map((p) => new Date(p.last_accessed).getTime())
+            )
+          )
+        : null;
 
     return {
       totalPaths,
@@ -505,7 +557,7 @@ class SupabaseService {
       averageScore,
       totalTimeSpent,
       lastAccessed,
-      pathsStarted: pathsData
+      pathsStarted: pathsData,
     };
   }
 
@@ -518,9 +570,9 @@ class SupabaseService {
   async getPathProgressStats(userId: string, pathId: string): Promise<any> {
     // Get the learning path
     const { data: path, error: pathError } = await this.supabase
-      .from('learning_paths')
-      .select('*')
-      .eq('id', pathId)
+      .from("learning_paths")
+      .select("*")
+      .eq("id", pathId)
       .single();
 
     if (pathError) {
@@ -529,10 +581,10 @@ class SupabaseService {
 
     // Get all chapters for the path
     const { data: chapters, error: chaptersError } = await this.supabase
-      .from('chapter_contents')
-      .select('*')
-      .eq('path_id', pathId)
-      .order('order_index', { ascending: true });
+      .from("chapter_contents")
+      .select("*")
+      .eq("path_id", pathId)
+      .order("order_index", { ascending: true });
 
     if (chaptersError) {
       throw chaptersError;
@@ -540,49 +592,58 @@ class SupabaseService {
 
     // Get user progress for all chapters
     const { data: progressData, error: progressError } = await this.supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('path_id', pathId);
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("path_id", pathId);
 
     if (progressError) {
       throw progressError;
     }
 
     // Map progress to chapters
-    const chaptersWithProgress = chapters.map(chapter => {
-      const progress = progressData.find(p => p.chapter_id === chapter.id) || null;
+    const chaptersWithProgress = chapters.map((chapter) => {
+      const progress =
+        progressData.find((p) => p.chapter_id === chapter.id) || null;
       return {
         ...chapter,
-        progress: progress ? {
-          completed: progress.completed,
-          score: progress.score,
-          last_accessed: progress.last_accessed,
-          completed_at: progress.completed_at,
-          time_spent: progress.time_spent
-        } : null
+        progress: progress
+          ? {
+              completed: progress.completed,
+              score: progress.score,
+              last_accessed: progress.last_accessed,
+              completed_at: progress.completed_at,
+              time_spent: progress.time_spent,
+            }
+          : null,
       };
     });
 
     // Calculate overall statistics
-    const completedChapters = progressData.filter(p => p.completed).length;
+    const completedChapters = progressData.filter((p) => p.completed).length;
     const totalChapters = chapters.length;
-    const completionPercentage = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+    const completionPercentage =
+      totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
 
     // Calculate time statistics
     const totalTimeSpent = progressData
-      .filter(p => p.time_spent)
+      .filter((p) => p.time_spent)
       .reduce((sum, p) => sum + (p.time_spent || 0), 0);
 
     // Find the last accessed chapter
-    const lastAccessedProgress = progressData.length > 0
-      ? progressData.reduce((latest, current) =>
-        new Date(current.last_accessed) > new Date(latest.last_accessed) ? current : latest,
-        progressData[0])
-      : null;
+    const lastAccessedProgress =
+      progressData.length > 0
+        ? progressData.reduce(
+            (latest, current) =>
+              new Date(current.last_accessed) > new Date(latest.last_accessed)
+                ? current
+                : latest,
+            progressData[0]
+          )
+        : null;
 
     const lastAccessedChapter = lastAccessedProgress
-      ? chapters.find(c => c.id === lastAccessedProgress.chapter_id)
+      ? chapters.find((c) => c.id === lastAccessedProgress.chapter_id)
       : null;
 
     return {
@@ -592,13 +653,15 @@ class SupabaseService {
         totalChapters,
         completionPercentage,
         totalTimeSpent,
-        lastAccessedChapter: lastAccessedChapter ? {
-          id: lastAccessedChapter.id,
-          title: lastAccessedChapter.title,
-          last_accessed: lastAccessedProgress.last_accessed
-        } : null
+        lastAccessedChapter: lastAccessedChapter
+          ? {
+              id: lastAccessedChapter.id,
+              title: lastAccessedChapter.title,
+              last_accessed: lastAccessedProgress.last_accessed,
+            }
+          : null,
       },
-      chaptersWithProgress
+      chaptersWithProgress,
     };
   }
 
@@ -608,13 +671,16 @@ class SupabaseService {
    * @param period The time period ('day', 'week', 'month')
    * @returns Learning time history data
    */
-  async getLearningTimeHistory(userId: string, period: 'day' | 'week' | 'month' = 'week'): Promise<any> {
+  async getLearningTimeHistory(
+    userId: string,
+    period: "day" | "week" | "month" = "week"
+  ): Promise<any> {
     // Get all user progress records with time_spent
     const { data: progressData, error: progressError } = await this.supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .not('time_spent', 'is', null);
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .not("time_spent", "is", null);
 
     if (progressError) {
       throw progressError;
@@ -625,15 +691,15 @@ class SupabaseService {
     let startDate: Date;
 
     switch (period) {
-      case 'day':
+      case "day":
         // Last 24 hours
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
-      case 'month':
+      case "month":
         // Last 30 days
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
-      case 'week':
+      case "week":
       default:
         // Last 7 days
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -641,13 +707,13 @@ class SupabaseService {
     }
 
     // Filter progress data by date
-    const filteredProgressData = progressData.filter(p =>
-      new Date(p.last_accessed) >= startDate
+    const filteredProgressData = progressData.filter(
+      (p) => new Date(p.last_accessed) >= startDate
     );
 
     // Group by date
     const timeByDate = filteredProgressData.reduce((acc, curr) => {
-      const date = new Date(curr.last_accessed).toISOString().split('T')[0];
+      const date = new Date(curr.last_accessed).toISOString().split("T")[0];
       if (!acc[date]) {
         acc[date] = 0;
       }
@@ -658,15 +724,17 @@ class SupabaseService {
     // Convert to array format for charts
     const timeHistory = Object.entries(timeByDate).map(([date, time]) => ({
       date,
-      time_spent: time
+      time_spent: time,
     }));
 
     // Sort by date
-    timeHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    timeHistory.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
     return {
       period,
-      timeHistory
+      timeHistory,
     };
   }
 }

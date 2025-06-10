@@ -52,11 +52,30 @@ router.post("/generate", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const chapterId = req.params.id;
+    const pathId = req.query.pathId as string; // 从查询参数中获取pathId
 
-    const content = await supabaseService.getChapterContent(chapterId);
+    console.log(
+      `获取章节内容请求 - 章节ID: ${chapterId}${
+        pathId ? `, 路径ID: ${pathId}` : ""
+      }`
+    );
+
+    const content = await supabaseService.getChapterContent(chapterId, pathId);
 
     if (!content) {
-      return res.status(404).json({ message: "Chapter content not found" });
+      console.log(
+        `章节内容未找到 - 章节ID: ${chapterId}${
+          pathId ? `, 路径ID: ${pathId}` : ""
+        }`
+      );
+      return res.status(404).json({
+        message: "Chapter content not found",
+        details: {
+          chapterId,
+          pathId: pathId || undefined,
+          requestedAt: new Date().toISOString(),
+        },
+      });
     }
 
     res.status(200).json({
@@ -67,6 +86,51 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({
       message: "Failed to get chapter content",
       error: error instanceof Error ? error.message : "Unknown error",
+      details: {
+        chapterId: req.params.id,
+        pathId: req.query.pathId || undefined,
+      },
+    });
+  }
+});
+
+/**
+ * @route GET /api/content/path/:pathId/chapter/:chapterId
+ * @desc Get chapter content by path ID and chapter ID/index
+ * @access Private
+ */
+router.get("/path/:pathId/chapter/:chapterId", async (req, res) => {
+  try {
+    const { pathId, chapterId } = req.params;
+
+    console.log(`获取章节内容请求 - 路径ID: ${pathId}, 章节ID: ${chapterId}`);
+
+    const content = await supabaseService.getChapterContent(chapterId, pathId);
+
+    if (!content) {
+      console.log(`章节内容未找到 - 路径ID: ${pathId}, 章节ID: ${chapterId}`);
+      return res.status(404).json({
+        message: "Chapter content not found",
+        details: {
+          pathId,
+          chapterId,
+          requestedAt: new Date().toISOString(),
+        },
+      });
+    }
+
+    res.status(200).json({
+      content,
+    });
+  } catch (error) {
+    console.error("Error getting chapter content:", error);
+    res.status(500).json({
+      message: "Failed to get chapter content",
+      error: error instanceof Error ? error.message : "Unknown error",
+      details: {
+        pathId: req.params.pathId,
+        chapterId: req.params.chapterId,
+      },
     });
   }
 });
