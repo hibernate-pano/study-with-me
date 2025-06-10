@@ -4,11 +4,18 @@ import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LogServiceInitializer from "@/components/LogServiceInitializer";
+import dynamic from "next/dynamic";
+
+// 动态导入离线通知组件（客户端组件）
+const OfflineNotification = dynamic(
+  () => import("@/components/OfflineNotification"),
+  { ssr: false }
+);
 
 const roboto = Roboto({
-  weight: ['300', '400', '500', '700'],
+  weight: ["300", "400", "500", "700"],
   subsets: ["latin"],
-  display: 'swap',
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,6 +35,8 @@ export default function RootLayout({
           <AuthProvider>
             <LogServiceInitializer />
             {children}
+            {/* 离线通知组件 */}
+            <OfflineNotification />
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>离线模式 - Study With Me</title>
+  <style>
+    :root {
+      --primary-color: #3f51b5;
+      --secondary-color: #f50057;
+      --background-color: #f5f5f5;
+      --card-color: #ffffff;
+      --text-color: #333333;
+      --text-secondary: #666666;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .offline-card {
+      background-color: var(--card-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .offline-icon {
+      font-size: 64px;
+      color: var(--secondary-color);
+      margin-bottom: 1rem;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: var(--primary-color);
+    }
+
+    .subtitle {
+      font-size: 18px;
+      margin-bottom: 1.5rem;
+      color: var(--text-secondary);
+    }
+
+    .button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin: 0 0.5rem;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .button:hover {
+      background-color: #303f9f;
+    }
+
+    .button.secondary {
+      background-color: transparent;
+      border: 1px solid var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .button.secondary:hover {
+      background-color: rgba(63, 81, 181, 0.1);
+    }
+
+    .button-group {
+      margin: 1.5rem 0;
+    }
+
+    .downloaded-content {
+      background-color: var(--card-color);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .content-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 1rem 0;
+      text-align: left;
+    }
+
+    .content-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+    }
+
+    .content-item:last-child {
+      border-bottom: none;
+    }
+
+    .content-icon {
+      margin-right: 0.75rem;
+      color: var(--primary-color);
+    }
+
+    footer {
+      background-color: var(--primary-color);
+      color: white;
+      text-align: center;
+      padding: 1rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        padding: 1rem;
+      }
+
+      .button-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .button {
+        margin: 0.5rem 0;
+      }
+    }
+
+    /* 离线图标 */
+    .wifi-off-icon {
+      display: inline-block;
+      width: 64px;
+      height: 64px;
+      position: relative;
+    }
+
+    .wifi-off-icon:before,
+    .wifi-off-icon:after {
+      content: "";
+      position: absolute;
+      background-color: var(--secondary-color);
+    }
+
+    .wifi-off-icon:before {
+      width: 2px;
+      height: 64px;
+      transform: rotate(45deg);
+      left: 31px;
+      top: 0;
+    }
+
+    .wifi-off-icon:after {
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      bottom: 8px;
+      left: 28px;
+    }
+
+    /* 波浪 */
+    .wave {
+      position: relative;
+      width: 100%;
+      height: 150px;
+      margin-bottom: -7px;
+    }
+
+    .wave-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    #offline-content-container {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Study With Me</h1>
+  </header>
+
+  <div class="wave">
+    <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
+      <path fill="#3f51b5" fill-opacity="1" d="M0,224L48,224C96,224,192,224,288,208C384,192,480,160,576,149.3C672,139,768,149,864,165.3C960,181,1056,203,1152,202.7C1248,203,1344,181,1392,170.7L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+    </svg>
+  </div>
+
+  <main>
+    <div class="offline-card">
+      <div class="wifi-off-icon"></div>
+      <h2 class="title">您当前处于离线状态</h2>
+      <p class="subtitle">无法连接到网络，但您仍然可以访问已下载的内容</p>
+      
+      <div class="button-group">
+        <button id="retry-button" class="button">重试连接</button>
+        <button id="show-offline-content-button" class="button secondary">查看已下载内容</button>
+      </div>
+    </div>
+
+    <div id="offline-content-container" class="downloaded-content">
+      <h3>已下载的内容</h3>
+      <p>正在加载已下载的内容...</p>
+      <ul id="offline-content-list" class="content-list">
+        <!-- 已下载内容将在这里动态显示 -->
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 Study With Me - AI辅助学习平台</p>
+  </footer>
+
+  <script>
+    // 重试连接按钮
+    document.getElementById('retry-button').addEventListener('click', function() {
+      // 刷新页面
+      window.location.reload();
+    });
+
+    // 显示离线内容按钮
+    document.getElementById('show-offline-content-button').addEventListener('click', function() {
+      const offlineContentContainer = document.getElementById('offline-content-container');
+      if (offlineContentContainer.style.display === 'block') {
+        offlineContentContainer.style.display = 'none';
+        this.textContent = '查看已下载内容';
+      } else {
+        offlineContentContainer.style.display = 'block';
+        this.textContent = '隐藏已下载内容';
+        loadOfflineContent();
+      }
+    });
+
+    // 加载离线内容
+    async function loadOfflineContent() {
+      const contentList = document.getElementById('offline-content-list');
+      contentList.innerHTML = ''; // 清空现有内容
+      
+      try {
+        // 尝试打开IndexedDB
+        const request = indexedDB.open('study-with-me-db', 1);
+        
+        request.onerror = function(event) {
+          contentList.innerHTML = '<li class="content-item">无法访问离线存储</li>';
+        };
+
+        request.onsuccess = function(event) {
+          const db = event.target.result;
+          
+          // 获取学习路径
+          const pathTransaction = db.transaction(['learningPaths'], 'readonly');
+          const pathStore = pathTransaction.objectStore('learningPaths');
+          const pathRequest = pathStore.getAll();
+          
+          pathRequest.onsuccess = function() {
+            const paths = pathRequest.result;
+            
+            if (paths.length === 0) {
+              contentList.innerHTML = '<li class="content-item">没有找到已下载的内容</li>';
+              return;
+            }
+            
+            // 显示学习路径
+            paths.forEach(path => {
+              const listItem = document.createElement('li');
+              listItem.className = 'content-item';
+              listItem.innerHTML = `
+                <span class="content-icon">📚</span>
+                <div>
+                  <strong>${path.title || '未命名学习路径'}</strong>
+                  <div>${path.description || '无描述'}</div>
+                </div>
+              `;
+              
+              // 添加点击事件，显示/隐藏章节
+              listItem.addEventListener('click', function() {
+                const chaptersList = this.querySelector('.chapters-list');
+                if (chaptersList) {
+                  chaptersList.remove();
+                  return;
+                }
+                
+                const chapterTransaction = db.transaction(['chapters'], 'readonly');
+                const chapterStore = chapterTransaction.objectStore('chapters');
+                const index = chapterStore.index('pathId');
+                const chapterRequest = index.getAll(path.id);
+                
+                chapterRequest.onsuccess = function() {
+                  const chapters = chapterRequest.result;
+                  const chaptersList = document.createElement('ul');
+                  chaptersList.className = 'chapters-list';
+                  
+                  if (chapters.length === 0) {
+                    const emptyItem = document.createElement('li');
+                    emptyItem.className = 'content-item';
+                    emptyItem.innerHTML = '没有找到章节';
+                    chaptersList.appendChild(emptyItem);
+                  } else {
+                    chapters.forEach(chapter => {
+                      const chapterItem = document.createElement('li');
+                      chapterItem.className = 'content-item';
+                      chapterItem.innerHTML = `
+                        <span class="content-icon">📝</span>
+                        ${chapter.title || '未命名章节'}
+                      `;
+                      chaptersList.appendChild(chapterItem);
+                    });
+                  }
+                  
+                  listItem.appendChild(chaptersList);
+                };
+              });
+              
+              contentList.appendChild(listItem);
+            });
+          };
+        };
+      } catch (error) {
+        contentList.innerHTML = `<li class="content-item">加载离线内容时出错: ${error.message}</li>`;
+      }
+    }
+  </script>
+</body>
+</html> 

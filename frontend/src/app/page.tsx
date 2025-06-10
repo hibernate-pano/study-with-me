@@ -222,23 +222,33 @@ export default function Home() {
       <Box
         sx={{
           bgcolor: "background.paper",
-          pt: 8,
-          pb: 6,
+          pt: { xs: 4, sm: 6, md: 8 },
+          pb: { xs: 4, sm: 5, md: 6 },
         }}
       >
         <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
+          <Grid container spacing={{ xs: 2, md: 4 }} alignItems="center">
             <Grid item xs={12} md={6}>
               <Typography
                 component="h1"
                 variant="h2"
                 color="text.primary"
                 gutterBottom
-                sx={{ fontWeight: 500 }}
+                sx={{
+                  fontWeight: 500,
+                  fontSize: { xs: "2rem", sm: "2.25rem", md: "2.5rem" },
+                }}
               >
                 AI辅助学习平台
               </Typography>
-              <Typography variant="h5" color="text.secondary" paragraph>
+              <Typography
+                variant="h5"
+                color="text.secondary"
+                paragraph
+                sx={{
+                  fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" },
+                }}
+              >
                 使用AI技术帮助学习，对学习内容进行拆解和制定标准的学习计划，提供实时辅导和课后练习，让学习更高效。
               </Typography>
 
@@ -248,8 +258,12 @@ export default function Home() {
                 </Alert>
               )}
 
-              <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
-                <Grid container spacing={2}>
+              <Box
+                component="form"
+                onSubmit={handleSubmit}
+                sx={{ mt: { xs: 3, md: 4 } }}
+              >
+                <Grid container spacing={{ xs: 2, md: 2 }}>
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
@@ -259,6 +273,11 @@ export default function Home() {
                       value={learningGoal}
                       onChange={(e) => setLearningGoal(e.target.value)}
                       disabled={isLoading}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          height: { xs: "50px", md: "56px" },
+                        },
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -268,7 +287,7 @@ export default function Home() {
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 1,
+                        p: { xs: 0.5, md: 1 },
                         display: "flex",
                         justifyContent: "center",
                         bgcolor: "background.default",
@@ -295,7 +314,8 @@ export default function Home() {
                           value="beginner"
                           aria-label="初学者"
                           sx={{
-                            py: 2,
+                            py: { xs: 1.5, md: 2 },
+                            minHeight: { xs: "60px", md: "auto" },
                             flexDirection: "column",
                             gap: 1,
                             borderColor:
@@ -325,6 +345,7 @@ export default function Home() {
                                     userLevel === "beginner"
                                       ? levelInfo.beginner.color
                                       : "action.active",
+                                  fontSize: { xs: "1.25rem", md: "1.5rem" },
                                 }}
                               />
                               <Typography
@@ -350,7 +371,8 @@ export default function Home() {
                           value="intermediate"
                           aria-label="中级"
                           sx={{
-                            py: 2,
+                            py: { xs: 1.5, md: 2 },
+                            minHeight: { xs: "60px", md: "auto" },
                             flexDirection: "column",
                             gap: 1,
                             borderColor:
@@ -380,6 +402,7 @@ export default function Home() {
                                     userLevel === "intermediate"
                                       ? levelInfo.intermediate.color
                                       : "action.active",
+                                  fontSize: { xs: "1.25rem", md: "1.5rem" },
                                 }}
                               />
                               <Typography
@@ -405,7 +428,8 @@ export default function Home() {
                           value="advanced"
                           aria-label="高级"
                           sx={{
-                            py: 2,
+                            py: { xs: 1.5, md: 2 },
+                            minHeight: { xs: "60px", md: "auto" },
                             flexDirection: "column",
                             gap: 1,
                             borderColor:
@@ -435,6 +459,7 @@ export default function Home() {
                                     userLevel === "advanced"
                                       ? levelInfo.advanced.color
                                       : "action.active",
+                                  fontSize: { xs: "1.25rem", md: "1.5rem" },
                                 }}
                               />
                               <Typography
@@ -466,6 +491,7 @@ export default function Home() {
                         display: "flex",
                         alignItems: "center",
                         gap: 1,
+                        fontSize: { xs: "0.75rem", md: "0.875rem" },
                       }}
                     >
                       <Box
@@ -492,13 +518,14 @@ export default function Home() {
                       size="large"
                       disabled={isLoading || !learningGoal.trim()}
                       sx={{
-                        height: "56px",
+                        height: { xs: "48px", md: "56px" },
+                        fontSize: { xs: "0.9rem", md: "1rem" },
                         bgcolor:
                           levelInfo[userLevel as keyof typeof levelInfo].color,
                         "&:hover": {
                           bgcolor: `${
                             levelInfo[userLevel as keyof typeof levelInfo].color
-                          }CC`, // 添加透明度
+                          }CC`,
                         },
                       }}
                       endIcon={
@@ -535,7 +562,7 @@ export default function Home() {
       </Box>
 
       {/* Features Section */}
-      <Box sx={{ py: 8, bgcolor: "background.default" }}>
+      <Box sx={{ py: { xs: 4, md: 8 }, bgcolor: "background.default" }}>
         <Container maxWidth="lg">
           <Typography
             component="h2"
@@ -543,6 +570,7 @@ export default function Home() {
             align="center"
             color="text.primary"
             gutterBottom
+            sx={{ fontSize: { xs: "1.5rem", sm: "1.75rem", md: "2rem" } }}
           >
             平台特色
           </Typography>
@@ -551,17 +579,22 @@ export default function Home() {
             align="center"
             color="text.secondary"
             paragraph
+            sx={{ fontSize: { xs: "0.9rem", sm: "1rem", md: "1.25rem" } }}
           >
             我们的AI辅助学习平台提供全方位的学习支持，让您的学习更高效、更有成效
           </Typography>
 
-          <Grid container spacing={4} sx={{ mt: 4 }}>
+          <Grid
+            container
+            spacing={{ xs: 2, md: 4 }}
+            sx={{ mt: { xs: 2, md: 4 } }}
+          >
             {features.map((feature, index) => (
-              <Grid item key={index} xs={12} sm={6} md={3}>
+              <Grid item key={index} xs={6} sm={6} md={3}>
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 3,
+                    p: { xs: 2, md: 3 },
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
@@ -571,11 +604,24 @@ export default function Home() {
                     bgcolor: "background.paper",
                   }}
                 >
-                  {feature.icon}
-                  <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                  {React.cloneElement(feature.icon, {
+                    fontSize: { xs: "medium", md: "large" },
+                  })}
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      mt: 2,
+                      mb: 1,
+                      fontSize: { xs: "0.9rem", md: "1rem" },
+                    }}
+                  >
                     {feature.title}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}
+                  >
                     {feature.description}
                   </Typography>
                 </Paper>
@@ -586,7 +632,7 @@ export default function Home() {
       </Box>
 
       {/* Popular Learning Paths */}
-      <Box sx={{ py: 8, bgcolor: "background.paper" }}>
+      <Box sx={{ py: { xs: 4, md: 8 }, bgcolor: "background.paper" }}>
         <Container maxWidth="lg">
           <Typography
             component="h2"
@@ -594,6 +640,7 @@ export default function Home() {
             align="center"
             color="text.primary"
             gutterBottom
+            sx={{ fontSize: { xs: "1.5rem", sm: "1.75rem", md: "2rem" } }}
           >
             热门学习路径
           </Typography>
@@ -602,11 +649,16 @@ export default function Home() {
             align="center"
             color="text.secondary"
             paragraph
+            sx={{ fontSize: { xs: "0.9rem", sm: "1rem", md: "1.25rem" } }}
           >
             探索其他用户正在学习的热门内容
           </Typography>
 
-          <Grid container spacing={4} sx={{ mt: 4 }}>
+          <Grid
+            container
+            spacing={{ xs: 2, md: 4 }}
+            sx={{ mt: { xs: 2, md: 4 } }}
+          >
             {popularPaths.map((path, index) => (
               <Grid item key={index} xs={12} sm={6} md={4}>
                 <Card
@@ -622,14 +674,20 @@ export default function Home() {
                     },
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h5" component="h2">
+                  <CardContent sx={{ flexGrow: 1, p: { xs: 2, md: 3 } }}>
+                    <Typography
+                      gutterBottom
+                      variant="h5"
+                      component="h2"
+                      sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}
+                    >
                       {path.title}
                     </Typography>
                     <Typography
                       variant="body2"
                       color="text.secondary"
                       paragraph
+                      sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}
                     >
                       {path.description}
                     </Typography>
@@ -637,27 +695,48 @@ export default function Home() {
                     <Box
                       sx={{ display: "flex", justifyContent: "space-between" }}
                     >
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.7rem", md: "0.75rem" } }}
+                      >
                         难度: {path.level}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.7rem", md: "0.75rem" } }}
+                      >
                         章节: {path.chapters}
                       </Typography>
                     </Box>
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{ mt: 1 }}
+                      sx={{
+                        mt: 1,
+                        fontSize: { xs: "0.7rem", md: "0.75rem" },
+                      }}
                     >
                       {path.users} 人正在学习
                     </Typography>
                   </CardContent>
-                  <CardActions>
+                  <CardActions
+                    sx={{
+                      p: { xs: 1.5, md: 2 },
+                      pt: 0,
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <Button
                       size="small"
                       color="primary"
                       component={Link}
                       href={`/learning-paths/${path.id}`}
+                      sx={{
+                        minWidth: { xs: "70px", md: "auto" },
+                        fontSize: { xs: "0.75rem", md: "0.875rem" },
+                      }}
                     >
                       查看详情
                     </Button>
@@ -670,6 +749,10 @@ export default function Home() {
                           ? `/learning-paths/${path.id}/chapters/1`
                           : "/login"
                       }
+                      sx={{
+                        minWidth: { xs: "70px", md: "auto" },
+                        fontSize: { xs: "0.75rem", md: "0.875rem" },
+                      }}
                     >
                       开始学习
                     </Button>
@@ -682,12 +765,24 @@ export default function Home() {
       </Box>
 
       {/* Call to Action */}
-      <Box sx={{ bgcolor: "primary.main", color: "white", py: 8 }}>
+      <Box
+        sx={{ bgcolor: "primary.main", color: "white", py: { xs: 4, md: 8 } }}
+      >
         <Container maxWidth="md">
-          <Typography variant="h4" align="center" gutterBottom>
+          <Typography
+            variant="h4"
+            align="center"
+            gutterBottom
+            sx={{ fontSize: { xs: "1.5rem", md: "2rem" } }}
+          >
             准备好开始您的学习之旅了吗？
           </Typography>
-          <Typography variant="h6" align="center" paragraph>
+          <Typography
+            variant="h6"
+            align="center"
+            paragraph
+            sx={{ fontSize: { xs: "1rem", md: "1.25rem" } }}
+          >
             输入您想学习的内容，AI将为您生成个性化的学习计划
           </Typography>
           <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
@@ -696,6 +791,12 @@ export default function Home() {
               color="secondary"
               size="large"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              sx={{
+                py: { xs: 1, md: 1.5 },
+                px: { xs: 3, md: 4 },
+                minWidth: { xs: "120px", md: "auto" },
+                fontSize: { xs: "0.9rem", md: "1rem" },
+              }}
             >
               立即开始
             </Button>
@@ -704,9 +805,14 @@ export default function Home() {
       </Box>
 
       {/* Footer */}
-      <Box sx={{ bgcolor: "background.paper", py: 6 }}>
+      <Box sx={{ bgcolor: "background.paper", py: { xs: 4, md: 6 } }}>
         <Container maxWidth="lg">
-          <Typography variant="body2" color="text.secondary" align="center">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ fontSize: { xs: "0.75rem", md: "0.875rem" } }}
+          >
             © {new Date().getFullYear()} Study With Me - AI辅助学习平台
           </Typography>
         </Container>

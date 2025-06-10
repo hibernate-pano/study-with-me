@@ -62,6 +62,13 @@ import {
 } from "@/components/SkeletonLoaders";
 import ContentDisplay from "@/components/ContentDisplay";
 import StreamingContentDisplay from "@/components/StreamingContentDisplay";
+import dynamic from "next/dynamic";
+
+// 动态导入下载按钮组件（客户端组件）
+const DownloadContentButton = dynamic(
+  () => import("@/components/DownloadContentButton"),
+  { ssr: false }
+);
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -414,35 +421,54 @@ export default function ChapterPage() {
       return <ChapterContentSkeleton />;
     }
 
-    if (useStreamingContent || contentNotFound) {
-      return (
-        <StreamingContentDisplay
-          pathId={pathId}
-          chapterId={chapterId}
-          onComplete={handleStreamingComplete}
-        />
-      );
+    if (contentNotFound) {
+      if (useStreamingContent) {
+        return (
+          <Box>
+            <Alert
+              severity="info"
+              sx={{ mb: 2 }}
+              action={
+                <DownloadContentButton
+                  pathId={pathId}
+                  chapterId={chapterId}
+                  iconButton
+                  size="small"
+                />
+              }
+            >
+              我们正在为您生成此章节的内容，请稍候...
+            </Alert>
+            <StreamingContentDisplay
+              pathId={pathId}
+              chapterId={chapterId}
+              onComplete={handleStreamingComplete}
+            />
+          </Box>
+        );
+      } else {
+        return (
+          <Alert severity="error" sx={{ mb: 4 }}>
+            抱歉，找不到此章节的内容。请尝试返回学习路径选择其他章节。
+          </Alert>
+        );
+      }
     }
 
-    if (!chapterContent) {
-      return (
-        <Box sx={{ p: 3, textAlign: "center" }}>
-          <Typography variant="h6" color="error">
-            无法加载章节内容
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={fetchChapterContent}
-            sx={{ mt: 2 }}
+    return (
+      <Box>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <DownloadContentButton
+            pathId={pathId}
+            chapterId={chapterId}
+            size="small"
           >
-            重试
-          </Button>
+            下载本章节
+          </DownloadContentButton>
         </Box>
-      );
-    }
-
-    return <ContentDisplay content={chapterContent} />;
+        <ContentDisplay content={chapterContent.content} />
+      </Box>
+    );
   };
 
   return (

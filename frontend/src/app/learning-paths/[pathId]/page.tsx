@@ -35,6 +35,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { learningPathsApi, progressApi } from "@/lib/api";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// 动态导入下载按钮组件（客户端组件）
+const DownloadContentButton = dynamic(
+  () => import("@/components/DownloadContentButton"),
+  { ssr: false }
+);
 
 export default function LearningPathDetailPage() {
   const params = useParams();
@@ -202,31 +209,31 @@ export default function LearningPathDetailPage() {
                 >
                   <Paper sx={{ p: 4, borderRadius: 2 }}>
                     <Typography variant="h4" component="h1" gutterBottom>
-                      {learningPath.title}
+                      {learningPath?.title}
                     </Typography>
 
                     <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
                       <Chip
                         icon={<SchoolIcon />}
-                        label={`难度: ${learningPath.level}`}
+                        label={`难度: ${learningPath?.level || "初级"}`}
                         variant="outlined"
                       />
                       <Chip
                         icon={<MenuBookIcon />}
-                        label={`章节: ${chapters.length}`}
+                        label={`章节: ${chapters?.length || 0}`}
                         variant="outlined"
                       />
                       <Chip
                         icon={<TimerIcon />}
                         label={`预计学时: ${
-                          learningPath.estimated_hours || 20
+                          learningPath?.estimated_hours || 20
                         }小时`}
                         variant="outlined"
                       />
                     </Box>
 
                     <Typography variant="body1" paragraph>
-                      {learningPath.description}
+                      {learningPath?.description}
                     </Typography>
 
                     <Divider sx={{ my: 3 }} />
@@ -235,7 +242,7 @@ export default function LearningPathDetailPage() {
                       学习目标
                     </Typography>
                     <Typography variant="body1" paragraph>
-                      {learningPath.goal}
+                      {learningPath?.goal || "掌握此学习路径的核心概念和技能"}
                     </Typography>
 
                     <Divider sx={{ my: 3 }} />
@@ -245,7 +252,7 @@ export default function LearningPathDetailPage() {
                     </Typography>
 
                     <List>
-                      {chapters.map((chapter, index) => (
+                      {chapters?.map((chapter, index) => (
                         <Card key={chapter.id} sx={{ mb: 2, borderRadius: 2 }}>
                           <CardContent sx={{ p: 0 }}>
                             <ListItemButton
@@ -290,73 +297,43 @@ export default function LearningPathDetailPage() {
                   }}
                 >
                   <Paper
-                    sx={{ p: 4, borderRadius: 2, position: "sticky", top: 20 }}
+                    elevation={2}
+                    sx={{ p: 3, borderRadius: 2, height: "fit-content" }}
                   >
                     <Typography variant="h5" gutterBottom>
                       学习进度
                     </Typography>
-
                     {userProgress ? (
                       <>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            mb: 1,
-                          }}
-                        >
-                          <Typography variant="body2" color="text.secondary">
-                            完成进度
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            已完成: {userProgress.completed_chapters || 0} /{" "}
+                            {userProgress.total_chapters ||
+                              chapters?.length ||
+                              0}{" "}
+                            章节
                           </Typography>
-                          <Typography variant="body2" fontWeight={500}>
-                            {userProgress.percentage}%
+                          <LinearProgress
+                            variant="determinate"
+                            value={userProgress.percentage || 0}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              mb: 1,
+                            }}
+                          />
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            align="right"
+                          >
+                            {userProgress.percentage || 0}%
                           </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={userProgress.percentage}
-                          sx={{ mb: 3, height: 8, borderRadius: 4 }}
-                        />
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            mb: 3,
-                          }}
-                        >
-                          <Box sx={{ textAlign: "center" }}>
-                            <Typography variant="h6">
-                              {userProgress.completed_chapters}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              已完成章节
-                            </Typography>
-                          </Box>
-                          <Divider orientation="vertical" flexItem />
-                          <Box sx={{ textAlign: "center" }}>
-                            <Typography variant="h6">
-                              {userProgress.total_chapters -
-                                userProgress.completed_chapters}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              剩余章节
-                            </Typography>
-                          </Box>
-                          <Divider orientation="vertical" flexItem />
-                          <Box sx={{ textAlign: "center" }}>
-                            <Typography variant="h6">
-                              {userProgress.total_chapters}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              总章节数
-                            </Typography>
-                          </Box>
                         </Box>
                       </>
                     ) : (
                       <Typography
-                        variant="body2"
+                        variant="body1"
                         color="text.secondary"
                         sx={{ mb: 3 }}
                       >
@@ -388,16 +365,11 @@ export default function LearningPathDetailPage() {
                         : "开始学习"}
                     </Button>
 
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<BarChartIcon />}
-                      disabled={!userProgress}
-                      component={Link}
-                      href={`/learning-paths/${params.pathId}/statistics`}
-                    >
-                      查看详细统计
-                    </Button>
+                    {/* 下载按钮，允许用户下载整个学习路径 */}
+                    <DownloadContentButton
+                      pathId={params.pathId as string}
+                      sx={{ width: "100%" }}
+                    />
                   </Paper>
                 </Grid>
               </Grid>
