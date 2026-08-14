@@ -4,13 +4,7 @@ import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import LogServiceInitializer from "@/components/LogServiceInitializer";
-import dynamic from "next/dynamic";
-
-// 动态导入离线通知组件（客户端组件）
-const OfflineNotification = dynamic(
-  () => import("@/components/OfflineNotification"),
-  { ssr: false }
-);
+import OfflineNotification from "@/components/OfflineNotification";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -35,7 +29,7 @@ export default function RootLayout({
           <AuthProvider>
             <LogServiceInitializer />
             {children}
-            {/* 离线通知组件 */}
+            {/* 离线通知组件（客户端组件，内部自行处理渲染时机） */}
             <OfflineNotification />
           </AuthProvider>
         </ThemeProvider>

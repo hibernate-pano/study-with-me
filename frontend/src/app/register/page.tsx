@@ -1,22 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  Grid,
-  Link as MuiLink,
-  Alert,
-  CircularProgress,
-  InputAdornment,
-  IconButton,
-  Checkbox,
-  FormControlLabel
-} from '@mui/material';
+import { Box, Container, Typography, TextField, Button, Paper, Link as MuiLink, Alert, CircularProgress, InputAdornment, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   Visibility,
   VisibilityOff,

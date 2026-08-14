@@ -1,26 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Paper,
-  CircularProgress,
-  Tabs,
-  Tab,
-  Divider,
-  Button,
-  Fade,
-  Zoom,
-  Card,
-  CardContent,
-  CardActionArea,
-  useTheme,
-  Chip,
-  IconButton,
-  Tooltip
-} from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Tabs, Tab, Divider, Button, Fade, Zoom, Card, CardContent, CardActionArea, useTheme, Chip, IconButton, Tooltip } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   ViewCarousel as ViewCarouselIcon,
   ViewModule as ViewModuleIcon,

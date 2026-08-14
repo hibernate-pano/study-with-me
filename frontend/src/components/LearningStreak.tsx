@@ -1,25 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  Paper,
-  CircularProgress,
-  Button,
-  Chip,
-  Grid,
-  Card,
-  CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
-  Alert,
-  LinearProgress,
-  Tooltip,
-} from "@mui/material";
+import { Box, Typography, Paper, CircularProgress, Button, Chip, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, LinearProgress, Tooltip } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   LocalFireDepartment as FireIcon,
   EmojiEvents as TrophyIcon,

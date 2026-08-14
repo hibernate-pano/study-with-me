@@ -1,21 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  Grid,
-  Avatar,
-  Divider,
-  Alert,
-  CircularProgress,
-  Tabs,
-  Tab,
-} from "@mui/material";
+import { Box, Container, Typography, TextField, Button, Paper, Avatar, Divider, Alert, CircularProgress, Tabs, Tab } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   Save as SaveIcon,
   Person as PersonIcon,

@@ -1,22 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Grid, 
-  Paper, 
-  Divider, 
-  CircularProgress,
-  Card,
-  CardContent,
-  Button,
-  Chip,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon
-} from '@mui/material';
+import { Box, Typography, Paper, Divider, CircularProgress, Card, CardContent, Button, Chip, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   AccessTime as AccessTimeIcon,
   School as SchoolIcon,

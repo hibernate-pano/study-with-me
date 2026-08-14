@@ -1,22 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Chip,
-  CircularProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip
-} from '@mui/material';
+import { Box, Typography, Card, CardContent, Avatar, Chip, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   School as SchoolIcon,
   Explore as ExploreIcon,

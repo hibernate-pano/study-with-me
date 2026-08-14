@@ -1,26 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Grid,
-  CircularProgress,
-  Tabs,
-  Tab,
-  Paper,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  TextField,
-  InputAdornment,
-} from "@mui/material";
+import { Box, Container, Typography, Button, CircularProgress, Tabs, Tab, Paper, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, TextField, InputAdornment } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   Add as AddIcon,
   Search as SearchIcon,

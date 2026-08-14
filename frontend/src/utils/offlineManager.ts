@@ -403,7 +403,7 @@ class OfflineManager {
 
       // 使用游标查找匹配的记录
       const request = store.openCursor();
-      let foundProgress = null;
+      let foundProgress: any = null;
 
       request.onsuccess = (event) => {
         const cursor = (event.target as IDBRequest).result;
@@ -485,7 +485,9 @@ class OfflineManager {
       // 尝试使用Background Sync API（如果支持）
       if ("serviceWorker" in navigator && "SyncManager" in window) {
         try {
-          const registration = await navigator.serviceWorker.ready;
+          const registration = (await navigator.serviceWorker.ready) as unknown as {
+            sync: { register: (tag: string) => Promise<void> };
+          };
           await registration.sync.register("sync-learning-progress");
           console.log("已注册后台同步任务");
         } catch (error) {

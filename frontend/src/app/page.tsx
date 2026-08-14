@@ -1,28 +1,9 @@
 "use client";
+import React from "react";
 
 import { useState, useEffect } from "react";
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  TextField,
-  Paper,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Divider,
-  CircularProgress,
-  Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  ToggleButtonGroup,
-  ToggleButton,
-  Tooltip,
-} from "@mui/material";
+import { Box, Container, Typography, Button, TextField, Paper, Card, CardContent, CardActions, Divider, CircularProgress, Alert, FormControl, InputLabel, Select, MenuItem, ToggleButtonGroup, ToggleButton, Tooltip } from '@mui/material';
+import Grid from "@/components/CompatGrid";
 import {
   School as SchoolIcon,
   AutoStories as AutoStoriesIcon,
@@ -605,7 +586,7 @@ export default function Home() {
                   }}
                 >
                   {React.cloneElement(feature.icon, {
-                    fontSize: { xs: "medium", md: "large" },
+                    sx: { fontSize: { xs: "1.5rem", md: "2rem" } },
                   })}
                   <Typography
                     variant="h6"

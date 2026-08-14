@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import {
   Button,
@@ -193,7 +194,7 @@ const AdaptiveLearningPath: React.FC<AdaptiveLearningPathProps> = ({
           />
         )}
 
-        <Divider orientation="left">学习阶段</Divider>
+        <Divider>学习阶段</Divider>
 
         {path.stages && path.stages.length > 0 ? (
           path.stages.map((stage, index) => (
@@ -205,7 +206,7 @@ const AdaptiveLearningPath: React.FC<AdaptiveLearningPathProps> = ({
             >
               <Paragraph>{stage.description}</Paragraph>
 
-              <Divider orientation="left" plain>
+              <Divider plain>
                 章节
               </Divider>
 

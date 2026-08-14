@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
@@ -134,7 +135,7 @@ const AdaptiveExercises: React.FC<AdaptiveExercisesProps> = ({
       );
 
       // 更新结果状态
-      setResults((prev) => ({
+      setResults((prev: Record<string, any>) => ({
         ...prev,
         [exerciseId]: {
           userAnswer,
