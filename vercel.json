@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "rootDirectory": "frontend",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
+}

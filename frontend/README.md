@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 概念深挖器 · Frontend
 
-## Getting Started
+Next.js 15 App Router · React 19 · Tailwind CSS 4 · react-markdown
 
-First, run the development server:
+## 开发
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.local.example .env.local   # 填入 AI_API_KEY（必填）
+npm run dev                        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 构建（带严格类型 + ESLint 检查）
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 目录
 
-## Learn More
+```
+src/
+├── app/
+│   ├── page.tsx                       首页：大输入框 + 示例词 + 最近搜索
+│   ├── analyze/[term]/page.tsx        结果页：流式渲染 + 目录 + 折叠/复制/停止
+│   ├── api/analyze/route.ts           POST /api/analyze，流式 DeepSeek + 并行 Tavily
+│   ├── globals.css                    全局样式（含 Tailwind 主题、Markdown 渲染、骨架屏）
+│   └── layout.tsx
+├── components/
+│   ├── SearchBox.tsx
+│   └── SectionCard.tsx
+└── lib/
+    ├── prompt.ts                      7 个模块的固定 prompt（标题是前后端协议）
+    ├── stream.ts                      Markdown → Section 解析 + 标题样式映射
+    └── search.ts                      Tavily 检索客户端（无 key 自动跳过）
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 环境变量
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `AI_API_URL` | ✅ | 默认 `https://api.siliconflow.cn/v1/chat/completions` |
+| `AI_API_KEY` | ✅ | 硅基流动 API Key |
+| `AI_MODEL_NAME` | ✅ | 默认 `deepseek-ai/DeepSeek-V3` |
+| `TAVILY_API_KEY` | 可选 | 开启「实时资料检索」 |
+| `TAVILY_MAX_RESULTS` | 可选 | 默认 5 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 改动约定
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Prompt 中的 `## ` 标题是协议**，前后端靠它切分卡片。若修改，需同步 `lib/prompt.ts` 和 `lib/stream.ts` 的 `styleForTitle`。
+- AI 调用走 `app/api/**` 或 `lib/*.ts`（Node 侧），禁止前端直接持有 `AI_*` 变量。
+- 流式响应为纯文本 Markdown，前端按 `## ` 切分；不要改成 JSON-SSE。

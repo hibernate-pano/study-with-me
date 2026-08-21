@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --ink: #1a2033;
+  --ink-soft: #5b6478;
+  --line: #e7e9f2;
+  --brand: #4f46e5;
+  --brand-deep: #4338ca;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 首页 hero ---------- */
+.hero-bg {
+  background:
+    radial-gradient(1100px 480px at 20% -10%, rgba(79, 70, 229, 0.14), transparent 60%),
+    radial-gradient(900px 420px at 90% -20%, rgba(14, 165, 233, 0.12), transparent 55%),
+    var(--bg);
+}
+
+/* ---------- Markdown 正文渲染 ---------- */
+.md {
+  font-size: 15px;
+  line-height: 1.85;
+  color: #2a3044;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+  margin: 20px 0 8px;
+  color: #1a2033;
+}
+.md p {
+  margin: 8px 0;
+}
+.md ul,
+.md ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.md li {
+  margin: 5px 0;
+}
+.md li::marker {
+  color: #8b93a8;
+}
+.md strong {
+  color: #141a2b;
+  font-weight: 700;
+}
+.md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: #eef0f7;
+  border: 1px solid #e2e5f0;
+  border-radius: 5px;
+  padding: 1px 5px;
+  color: #c0263d;
+}
+.md pre {
+  background: #171c2c;
+  color: #e5e9f5;
+  padding: 14px 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.md pre code {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  font-size: 13px;
+}
+.md blockquote {
+  border-left: 3px solid #c7cbe3;
+  margin: 10px 0;
+  padding: 2px 14px;
+  color: #5b6478;
+  background: #f8f9fd;
+  border-radius: 0 8px 8px 0;
+}
+.md a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- 骨架屏 ---------- */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(90deg, #eceef5 25%, #f7f8fc 50%, #eceef5 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+/* ---------- 流式光标 ---------- */
+.caret::after {
+  content: "▍";
+  color: var(--brand);
+  animation: blink 1s step-start infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- 其他 ---------- */
+.scroll-thin::-webkit-scrollbar {
+  width: 5px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #d4d8e6;
+  border-radius: 4px;
 }

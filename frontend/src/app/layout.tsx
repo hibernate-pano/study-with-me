@@ -1,39 +1,18 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
 import "./globals.css";
-import ThemeProvider from "@/components/ThemeProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
-import LogServiceInitializer from "@/components/LogServiceInitializer";
-import OfflineNotification from "@/components/OfflineNotification";
-
-const roboto = Roboto({
-  weight: ["300", "400", "500", "700"],
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
-  title: "Study With Me - AI辅助学习平台",
-  description: "使用AI技术帮助学习，对学习内容进行拆解和制定标准的学习计划",
+  title: "概念深挖器 · 输入一个词，快速抓住重点",
+  description:
+    "输入任意概念（分布式锁、十五规划、费曼学习法…），AI 帮你厘清概念、拆解分析、找出重点与误区、规划进阶路径。",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body className={roboto.className}>
-        <ThemeProvider>
-          <AuthProvider>
-            <LogServiceInitializer />
-            {children}
-            {/* 离线通知组件（客户端组件，内部自行处理渲染时机） */}
-            <OfflineNotification />
-          </AuthProvider>
-        </ThemeProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
