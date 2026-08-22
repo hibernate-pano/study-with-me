@@ -45,8 +45,12 @@ cd frontend && npm install && npm run build
 
 部署完成后会得到一个 `xxx.vercel.app` 域名，例如：
 ```
-https://study-with-me-pi.vercel.app
+https://study-with-me-peach-beta.vercel.app（本项目实际域名）
 ```
+
+> 本项目已在 Vercel 连接 GitHub（`hibernate-pano/study-with-me`），
+> **每次 push main 会自动部署到 Production**，无需手动操作。
+> 绑定域名：`https://studywithme.panbo.space`（Cloudflare CNAME → `cname.vercel-dns.com`，DNS-only）。
 
 ---
 
