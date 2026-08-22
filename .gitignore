@@ -57,3 +57,5 @@ coverage/
 
 # OS-specific
 *.pem
+.vercel
+.env*
