@@ -87,12 +87,15 @@ study-with-me/
 │   │       ├── search.ts                Tavily 客户端
 │   │       └── thinkingFilter.ts        流式 <thinking> 过滤
 │   └── package.json                     dev = `dotenv -e ../.env -- next dev`
-├── legacy-backend/    旧项目存档（不动）
-└── docs/              旧项目文档存档（不动）
+└── tests                               vitest 单元测试（见 frontend/src/lib/*.test.ts）
 ```
 
 ## 目录说明
 
 - `frontend/` —— 新应用（唯一需要维护的代码）
-- `legacy-backend/` —— 旧版 Express + Supabase 后端（已废弃，仅存档）
-- `docs/` —— 旧项目文档存档
+- **历史档案**：`legacy-backend/`（旧 Express + Supabase 后端）与 `docs/`（旧项目文档）已迁出本仓库，位置：
+  ```
+  ../study-with-me-archive/legacy-backend/
+  ../study-with-me-archive/old-docs/
+  ```
+  仅为存档参考，不在本仓库维护。如需查阅旧文档请直接打开这两个路径。

@@ -43,11 +43,7 @@ Thumbs.db
 # 项目特定
 # =====================================================
 
-# legacy-backend/ 内的旧项目构建产物
-legacy-backend/dist/
-legacy-backend/build/
-legacy-backend/node_modules/
-legacy-backend/logs/
+# legacy-backend/ 和 docs/ 已于 2026-08-22 移到 ../study-with-me-archive/
 
 # VerCel 部署配置（自动生成，不入库）
 .vercel/
@@ -57,5 +53,3 @@ coverage/
 
 # OS-specific
 *.pem
-.vercel
-.env*
