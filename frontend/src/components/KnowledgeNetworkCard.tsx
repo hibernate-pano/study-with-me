@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { flattenGroups, parseNetworkMarkdown, type FlatConcept } from "@/lib/network";
+import { parseNetworkMarkdown, type FlatConcept } from "@/lib/network";
 
 /**
  * 知识网络卡片视图（按关联类型分组）。
@@ -20,7 +20,6 @@ interface Props {
 
 export default function KnowledgeNetworkCard({ markdown, streaming, onConceptClick }: Props) {
   const groups = useMemo(() => parseNetworkMarkdown(markdown), [markdown]);
-  const allConcepts = useMemo(() => flattenGroups(groups), [groups]);
 
   if (groups.length === 0 && streaming) {
     return (
@@ -60,46 +59,36 @@ export default function KnowledgeNetworkCard({ markdown, streaming, onConceptCli
           </div>
 
           <div className="space-y-2">
-            {g.concepts.map((c, ci) => {
-              // 从 allConcepts 反查，拿到完整 FlatConcept（含 color / relationType）
-              const flat = allConcepts.find((x) => x.name === c.name) ?? {
-                name: c.name,
-                description: c.description,
-                relationType: g.type,
-                groupLabel: g.label,
-                color: g.color,
-              };
-              return (
-                <button
-                  key={ci}
-                  onClick={() => onConceptClick?.(flat)}
-                  className="group w-full text-left rounded-lg border bg-white pl-3 pr-3 py-2.5 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer"
-                  style={{ borderColor: g.color + "55" }}
-                >
-                  <div className="flex items-start gap-2">
-                    <span
-                      className="mt-0.5 inline-block h-1.5 w-1.5 rounded-full shrink-0"
-                      style={{ background: g.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-[13.5px] font-bold" style={{ color: g.color }}>
-                          {c.name}
-                        </span>
-                        <span className="text-[10.5px] text-slate-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          点击深挖 →
-                        </span>
-                      </div>
-                      {c.description && (
-                        <div className="mt-0.5 text-[12px] text-slate-500 leading-relaxed line-clamp-2">
-                          {c.description}
-                        </div>
-                      )}
+            {g.concepts.map((c, ci) => (
+              <button
+                key={ci}
+                onClick={() => onConceptClick?.(c)}
+                className="group w-full text-left rounded-lg border bg-white pl-3 pr-3 py-2.5 hover:border-indigo-300 hover:shadow-sm transition-all cursor-pointer"
+                style={{ borderColor: c.color + "55" }}
+              >
+                <div className="flex items-start gap-2">
+                  <span
+                    className="mt-0.5 inline-block h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{ background: c.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[13.5px] font-bold" style={{ color: c.color }}>
+                        {c.name}
+                      </span>
+                      <span className="text-[10.5px] text-slate-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        点击深挖 →
+                      </span>
                     </div>
+                    {c.description && (
+                      <div className="mt-0.5 text-[12px] text-slate-500 leading-relaxed line-clamp-2">
+                        {c.description}
+                      </div>
+                    )}
                   </div>
-                </button>
-              );
-            })}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       ))}

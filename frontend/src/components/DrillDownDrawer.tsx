@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { styleForTitle, type Section } from "@/lib/stream";
+import { parseSections, styleForTitle, type Section } from "@/lib/stream";
 import type { FlatConcept } from "@/lib/network";
 
 /**
@@ -100,7 +100,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
 
   if (!concept) return null;
 
-  const sections = parseSectionsClient(text);
+  const sections = parseSections(text);
   const visibleSections = sections.filter((s) => s.id !== "sec-intro");
 
   return (
@@ -131,7 +131,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
               {concept.name}
             </h2>
             {concept.description && (
-              <p className="mt-1 text-[12.5px] text-slate-500 leading-relaxed">
+              <p className="mt-1 text-[12.5px] text-slate-500 leading-relaxed line-clamp-3">
                 {concept.description}
               </p>
             )}
@@ -227,30 +227,4 @@ function DrawerSection({ section, streaming }: { section: Section; streaming: bo
       </div>
     </section>
   );
-}
-
-// 复用 stream.ts 的 parseSections（复制一份避免循环依赖）
-function parseSectionsClient(md: string): Section[] {
-  const lines = md.split("\n");
-  const sections: Section[] = [];
-  let current: Section | null = null;
-  for (const line of lines) {
-    const m = line.match(/^##\s+(.+)$/);
-    if (m) {
-      const title = m[1].trim();
-      current = { id: slugify(title), title, content: "" };
-      sections.push(current);
-    } else if (current) {
-      current.content += line + "\n";
-    } else if (line.trim()) {
-      current = { id: "sec-intro", title: "引言", content: line + "\n" };
-      sections.push(current);
-    }
-  }
-  return sections;
-}
-
-function slugify(title: string): string {
-  const cleaned = title.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "").trim();
-  return "sec-" + cleaned.replace(/[（）()]/g, "").replace(/\s+/g, "-");
 }

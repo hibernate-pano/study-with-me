@@ -116,7 +116,7 @@ export default function HomePage() {
         {/* 模块说明 */}
         <div className="mt-16">
           <h2 className="text-center text-[19px] font-bold text-slate-800">
-            一份报告，七个模块
+            一份报告，<span className="text-indigo-600">8</span> 个模块
           </h2>
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {MODULES.map((m) => (

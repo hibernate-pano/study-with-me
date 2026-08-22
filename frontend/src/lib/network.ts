@@ -7,11 +7,18 @@ export interface Concept {
 
 export type RelationType = "前置知识" | "兄弟概念" | "后继深入" | "对立" | "类比" | "其他";
 
+/** 概念 + 所属分组的元信息。chip 直接持有本类型，免去反查。 */
+export interface FlatConcept extends Concept {
+  relationType: RelationType;
+  groupLabel: string;
+  color: string;
+}
+
 export interface Group {
   type: RelationType;
   label: string;
   subtitle: string;
-  concepts: Concept[];
+  concepts: FlatConcept[];
   color: string;
   bg: string;
 }
@@ -102,32 +109,40 @@ export function parseNetworkMarkdown(md: string): Group[] {
     const nameMatch = item.match(/^\*\*(.+?)\*\*/);
     if (!nameMatch) continue;
 
-    const name = nameMatch[1].trim();
-    const desc = item
-      .slice(nameMatch[0].length)
-      .replace(/^[\s:,;:\u3000\uFF1A\uFF0C\uFF1B\u2014\u2013\u2212]+/, "")
-      .trim();
+    const name = cleanInlineMarkdown(nameMatch[1]).trim();
+    const desc = cleanInlineMarkdown(
+      item
+        .slice(nameMatch[0].length)
+        .replace(/^[\s:,;:\u3000\uFF1A\uFF0C\uFF1B\u2014\u2013\u2212]+/, "")
+        .trim()
+    );
 
-    current.concepts.push({ name, description: desc });
+    current.concepts.push({
+      name,
+      description: desc,
+      relationType: current.type,
+      groupLabel: current.label,
+      color: current.color,
+    });
   }
 
   return groups.filter((g) => g.concepts.length > 0);
 }
 
-/** 扁平化所有概念（用于图节点列表），带所属分组信息 */
-export interface FlatConcept extends Concept {
-  relationType: RelationType;
-  groupLabel: string;
-  color: string;
+/**
+ * 清理文本里的内联 Markdown 符号（**加粗**、`代码`）。
+ * 知识网络 chip 的副标题是单行/两行轻量展示，不需要完整 Markdown 渲染，
+ * 把 `**xx**` 原样露出会丢脸。保守实现：只动双星号与反引号，避开单个 `*`
+ * （可能出现在中文里造成误伤）。
+ */
+function cleanInlineMarkdown(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
 }
 
+/** 扁平化所有概念（保留供未来「跨分组的全局节点视图」使用）。 */
 export function flattenGroups(groups: Group[]): FlatConcept[] {
-  return groups.flatMap((g) =>
-    g.concepts.map((c) => ({
-      ...c,
-      relationType: g.type,
-      groupLabel: g.label,
-      color: g.color,
-    }))
-  );
+  return groups.flatMap((g) => g.concepts);
 }
