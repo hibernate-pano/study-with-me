@@ -29,8 +29,8 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
   };
 
   const isLarge = size === "lg";
-  const padding = isLarge ? "p-2.5 pl-5" : "p-1.5 pl-4";
-  const iconSize = isLarge ? 22 : 18;
+  const padding = isLarge ? "p-3.5 pl-6" : "p-1.5 pl-4";
+  const iconSize = isLarge ? 26 : 18;
 
   return (
     <div className="w-full">
@@ -42,7 +42,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
         className={`group flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_-12px_rgba(30,40,90,0.18)] transition-all focus-within:border-indigo-400 focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.15)] ${padding}`}
       >
         <svg
-          className="shrink-0 text-slate-400 mt-2.5"
+          className="shrink-0 text-slate-400 mt-2"
           width={iconSize}
           height={iconSize}
           viewBox="0 0 24 24"
@@ -83,7 +83,9 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
           rows={1}
           maxLength={MAX_LEN}
           className={`flex-1 bg-transparent outline-none text-slate-800 placeholder:text-slate-400 resize-none leading-relaxed scroll-thin ${
-            isLarge ? "text-[17px] py-2.5 min-h-[44px]" : "text-[15px] py-1.5 min-h-[36px]"
+            isLarge
+              ? "text-[19px] py-3 min-h-[52px]"
+              : "text-[15px] py-1.5 min-h-[36px]"
           }`}
         />
 
@@ -92,7 +94,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
             type="submit"
             disabled={!value.trim()}
             className={`shrink-0 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              isLarge ? "px-6 py-3 text-[15px]" : "px-4 py-2 text-sm"
+              isLarge ? "px-7 py-3.5 text-[16px]" : "px-4 py-2 text-sm"
             }`}
           >
             深挖
@@ -106,7 +108,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
       </form>
 
       {isLarge && (
-        <p className="mt-2 text-center text-[11.5px] text-slate-400">
+        <p className="mt-2.5 text-center text-[11.5px] text-slate-400">
           Enter 提交 · Shift+Enter 换行 · 支持完整段落或问题
         </p>
       )}
