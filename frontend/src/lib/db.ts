@@ -77,7 +77,7 @@ export interface DbCard {
   updated_at: number;
 }
 
-/** 一次性 upsert 整份报告（配 primary key ON CONFLICT） */
+/** 一次性 upsert 整份报告（配 primary key ON CONFLICT；created_at 首次写入，更新时保留） */
 export async function upsertReport(userId: number, r: {
   key: string;
   term: string;
@@ -86,22 +86,24 @@ export async function upsertReport(userId: number, r: {
   full_text: string;
   related: unknown[];
 }): Promise<void> {
+  const now = Date.now();
   await run(
-    `INSERT INTO reports (user_id, key, term, parent_term, relation_type, full_text, related, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+    `INSERT INTO reports (user_id, key, term, parent_term, relation_type, full_text, related, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
      ON CONFLICT (user_id, key) DO UPDATE SET
        term = excluded.term,
        parent_term = excluded.parent_term,
        relation_type = excluded.relation_type,
        full_text = excluded.full_text,
        related = excluded.related,
+       created_at = COALESCE(reports.created_at, excluded.created_at),
        updated_at = excluded.updated_at`,
     userId, r.key, r.term, r.parent_term, r.relation_type, r.full_text,
-    JSON.stringify(r.related), Date.now()
+    JSON.stringify(r.related), now
   );
 }
 
-/** 一次性 upsert 一张复习卡 */
+/** 一次性 upsert 一张复习卡（created_at 语义同上） */
 export async function upsertCard(userId: number, c: {
   key: string;
   term: string;
@@ -112,9 +114,10 @@ export async function upsertCard(userId: number, c: {
   reps: number;
   status: string;
 }): Promise<void> {
+  const now = Date.now();
   await run(
-    `INSERT INTO cards (user_id, key, term, question, answer, due_at, interval_days, reps, status, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+    `INSERT INTO cards (user_id, key, term, question, answer, due_at, interval_days, reps, status, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)
      ON CONFLICT (user_id, key) DO UPDATE SET
        term = excluded.term,
        question = excluded.question,
@@ -123,8 +126,9 @@ export async function upsertCard(userId: number, c: {
        interval_days = excluded.interval_days,
        reps = excluded.reps,
        status = excluded.status,
+       created_at = COALESCE(cards.created_at, excluded.created_at),
        updated_at = excluded.updated_at`,
-    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status, Date.now()
+    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status, now
   );
 }
 
