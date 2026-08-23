@@ -11,7 +11,9 @@ import {
   saveReport,
   getReport,
   getAllReports,
+  getDueCards,
   mainKey,
+  syncCardsFromReport,
   type StoredReport,
 } from "@/lib/storage";
 import { readShareHash, buildShareUrl } from "@/lib/share";
@@ -55,6 +57,8 @@ export default function AnalyzePage() {
 
   // 侧栏「我的存档」
   const [archive, setArchive] = useState<StoredReport[]>([]);
+  // 待复习卡数（header 入口徽标）
+  const [dueCount, setDueCount] = useState(0);
 
   const bufferRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
@@ -70,6 +74,13 @@ export default function AnalyzePage() {
     setSections(parseSections(text));
   }, []);
   const fullTextRef = useRef("");
+
+  /** 更新 header 的待复习数徽标 */
+  const refreshDueCount = useCallback(() => {
+    getDueCards()
+      .then((cs) => setDueCount(cs.length))
+      .catch(() => setDueCount(0));
+  }, []);
 
   /** 生成完成后写入 IndexedDB（成为个人知识库的一页） */
   const persist = useCallback(
@@ -88,9 +99,18 @@ export default function AnalyzePage() {
         .catch(() => {
           /* 隐私模式等场景写失败就静默 */
         });
+      // 自测题 → 复习卡（幂等：只新增从未见过的题）
+      syncCardsFromReport(term, text)
+        .then(() => refreshDueCount())
+        .catch(() => {});
     },
-    [term]
+    [term, refreshDueCount]
   );
+
+  // 进入页面先取一次待复习数
+  useEffect(() => {
+    refreshDueCount();
+  }, [refreshDueCount]);
 
   /** 发起流式请求 */
   const start = useCallback(
@@ -200,6 +220,10 @@ export default function AnalyzePage() {
           setFullText(r.fullText);
           setSections(parseSections(r.fullText));
           setStreaming(false);
+          // 缓存报告也同步一次复习卡（幂等）
+          syncCardsFromReport(term, r.fullText)
+            .then(() => refreshDueCount())
+            .catch(() => {});
         } else {
           start();
         }
@@ -387,6 +411,23 @@ export default function AnalyzePage() {
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
             {sharedCopied ? "已复制链接" : "分享"}
+          </button>
+
+          <button
+            onClick={() => router.push("/review")}
+            className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="间隔重复复习自测题"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+            复习
+            {dueCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9.5px] font-bold text-white">
+                {dueCount > 9 ? "9+" : dueCount}
+              </span>
+            )}
           </button>
 
           <button

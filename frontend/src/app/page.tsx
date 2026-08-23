@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
-import { getRecent, type StoredReport } from "@/lib/storage";
+import { getRecent, getDueCards, type StoredReport } from "@/lib/storage";
 import { extractSectionText } from "@/lib/stream";
 
 const EXAMPLES = [
@@ -51,6 +51,14 @@ export default function HomePage() {
       })
       .catch(() => setLibrary([]));
   }, []);
+
+  // 待复习卡数（首页入口徽标）
+  const [dueCount, setDueCount] = useState(0);
+  useEffect(() => {
+    getDueCards()
+      .then((cs) => setDueCount(cs.length))
+      .catch(() => setDueCount(0));
+  }, [library.length]);
 
   useEffect(() => {
     try {
@@ -138,6 +146,22 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* 到期复习提醒 */}
+        {dueCount > 0 && (
+          <div className="mt-8">
+            <button
+              onClick={() => router.push("/review")}
+              className="mx-auto flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-5 py-3 hover:bg-amber-50 hover:border-amber-300 transition-colors cursor-pointer"
+            >
+              <span className="text-[16px]">🗂</span>
+              <span className="text-[13.5px] font-medium text-amber-700">
+                有 {dueCount} 张复习卡到期了，花 2 分钟过一遍？
+              </span>
+              <span className="text-[13.5px] font-bold text-amber-700">去复习 →</span>
+            </button>
+          </div>
+        )}
+
         {/* 我的知识库：最近学过的概念（真实数据来自本地 IndexedDB） */}
         {library.length > 0 && (
           <div className="mt-12">
@@ -146,8 +170,7 @@ export default function HomePage() {
                 最近学过的概念
               </h2>
               <span className="text-[11.5px] text-slate-400">你的报告会自动保存在本地</span>
-            </div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            </div>            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
               {library.map((r) => (
                 <button
                   key={r.key}
