@@ -54,6 +54,9 @@ export async function GET(req: NextRequest) {
       user.id
     );
 
+    // 顺手清理过期会话（个人工具零成本维护，防表无限增长）
+    await run(`DELETE FROM sessions WHERE expires_at < ?1`, Date.now()).catch(() => {});
+
     const res = NextResponse.redirect(new URL("/", req.nextUrl.origin));
     // 清掉 state cookie，种下 30 天会话 cookie
     res.cookies.set(STATE_COOKIE, "", { path: "/", maxAge: 0 });

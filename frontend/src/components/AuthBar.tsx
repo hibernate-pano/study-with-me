@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { initCloudSync, logoutUser, onAuthChange } from "@/lib/sync";
+import { initCloudSync, logoutUser, onAuthChange, onSyncStateChange, type SyncStatus } from "@/lib/sync";
 import { githubAuthUrl } from "@/lib/cloud";
 
 /**
  * 右上角登录栏：全局可见。
  * - 未登录：GitHub 登录按钮（整页跳 OAuth）；
- * - 已登录：GitHub 用户名，点击展开登出；
+ * - 已登录：GitHub 用户名 + 同步状态，点击展开登出；
  * - 探测中：不渲染（避免闪动）。
  */
 export default function AuthBar() {
@@ -15,6 +15,7 @@ export default function AuthBar() {
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sync, setSync] = useState<SyncStatus>({ status: "ok", lastAt: null });
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -39,7 +40,11 @@ export default function AuthBar() {
       setUser(r.user);
       setReady(true);
     });
-    return off;
+    const offSync = onSyncStateChange(setSync);
+    return () => {
+      off();
+      offSync();
+    };
   }, []);
 
   // 点击外部关闭菜单
@@ -77,9 +82,17 @@ export default function AuthBar() {
           </button>
 
           {open && (
-            <div className="absolute right-0 mt-1.5 w-44 overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-lg">
+            <div className="absolute right-0 mt-1.5 w-48 overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-lg">
               <div className="border-b border-[var(--line)] px-3.5 py-2.5 text-[11.5px] text-slate-500">
                 已登录 · 知识库自动同步
+                <div className={`mt-1 flex items-center gap-1 text-[11px] ${sync.status === "error" ? "text-red-500" : "text-emerald-600"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${sync.status === "error" ? "bg-red-500" : "bg-emerald-500"}`} />
+                  {sync.status === "error"
+                    ? sync.message ?? "同步失败（数据已暂存，将自动重试）"
+                    : sync.lastAt
+                    ? `已同步 ${new Date(sync.lastAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`
+                    : "同步中…"}
+                </div>
               </div>
               <button
                 onClick={() =>

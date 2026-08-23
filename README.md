@@ -85,7 +85,7 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 - **模型默认**：MiniMax 国内版 `MiniMax-M3`（OpenAI 兼容接口，OpenAI 兼容 SSE 流式）
 - **联网检索（可选）**：Tavily API
 - **关键**：路由内做了 `<thinking>` 标签过滤（M 系列模型会把思考过程包在这个标签里）
-- **测试**：Vitest 92 个用例（解析器 / 状态机 / 存储 / 分享编码 / 复习卡调度 / 概念图聚合），`cd frontend && npm test`
+- **测试**：Vitest 116 个用例（解析器 / 状态机 / 存储 / 分享编码 / 复习卡调度 / 概念图聚合 / OAuth 会话 / 云同步队列），`cd frontend && npm test`
 
 ## 环境变量（项目根 `.env`）
 
@@ -147,7 +147,7 @@ study-with-me/
 │   │       └── sync.ts                  登录态 + 防抖推送协调
 │   ├── db/schema.sql                    D1 表结构（已自动化执行）
 │   └── package.json                     dev = `dotenv -e ../.env -- next dev`
-└── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest，107 用例）
+└── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest，116 用例）
 ```
 
 ## 目录说明

@@ -14,6 +14,8 @@ import {
   getDueCards,
   mainKey,
   syncCardsFromReport,
+  deleteReport,
+  deleteTermCards,
   type StoredReport,
 } from "@/lib/storage";
 import { readShareHash } from "@/lib/share";
@@ -550,17 +552,33 @@ export default function AnalyzePage() {
               </div>
               <nav className="space-y-1">
                 {archive.map((r) => (
-                  <button
+                  <div
                     key={r.key}
-                    onClick={() => router.push(`/analyze/${encodeURIComponent(r.term)}`)}
-                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
-                    title={r.term}
+                    className="group flex items-center rounded-lg hover:bg-slate-50"
                   >
-                    <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-[10.5px] text-indigo-500">
-                      {r.term.slice(0, 1)}
-                    </span>
-                    <span className="truncate">{r.term}</span>
-                  </button>
+                    <button
+                      onClick={() => router.push(`/analyze/${encodeURIComponent(r.term)}`)}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-slate-600 group-hover:text-slate-900 transition-colors cursor-pointer"
+                      title={r.term}
+                    >
+                      <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-[10.5px] text-indigo-500">
+                        {r.term.slice(0, 1)}
+                      </span>
+                      <span className="truncate">{r.term}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`删除「${r.term}」及其复习卡？（本地 + 云端同步删除）`)) return;
+                        void deleteReport(r.key);
+                        void deleteTermCards(r.term);
+                        refreshArchive(term);
+                      }}
+                      className="mr-1 shrink-0 rounded-md px-1.5 py-1 text-[11px] text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 cursor-pointer"
+                      title="删除此概念"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
               </nav>
             </div>
