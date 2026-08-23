@@ -25,10 +25,11 @@
 报告**自动保存在浏览器本地（IndexedDB）**，刷新不丢失：
 
 - **📂 打开即读**：再次进入同一概念直接显示已存报告，不重复烧 token；点「重新生成」可覆盖更新
-- **📤 分享**：一键复制分享链接，报告全文压缩进 URL hash（`#report=`），对方打开即是只读完整报告
 - **💾 导出**：一键下载 Markdown 文件
 - **🏠 首页存档预览**：最近学过的概念直接出现在首页（实时数据）
 - **📚 我的存档**：分析页侧栏列出你学过的所有概念，随时跳回
+
+> 分享功能（UI）已停用（v1.4 起不再显示分享按钮/只读提示）；旧 `#report=` 链接仍兼容打开。
 
 ## 三个帮你“真正掌握”的功能（全部本地、零后端）
 
@@ -41,7 +42,8 @@
   悬停看关系、点击跳转概念，学得越多网越密，`/map`。
 
 本地存储结构：主报告 key = 概念名；深挖报告 key = `drill:<父概念>::<子概念>`；
-对比报告 key = `compare:A::B`；复习卡 key = `概念::问题hash`（cards store）。
+对比报告 key = `compare:A::B`；复习卡 key = `概念::问题hash`（cards store）；
+旧分享链接 `#report=`（lz-string 压缩）仅保留解码兼容。
 
 ## 输入可以是
 
@@ -73,7 +75,7 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 ## 技术栈（精简到极致）
 
 - **Next.js 15.3**（App Router，前后端一体：AI 调用收在 `/api/analyze` 路由内，密钥只留在服务端）
-- **React 19 + Tailwind CSS 4**，仅 `react-markdown` + `lz-string`（分享链接压缩）两个额外运行时依赖
+- **React 19 + Tailwind CSS 4**，仅 `react-markdown` + `lz-string`（旧分享链接解码）两个额外运行时依赖
 - **本地知识库**：IndexedDB（原生封装 `lib/storage.ts`，无第三方库）
 - **模型默认**：MiniMax 国内版 `MiniMax-M3`（OpenAI 兼容接口，OpenAI 兼容 SSE 流式）
 - **联网检索（可选）**：Tavily API

@@ -16,7 +16,7 @@ import {
   syncCardsFromReport,
   type StoredReport,
 } from "@/lib/storage";
-import { readShareHash, buildShareUrl } from "@/lib/share";
+import { readShareHash } from "@/lib/share";
 
 function fmtTime(ts: number): string {
   const d = new Date(ts);
@@ -47,12 +47,10 @@ export default function AnalyzePage() {
   const [error, setError] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
-  const [sharedCopied, setSharedCopied] = useState(false);
   const [stickToBottom, setStickToBottom] = useState(true);
   const [drillConcept, setDrillConcept] = useState<FlatConcept | null>(null);
 
-  // 数据来源提示：分享只读 | 本地存档 | 全新生成
-  const [isShared, setIsShared] = useState(false);
+  // 数据来源提示：本地存档 | 全新生成
   const [cachedAt, setCachedAt] = useState<number | null>(null);
 
   // 侧栏「我的存档」
@@ -129,7 +127,6 @@ export default function AnalyzePage() {
       setSections([]);
       setStreaming(true);
       setError("");
-      setIsShared(false);
 
       try {
         const res = await fetch("/api/analyze", {
@@ -199,10 +196,9 @@ export default function AnalyzePage() {
   useEffect(() => {
     recordRecent(term);
 
-    // 1) 分享链接（只读视图）
+    // 1) 旧分享链接（#report=）兼容：正常展示报告，不再提示"只读"
     const shared = readShareHash();
     if (shared) {
-      setIsShared(true);
       fullTextRef.current = shared;
       setFullText(shared);
       setSections(parseSections(shared));
@@ -322,20 +318,6 @@ export default function AnalyzePage() {
     }
   };
 
-  const shareReport = async () => {
-    const text = fullTextRef.current || fullText;
-    if (!text) return;
-    const url = buildShareUrl(term, text);
-    try {
-      await navigator.clipboard.writeText(url);
-      setSharedCopied(true);
-      setTimeout(() => setSharedCopied(false), 2000);
-    } catch {
-      // 剪贴板不可用时降级到 prompt
-      window.prompt("复制分享链接：", url);
-    }
-  };
-
   const exportMd = () => {
     const text = fullTextRef.current || fullText;
     if (!text) return;
@@ -399,19 +381,6 @@ export default function AnalyzePage() {
               停止
             </button>
           )}
-
-          <button
-            onClick={shareReport}
-            disabled={streaming || !fullText}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
-            title="复制分享链接"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-            {sharedCopied ? "已复制链接" : "分享"}
-          </button>
 
           <button
             onClick={() => router.push(`/compare?a=${encodeURIComponent(term)}`)}
@@ -496,23 +465,12 @@ export default function AnalyzePage() {
           </div>
 
           {/* 数据来源提示 */}
-          {!streaming && !error && fullText && (
-            <div className="mb-4">
-              {isShared ? (
-                <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-700">
-                  <span>🔗</span>
-                  <span>
-                    这是分享给你的报告（只读预览）。点「重新生成」可基于它生成本地版本。
-                  </span>
-                </div>
-              ) : cachedAt ? (
-                <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-2.5 text-[13px] text-sky-700">
-                  <span>📂</span>
-                  <span>
-                    已加载本地存档（更新于 {fmtTime(cachedAt)}）。「重新生成」可覆盖更新。
-                  </span>
-                </div>
-              ) : null}
+          {!streaming && !error && fullText && cachedAt && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-2.5 text-[13px] text-sky-700">
+              <span>📂</span>
+              <span>
+                已加载本地存档（更新于 {fmtTime(cachedAt)}）。「重新生成」可覆盖更新。
+              </span>
             </div>
           )}
 
