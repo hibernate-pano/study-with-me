@@ -74,9 +74,53 @@ function tx<T>(
   );
 }
 
+// ---------------- cloud bridge ----------------
+
+export interface CloudPushPayload {
+  reports?: Array<{
+    key: string;
+    term: string;
+    parent_term: string | null;
+    relation_type: string | null;
+    full_text: string;
+    related: unknown[];
+  }>;
+  cards?: Array<{
+    key: string;
+    term: string;
+    question: string;
+    answer: string;
+    due_at: number;
+    interval_days: number;
+    reps: number;
+    status: string;
+  }>;
+  deleteReports?: string[];
+  deleteCards?: string[];
+}
+
+/** 云推送钩子：app 启动时由 sync 模块注入；所有本地写操作完成后回调（防抖推送由注入方负责）。 */
+let cloudPusher: ((payload: CloudPushPayload) => void) | null = null;
+
+export function setCloudPusher(fn: ((payload: CloudPushPayload) => void) | null): void {
+  cloudPusher = fn;
+}
+
+/** 拉取入库等"本地是被动同步"场景，临时抑制推送，避免回环 */
+let suppressNotify = false;
+export function setCloudSuppress(v: boolean): void {
+  suppressNotify = v;
+}
+
+/** 本地写操作后调用：把变更交给云推送钩子（未登录/未设置/被动同步时为空操作）。 */
+function notifyCloud(payload: CloudPushPayload): void {
+  if (suppressNotify) return;
+  if (cloudPusher) cloudPusher(payload);
+}
+
 // ---------------- reports ----------------
 
-/** 保存/覆盖一份报告 */
+/** 保存/覆盖一份报告（写入本地 + 触发云推送） */
 export async function saveReport(report: StoredReport): Promise<void> {
   const now = Date.now();
   const existing = await getReport(report.key);
@@ -92,6 +136,18 @@ export async function saveReport(report: StoredReport): Promise<void> {
     t.objectStore(REPORTS_STORE).put(record);
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
+  });
+  notifyCloud({
+    reports: [
+      {
+        key: record.key,
+        term: record.term,
+        parent_term: record.parentTerm ?? null,
+        relation_type: record.relationType ?? null,
+        full_text: record.fullText,
+        related: record.related,
+      },
+    ],
   });
 }
 
@@ -130,7 +186,7 @@ export async function getAllReports(): Promise<StoredReport[]> {
   );
 }
 
-/** 删除一份报告 */
+/** 删除一份报告（本地 + 云） */
 export async function deleteReport(key: string): Promise<void> {
   const db = await openDB();
   await new Promise<void>((resolve, reject) => {
@@ -139,6 +195,7 @@ export async function deleteReport(key: string): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+  notifyCloud({ deleteReports: [key] });
 }
 
 /** 主报告保存 key：直接是术语本身 */
@@ -167,6 +224,20 @@ export async function putCard(card: Card): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+  notifyCloud({
+    cards: [
+      {
+        key: card.key,
+        term: card.term,
+        question: card.question,
+        answer: card.answer,
+        due_at: card.dueAt,
+        interval_days: card.intervalDays,
+        reps: card.reps,
+        status: card.status,
+      },
+    ],
+  });
 }
 
 export async function deleteCard(key: string): Promise<void> {
@@ -177,6 +248,7 @@ export async function deleteCard(key: string): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+  notifyCloud({ deleteCards: [key] });
 }
 
 /** 全部卡片 */

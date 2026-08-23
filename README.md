@@ -22,12 +22,15 @@
 
 ## 你的知识库（纯前端，零后端）
 
-报告**自动保存在浏览器本地（IndexedDB）**，刷新不丢失：
+报告**自动保存在浏览器本地（IndexedDB）**，刷新不丢失。**GitHub 登录后自动同步到云端**
+（Neon PostgreSQL），换设备照常读取：
 
 - **📂 打开即读**：再次进入同一概念直接显示已存报告，不重复烧 token；点「重新生成」可覆盖更新
 - **💾 导出**：一键下载 Markdown 文件
 - **🏠 首页存档预览**：最近学过的概念直接出现在首页（实时数据）
 - **📚 我的存档**：分析页侧栏列出你学过的所有概念，随时跳回
+- **☁️ 登录 + 云同步**（可选）：右上角 GitHub 登录 → 报告/复习卡/复习状态全量同步。
+  本地 IndexedDB 是缓存，云端是真相；未登录时行为与纯本地模式完全一致。
 
 > 分享功能（UI）已停用（v1.4 起不再显示分享按钮/只读提示）；旧 `#report=` 链接仍兼容打开。
 
@@ -77,6 +80,8 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 - **Next.js 15.3**（App Router，前后端一体：AI 调用收在 `/api/analyze` 路由内，密钥只留在服务端）
 - **React 19 + Tailwind CSS 4**，仅 `react-markdown` + `lz-string`（旧分享链接解码）两个额外运行时依赖
 - **本地知识库**：IndexedDB（原生封装 `lib/storage.ts`，无第三方库）
+- **云端同步（可选）**：GitHub OAuth（手写，无 NextAuth）+ Neon PostgreSQL（`@neondatabase/serverless`），
+  HttpOnly Cookie 会话，云端为真相、本地为缓存，写操作防抖推送
 - **模型默认**：MiniMax 国内版 `MiniMax-M3`（OpenAI 兼容接口，OpenAI 兼容 SSE 流式）
 - **联网检索（可选）**：Tavily API
 - **关键**：路由内做了 `<thinking>` 标签过滤（M 系列模型会把思考过程包在这个标签里）
@@ -91,6 +96,12 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 | `AI_MODEL_NAME` | ✅ | 默认 `MiniMax-M3`，备选 `MiniMax-M2.7` / `M2.7-highspeed` |
 | `TAVILY_API_KEY` | 可选 | 开启「实时资料检索」（https://tavily.com） |
 | `TAVILY_MAX_RESULTS` | 可选 | 默认 5 |
+| `GITHUB_CLIENT_ID` | 可选（登录/云同步） | GitHub OAuth App 的 Client ID |
+| `GITHUB_CLIENT_SECRET` | 可选（登录/云同步） | GitHub OAuth App 的 Client Secret |
+| `DATABASE_URL` | 可选（登录/云同步） | Neon PostgreSQL pooled 连接串（https://neon.tech） |
+
+> 登录/云同步需要同时配置上面 3 个变量 + 执行一次 `frontend/db/schema.sql`；
+> 不配置则保持纯本地模式，登录按钮不显示。
 
 ## 目录结构
 
@@ -103,30 +114,46 @@ study-with-me/
 │   │   ├── app/
 │   │   │   ├── page.tsx                 首页
 │   │   │   ├── analyze/[term]/page.tsx  结果页
-│   │   │   └── api/analyze/route.ts     流式接口 + thinking 过滤
+│   │   │   ├── compare/page.tsx         概念对比
+│   │   │   ├── review/page.tsx          间隔重复复习
+│   │   │   ├── map/page.tsx             知识网络地图
+│   │   │   └── api/
+│   │   │       ├── analyze/route.ts     流式接口 + thinking 过滤
+│   │   │       ├── auth/github/route.ts GitHub OAuth 发起
+│   │   │       ├── auth/callback/       OAuth 回调（建会话）
+│   │   │       ├── auth/me/route.ts     当前用户
+│   │   │       ├── auth/logout/route.ts 登出
+│   │   │       └── sync/route.ts        云端数据拉取/推送
 │   │   ├── components/
 │   │   │   ├── SearchBox.tsx
 │   │   │   ├── SectionCard.tsx
 │   │   │   ├── KnowledgeNetworkCard.tsx
-│   │   │   └── DrillDownDrawer.tsx       深挖抽屉
+│   │   │   ├── DrillDownDrawer.tsx       深挖抽屉
+│   │   │   └── AuthBar.tsx               右上角登录栏（全局）
 │   │   └── lib/
 │   │       ├── prompt.ts                8 模块 prompt（含知识网络结构）
 │   │       ├── stream.ts                Markdown → Section / 摘要抽取
 │   │       ├── network.ts               知识网络解析 + 关系定义
 │   │       ├── thinkingFilter.ts        流式 <thinking> 过滤
-│   │       ├── storage.ts               IndexedDB 报告持久化
-│   │       ├── share.ts                 分享链接压缩/解压
-│   │       └── search.ts                Tavily 客户端
+│   │       ├── storage.ts               IndexedDB 报告持久化 + 云推送钩子
+│   │       ├── share.ts                 旧分享链接解码（兼容）
+│   │       ├── search.ts                Tavily 客户端
+│   │       ├── auth.ts                  OAuth/会话纯逻辑
+│   │       ├── session.ts               HttpOnly cookie 约定
+│   │       ├── db.ts                    Neon 连接 + 数据操作
+│   │       ├── cloud.ts                 云同步客户端
+│   │       └── sync.ts                  登录态 + 防抖推送协调
+│   ├── db/schema.sql                    Neon 表结构（执行一次）
 │   └── package.json                     dev = `dotenv -e ../.env -- next dev`
-└── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest）
+└── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest，107 用例）
 ```
 
 ## 目录说明
 
 - `frontend/` —— 新应用（唯一需要维护的代码）
-- **历史档案**：`legacy-backend/`（旧 Express + Supabase 后端）与 `docs/`（旧项目文档）已迁出本仓库，位置：
+- **历史档案**：`legacy-backend/`（旧 Express + Supabase 后端）与 `docs/`（旧项目文档）作为 `study-with-me-archive/` 项目归档至仓库根的 `_archive/` 目录下。
   ```
-  ../study-with-me-archive/legacy-backend/
-  ../study-with-me-archive/old-docs/
+  ../_archive/study-with-me-archive/legacy-backend/
+  ../_archive/study-with-me-archive/old-docs/
   ```
   仅为存档参考，不在本仓库维护。如需查阅旧文档请直接打开这两个路径。
