@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { initCloudSync, logoutUser, onAuthChange } from "@/lib/sync";
 import { githubAuthUrl } from "@/lib/cloud";
 
 /**
  * 右上角登录栏：全局可见。
  * - 未登录：GitHub 登录按钮（整页跳 OAuth）；
- * - 已登录：头像 + 用户名，点击展开登出；
+ * - 已登录：GitHub 用户名，点击展开登出；
  * - 探测中：不渲染（避免闪动）。
  */
 export default function AuthBar() {
@@ -69,18 +68,9 @@ export default function AuthBar() {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/90 py-1 pl-1 pr-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/90 px-3.5 py-1.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             title={user.login}
           >
-            <Image
-              src={user.avatar_url ?? ""}
-              alt={user.login}
-              width={26}
-              height={26}
-              className="rounded-full"
-              referrerPolicy="no-referrer"
-              unoptimized
-            />
             <span className="max-w-[100px] truncate text-[12.5px] font-medium text-slate-700">
               {user.login}
             </span>
