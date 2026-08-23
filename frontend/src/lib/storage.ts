@@ -99,6 +99,32 @@ export interface CloudPushPayload {
   deleteCards?: string[];
 }
 
+/** 本地报告 → 云端格式 */
+export function reportToCloud(r: StoredReport): NonNullable<CloudPushPayload["reports"]>[number] {
+  return {
+    key: r.key,
+    term: r.term,
+    parent_term: r.parentTerm ?? null,
+    relation_type: r.relationType ?? null,
+    full_text: r.fullText,
+    related: r.related,
+  };
+}
+
+/** 本地卡片 → 云端格式 */
+export function cardToCloud(c: Card): NonNullable<CloudPushPayload["cards"]>[number] {
+  return {
+    key: c.key,
+    term: c.term,
+    question: c.question,
+    answer: c.answer,
+    due_at: c.dueAt,
+    interval_days: c.intervalDays,
+    reps: c.reps,
+    status: c.status,
+  };
+}
+
 /** 云推送钩子：app 启动时由 sync 模块注入；所有本地写操作完成后回调（防抖推送由注入方负责）。 */
 let cloudPusher: ((payload: CloudPushPayload) => void) | null = null;
 
@@ -137,18 +163,7 @@ export async function saveReport(report: StoredReport): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
-  notifyCloud({
-    reports: [
-      {
-        key: record.key,
-        term: record.term,
-        parent_term: record.parentTerm ?? null,
-        relation_type: record.relationType ?? null,
-        full_text: record.fullText,
-        related: record.related,
-      },
-    ],
-  });
+  notifyCloud({ reports: [reportToCloud(record)] });
 }
 
 /** 按 key 读取报告 */
@@ -224,20 +239,7 @@ export async function putCard(card: Card): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
-  notifyCloud({
-    cards: [
-      {
-        key: card.key,
-        term: card.term,
-        question: card.question,
-        answer: card.answer,
-        due_at: card.dueAt,
-        interval_days: card.intervalDays,
-        reps: card.reps,
-        status: card.status,
-      },
-    ],
-  });
+  notifyCloud({ cards: [cardToCloud(card)] });
 }
 
 export async function deleteCard(key: string): Promise<void> {
@@ -302,4 +304,16 @@ export async function syncCardsFromReport(
 export async function deleteTermCards(term: string): Promise<void> {
   const cards = await getCardsByTerm(term);
   for (const c of cards) await deleteCard(c.key);
+}
+
+/** 清空全部本地数据（reports + cards；用于测试重置，也可供"退出登录清空"类功能使用） */
+export async function clearAllLocalData(): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction([REPORTS_STORE, CARDS_STORE], "readwrite");
+    t.objectStore(REPORTS_STORE).clear();
+    t.objectStore(CARDS_STORE).clear();
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
 }

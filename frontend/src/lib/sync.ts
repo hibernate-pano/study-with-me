@@ -7,7 +7,7 @@
 
 import { fetchMe, logout as apiLogout, pullCloud, pushCloud } from "./cloud";
 import type { CloudPushPayload } from "./storage";
-import { saveReport, putCard, setCloudPusher, setCloudSuppress } from "./storage";
+import { cardToCloud, getAllCards, getAllReports, reportToCloud, saveReport, putCard, setCloudPusher, setCloudSuppress } from "./storage";
 import type { Card } from "./cards";
 import { cloudReportToLocal } from "./cloud";
 
@@ -83,6 +83,18 @@ export async function initCloudSync(): Promise<{ user: { login: string; avatar_u
         }
       } finally {
         setCloudSuppress(false);
+      }
+      // 首次登录合并上传：云端尚无数据、但本地（登录前）已有学习数据 → 全量推一次。
+      // 之后云端不再为空，此分支不会重复触发；增量由防抖推送承担。
+      if (dump.reports.length === 0 && dump.cards.length === 0) {
+        const localReports = await getAllReports();
+        const localCards = await getAllCards();
+        if (localReports.length > 0 || localCards.length > 0) {
+          await pushCloud({
+            reports: localReports.map(reportToCloud),
+            cards: localCards.map(cardToCloud),
+          }).catch((e) => console.error("[sync] 首次合并上传失败:", e));
+        }
       }
     } catch (e) {
       console.error("[sync] 拉取失败（本地模式继续）:", e);
