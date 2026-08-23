@@ -74,6 +74,29 @@ function tx<T>(
   );
 }
 
+/**
+ * related 字段清洗：早期同步版本把 D1 的 JSON 字符串原样存入 IndexedDB，
+ * 导致首页 `r.related.slice().map()` 崩溃（字符串无 .map）。统一在此归一化，
+ * 所有读取路径（首页/地图/存档/分析页）拿到的一定是数组。
+ */
+function normalizeRelated(v: unknown): FlatConcept[] {
+  if (Array.isArray(v)) return v as FlatConcept[];
+  if (typeof v === "string" && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? (parsed as FlatConcept[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeStoredReport(r?: StoredReport): StoredReport | undefined {
+  if (!r) return r;
+  return { ...r, related: normalizeRelated(r.related) };
+}
+
 // ---------------- cloud bridge ----------------
 
 export interface CloudPushPayload {
@@ -166,10 +189,10 @@ export async function saveReport(report: StoredReport): Promise<void> {
   notifyCloud({ reports: [reportToCloud(record)] });
 }
 
-/** 按 key 读取报告 */
+/** 按 key 读取报告（related 自动归一化） */
 export function getReport(key: string): Promise<StoredReport | undefined> {
   return tx(REPORTS_STORE, "readonly", (store) => store.get(key)).then(
-    (r) => r as StoredReport | undefined
+    normalizeStoredReport
   );
 }
 
@@ -184,7 +207,7 @@ export async function getRecent(limit: number): Promise<StoredReport[]> {
     req.onsuccess = () => {
       const cursor = req.result;
       if (cursor && out.length < limit) {
-        out.push(cursor.value as StoredReport);
+        out.push(normalizeStoredReport(cursor.value as StoredReport)!);
         cursor.continue();
       } else {
         resolve(out);
@@ -194,10 +217,10 @@ export async function getRecent(limit: number): Promise<StoredReport[]> {
   });
 }
 
-/** 全部报告（供"我的存档/网络"聚合） */
+/** 全部报告（供"我的存档/网络"聚合；related 自动归一化） */
 export async function getAllReports(): Promise<StoredReport[]> {
   return tx(REPORTS_STORE, "readonly", (store) => store.getAll()).then(
-    (r) => r as StoredReport[]
+    (rs) => (rs as StoredReport[]).map(normalizeStoredReport) as StoredReport[]
   );
 }
 

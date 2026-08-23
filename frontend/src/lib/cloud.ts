@@ -82,6 +82,20 @@ export async function pushCloud(payload: {
   if (!res.ok) throw new Error(`云端推送失败（${res.status}）`);
 }
 
+/** 云端 related（JSON 字符串或数组）→ 数组 */
+function normalizeCloudRelated(v: unknown): import("./network").FlatConcept[] {
+  if (Array.isArray(v)) return v as import("./network").FlatConcept[];
+  if (typeof v === "string" && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? (parsed as import("./network").FlatConcept[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 /** 把云端数据转换为本地 StoredReport 形态 */
 export function cloudReportToLocal(r: CloudDump["reports"][number]) {
   return {
@@ -90,7 +104,7 @@ export function cloudReportToLocal(r: CloudDump["reports"][number]) {
     parentTerm: r.parent_term ?? undefined,
     relationType: r.relation_type ?? undefined,
     fullText: r.full_text,
-    related: (r.related ?? []) as import("./network").FlatConcept[],
+    related: normalizeCloudRelated(r.related),
     createdAt: Date.parse(r.created_at) || Date.now(),
     updatedAt: Date.parse(r.updated_at) || Date.now(),
   };

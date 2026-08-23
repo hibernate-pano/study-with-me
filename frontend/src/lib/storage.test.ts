@@ -61,6 +61,63 @@ describe("storage 基础读写", () => {
   });
 });
 
+describe("related 归一化（修复：D1 JSON 字符串误入库导致的 .map 崩溃）", () => {
+  it("旧版脏数据（related 为 JSON 字符串）读取时自动转数组", async () => {
+    // 直接模拟"字符串相关数据"入库的旧版本路径：用底层 IndexedDB 写入字符串
+    const req = indexedDB.open("concept-digger", 2);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const t = db.transaction("reports", "readwrite");
+    await new Promise<void>((resolve, reject) => {
+      t.objectStore("reports").put({
+        key: "旧脏数据",
+        term: "旧脏数据",
+        fullText: "x",
+        related: '[{"name":"A","description":"d"}]', // 字符串！
+        createdAt: 1,
+        updatedAt: 2,
+      });
+      t.oncomplete = () => resolve();
+      t.onerror = () => reject(t.error);
+    });
+
+    const got = await getReport("旧脏数据");
+    expect(Array.isArray(got?.related)).toBe(true);
+    expect(got?.related).toHaveLength(1);
+    expect((got?.related as unknown as Array<{ name: string }>)[0].name).toBe("A");
+
+    const all = await getAllReports();
+    expect(Array.isArray(all[0].related)).toBe(true);
+    db.close();
+  });
+
+  it("无法解析的字符串容错为空数组", async () => {
+    const req = indexedDB.open("concept-digger", 2);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const t = db.transaction("reports", "readwrite");
+    await new Promise<void>((resolve, reject) => {
+      t.objectStore("reports").put({
+        key: "坏数据",
+        term: "坏数据",
+        fullText: "x",
+        related: "not-json{{{",
+        createdAt: 1,
+        updatedAt: 2,
+      });
+      t.oncomplete = () => resolve();
+      t.onerror = () => reject(t.error);
+    });
+    const got = await getReport("坏数据");
+    expect(got?.related).toEqual([]);
+    db.close();
+  });
+});
+
 describe("getRecent 排序", () => {
   it("按 updatedAt 降序返回并尊重 limit", async () => {
     // saveReport 用真实时间戳，按保存先后排序
