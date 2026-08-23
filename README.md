@@ -20,6 +20,18 @@
 | 🔍 深入追问 | 自测题检验是否真懂 |
 | 📚 推荐资料 + 🔗 联网检索 | 权威资料 + Tavily 实时结果（可选） |
 
+## 你的知识库（纯前端，零后端）
+
+报告**自动保存在浏览器本地（IndexedDB）**，刷新不丢失：
+
+- **📂 打开即读**：再次进入同一概念直接显示已存报告，不重复烧 token；点「重新生成」可覆盖更新
+- **📤 分享**：一键复制分享链接，报告全文压缩进 URL hash（`#report=`），对方打开即是只读完整报告
+- **💾 导出**：一键下载 Markdown 文件
+- **🏠 首页存档预览**：最近学过的概念直接出现在首页（实时数据）
+- **📚 我的存档**：分析页侧栏列出你学过的所有概念，随时跳回
+
+本地存储结构：主报告 key = 概念名；深挖报告 key = `drill:<父概念>::<子概念>`。
+
 ## 输入可以是
 
 - 一个孤立词：`分布式锁`、`十五规划`、`Kafka` ；
@@ -50,10 +62,12 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 ## 技术栈（精简到极致）
 
 - **Next.js 15.3**（App Router，前后端一体：AI 调用收在 `/api/analyze` 路由内，密钥只留在服务端）
-- **React 19 + Tailwind CSS 4**，仅 `react-markdown` 一个额外运行时依赖
+- **React 19 + Tailwind CSS 4**，仅 `react-markdown` + `lz-string`（分享链接压缩）两个额外运行时依赖
+- **本地知识库**：IndexedDB（原生封装 `lib/storage.ts`，无第三方库）
 - **模型默认**：MiniMax 国内版 `MiniMax-M3`（OpenAI 兼容接口，OpenAI 兼容 SSE 流式）
 - **联网检索（可选）**：Tavily API
 - **关键**：路由内做了 `<thinking>` 标签过滤（M 系列模型会把思考过程包在这个标签里）
+- **测试**：Vitest 61 个用例（解析器 / 状态机 / 存储 / 分享编码），`cd frontend && npm test`
 
 ## 环境变量（项目根 `.env`）
 
@@ -80,14 +94,18 @@ study-with-me/
 │   │   ├── components/
 │   │   │   ├── SearchBox.tsx
 │   │   │   ├── SectionCard.tsx
-│   │   │   └── KnowledgeNetworkCard.tsx
+│   │   │   ├── KnowledgeNetworkCard.tsx
+│   │   │   └── DrillDownDrawer.tsx       深挖抽屉
 │   │   └── lib/
 │   │       ├── prompt.ts                8 模块 prompt（含知识网络结构）
-│   │       ├── stream.ts                Markdown → Section
-│   │       ├── search.ts                Tavily 客户端
-│   │       └── thinkingFilter.ts        流式 <thinking> 过滤
+│   │       ├── stream.ts                Markdown → Section / 摘要抽取
+│   │       ├── network.ts               知识网络解析 + 关系定义
+│   │       ├── thinkingFilter.ts        流式 <thinking> 过滤
+│   │       ├── storage.ts               IndexedDB 报告持久化
+│   │       ├── share.ts                 分享链接压缩/解压
+│   │       └── search.ts                Tavily 客户端
 │   └── package.json                     dev = `dotenv -e ../.env -- next dev`
-└── tests                               vitest 单元测试（见 frontend/src/lib/*.test.ts）
+└── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest）
 ```
 
 ## 目录说明

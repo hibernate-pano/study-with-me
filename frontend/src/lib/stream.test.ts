@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSections, slugifyTitle, styleForTitle } from "./stream";
+import { parseSections, slugifyTitle, styleForTitle, extractSectionRaw, extractSectionText } from "./stream";
 
 describe("parseSections", () => {
   it("解析标准 ## 分区", () => {
@@ -158,5 +158,38 @@ describe("styleForTitle", () => {
   it("模糊匹配：包含关键词即识别", () => {
     expect(styleForTitle("核心重点（最重要的事）").accent).toBe("#f59e0b");
     expect(styleForTitle("拆解").accent).toBe("#8b5cf6");
+  });
+});
+
+describe("extractSectionRaw", () => {
+  it("抽出一个模块的原始 markdown（含 ### 与列表符号）", () => {
+    const md = `## 🎯 一句话定义\ndef\n\n## 🌐 知识网络（相关 / 相似 / 相反 / 跨领域）\n### 前置知识\n- **A** — 先懂 A\n### 兄弟概念\n- **B** — 类似 B\n\n## 🔍 深入追问\nask\n`;
+    const raw = extractSectionRaw(md, "知识网络");
+    expect(raw).toContain("### 前置知识");
+    expect(raw).toContain("- **A** — 先懂 A");
+    expect(raw).not.toContain("## 🔍");
+  });
+
+  it("没命中时返回空串", () => {
+    expect(extractSectionRaw("## 任意标题\ntext", "不存在的词")).toBe("");
+  });
+});
+
+describe("extractSectionText", () => {
+  it("抽纯文本摘要并去掉 markdown 装饰", () => {
+    const md = "## 🎯 一句话定义\n**核心要点**是 `code` 和 *斜体*。\n\n## 📌 核心重点\nother\n";
+    const text = extractSectionText(md, "定义");
+    expect(text).toContain("核心要点");
+    expect(text).not.toContain("**");
+    expect(text).not.toContain("`");
+  });
+
+  it("超过 maxLen 截断", () => {
+    const md = `## 定义\n${'字'.repeat(100)}`;
+    expect(extractSectionText(md, "定义", 30).length).toBeLessThanOrEqual(30);
+  });
+
+  it("没命中返回空串", () => {
+    expect(extractSectionText("## x\n内容", "yyy")).toBe("");
   });
 });

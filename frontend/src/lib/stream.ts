@@ -41,6 +41,54 @@ export function slugifyTitle(title: string): string {
 }
 
 /**
+ * 从全文抽出某个模块的原始 markdown（含 ### / 列表符号），供 parseNetworkMarkdown 二次解析。
+ */
+export function extractSectionRaw(md: string, titleIncludes: string): string {
+  const lines = md.split("\n");
+  let capture = false;
+  const buf: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^##\s+(.+)$/);
+    if (m) {
+      if (capture) break; // 下一个 ## 区块结束
+      if (m[1].includes(titleIncludes)) {
+        capture = true;
+        continue;
+      }
+      continue;
+    }
+    if (capture) buf.push(line);
+  }
+  return buf.join("\n");
+}
+
+/**
+ * 从全文抽出某个模块的纯文本摘要（去掉 markdown 符号），用于卡片预览。
+ * 命中标题含 titleIncludes 的 ## 区块，截取前 maxLen 字符。
+ */
+export function extractSectionText(md: string, titleIncludes: string, maxLen = 160): string {
+  const lines = md.split("\n");
+  let capture = false;
+  const buf: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^##\s+(.+)$/);
+    if (m) {
+      if (capture) break; // 下一个 ## 区块结束
+      if (m[1].includes(titleIncludes)) {
+        capture = true;
+        continue;
+      }
+      continue;
+    }
+    if (capture) buf.push(line);
+  }
+  let text = buf.join(" ").replace(/[\s\n]+/g, " ").trim();
+  // 去掉残留的 md 装饰符号
+  text = text.replace(/\*\*|\*|`|#{1,6}\s?|[-*]\s/g, "").trim();
+  return text.slice(0, maxLen);
+}
+
+/**
  * 把累积的 markdown 文本解析成区块列表。
  * 流式场景下每帧全量重解析，内容量小，性能可接受。
  */

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { parseSections, styleForTitle, type Section } from "@/lib/stream";
-import type { FlatConcept } from "@/lib/network";
+import { parseSections, extractSectionRaw, styleForTitle, type Section } from "@/lib/stream";
+import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
+import { saveReport, drillKey } from "@/lib/storage";
 
 /**
  * 右侧抽屉：承载某个被点击概念的流式深挖报告。
@@ -79,6 +80,24 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
         }
 
         setStreaming(false);
+
+        // 深挖报告也入库：让每次追问都沉淀为知识库的一页
+        const final = buf;
+        if (final) {
+          const groups = parseNetworkMarkdown(extractSectionRaw(final, "知识网络"));
+          saveReport({
+            key: drillKey(parentTerm, concept.name),
+            term: concept.name,
+            parentTerm,
+            relationType: concept.relationType,
+            fullText: final,
+            related: flattenGroups(groups),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }).catch(() => {
+            /* 隐私模式等场景写失败就静默 */
+          });
+        }
       } catch (err: unknown) {
         if (
           typeof err === "object" &&

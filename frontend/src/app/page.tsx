@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
+import { getRecent, type StoredReport } from "@/lib/storage";
+import { extractSectionText } from "@/lib/stream";
 
 const EXAMPLES = [
   "分布式锁",
@@ -24,9 +26,31 @@ const MODULES = [
   { icon: "📚", title: "推荐资料", desc: "书/文章/课程 + 联网检索", color: "#0ea5e9" },
 ];
 
+const fmtArchiveTime = (ts: number): string => {
+  const d = new Date(ts);
+  const now = Date.now();
+  const diffMin = Math.floor((now - ts) / 60000);
+  if (diffMin < 1) return "刚刚";
+  if (diffMin < 60) return `${diffMin} 分钟前`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH} 小时前`;
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [recent, setRecent] = useState<string[]>([]);
+  const [library, setLibrary] = useState<StoredReport[]>([]);
+
+  const refreshLibrary = useCallback(() => {
+    getRecent(30)
+      .then((rs) => {
+        // 只把主报告（非深挖）当作「学过的东西」展示
+        const mains = rs.filter((r) => !r.key.startsWith("drill:")).slice(0, 3);
+        setLibrary(mains);
+      })
+      .catch(() => setLibrary([]));
+  }, []);
 
   useEffect(() => {
     try {
@@ -35,7 +59,8 @@ export default function HomePage() {
     } catch {
       /* ignore */
     }
-  }, []);
+    refreshLibrary();
+  }, [refreshLibrary]);
 
   const go = (term: string) => router.push(`/analyze/${encodeURIComponent(term)}`);
 
@@ -110,6 +135,57 @@ export default function HomePage() {
                 {t}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* 我的知识库：最近学过的概念（真实数据来自本地 IndexedDB） */}
+        {library.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h2 className="text-[19px] font-bold text-slate-800">
+                最近学过的概念
+              </h2>
+              <span className="text-[11.5px] text-slate-400">你的报告会自动保存在本地</span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {library.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => go(r.term)}
+                  className="group text-left rounded-2xl border border-[var(--line)] bg-white/80 hover:border-indigo-200 hover:shadow-sm px-4 py-3.5 transition-all cursor-pointer"
+                  title={`打开「${r.term}」`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[14px] font-bold text-indigo-600">
+                      {r.term.slice(0, 1)}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-[14px] font-bold text-slate-800 truncate">
+                        {r.term}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        {fmtArchiveTime(r.updatedAt)}更新
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 text-[12.5px] text-slate-500 leading-relaxed line-clamp-2">
+                    {extractSectionText(r.fullText, "定义") || "点击查看完整报告"}
+                  </div>
+                  {r.related.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-1">
+                      {r.related.slice(0, 3).map((c) => (
+                        <span
+                          key={c.name}
+                          className="px-2 py-0.5 rounded-full text-[10.5px] text-slate-500 bg-slate-50 border border-[var(--line)]"
+                        >
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

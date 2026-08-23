@@ -5,8 +5,33 @@ import { useParams, useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
 import SectionCard from "@/components/SectionCard";
 import DrillDownDrawer from "@/components/DrillDownDrawer";
-import { parseSections, type Section } from "@/lib/stream";
-import type { FlatConcept } from "@/lib/network";
+import { parseSections, extractSectionRaw, type Section } from "@/lib/stream";
+import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
+import {
+  saveReport,
+  getReport,
+  getAllReports,
+  mainKey,
+  type StoredReport,
+} from "@/lib/storage";
+import { readShareHash, buildShareUrl } from "@/lib/share";
+
+function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function recordRecent(term: string) {
+  try {
+    const raw = localStorage.getItem("cd-recent");
+    const list = raw ? JSON.parse(raw) : [];
+    const next = [term, ...list.filter((t: string) => t !== term)].slice(0, 8);
+    localStorage.setItem("cd-recent", JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function AnalyzePage() {
   const params = useParams<{ term: string }>();
@@ -20,8 +45,16 @@ export default function AnalyzePage() {
   const [error, setError] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
+  const [sharedCopied, setSharedCopied] = useState(false);
   const [stickToBottom, setStickToBottom] = useState(true);
   const [drillConcept, setDrillConcept] = useState<FlatConcept | null>(null);
+
+  // 数据来源提示：分享只读 | 本地存档 | 全新生成
+  const [isShared, setIsShared] = useState(false);
+  const [cachedAt, setCachedAt] = useState<number | null>(null);
+
+  // 侧栏「我的存档」
+  const [archive, setArchive] = useState<StoredReport[]>([]);
 
   const bufferRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
@@ -37,6 +70,27 @@ export default function AnalyzePage() {
     setSections(parseSections(text));
   }, []);
   const fullTextRef = useRef("");
+
+  /** 生成完成后写入 IndexedDB（成为个人知识库的一页） */
+  const persist = useCallback(
+    (text: string) => {
+      if (!text) return;
+      const groups = parseNetworkMarkdown(extractSectionRaw(text, "知识网络"));
+      saveReport({
+        key: mainKey(term),
+        term,
+        fullText: text,
+        related: flattenGroups(groups),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+        .then(() => setCachedAt(Date.now()))
+        .catch(() => {
+          /* 隐私模式等场景写失败就静默 */
+        });
+    },
+    [term]
+  );
 
   /** 发起流式请求 */
   const start = useCallback(
@@ -55,6 +109,7 @@ export default function AnalyzePage() {
       setSections([]);
       setStreaming(true);
       setError("");
+      setIsShared(false);
 
       try {
         const res = await fetch("/api/analyze", {
@@ -93,6 +148,9 @@ export default function AnalyzePage() {
         if (myGen !== genIdRef.current) return; // 已被新请求取代
         setStreaming(false);
         flush(); // 最终刷新
+
+        // 只有完成（非停止、非报错）的文本才入库
+        persist(bufferRef.current);
       } catch (err: unknown) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -114,23 +172,48 @@ export default function AnalyzePage() {
         setStreaming(false);
       }
     },
-    [term, flush]
+    [term, flush, persist]
   );
 
-  // 首次进入：记录最近搜索 + 开始生成
+  // 首次进入：分享链接 > 本地存档 > 发起生成
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("cd-recent");
-      const list = raw ? JSON.parse(raw) : [];
-      const next = [term, ...list.filter((t: string) => t !== term)].slice(0, 8);
-      localStorage.setItem("cd-recent", JSON.stringify(next));
-    } catch {
-      /* ignore */
+    recordRecent(term);
+
+    // 1) 分享链接（只读视图）
+    const shared = readShareHash();
+    if (shared) {
+      setIsShared(true);
+      fullTextRef.current = shared;
+      setFullText(shared);
+      setSections(parseSections(shared));
+      setStreaming(false);
+      refreshArchive(term);
+      return;
     }
 
-    start();
+    // 2) 本地存档优先（wiki 化：打开即读，不重复烧 token）
+    getReport(mainKey(term))
+      .then((r) => {
+        if (r && r.fullText) {
+          setCachedAt(r.updatedAt);
+          fullTextRef.current = r.fullText;
+          setFullText(r.fullText);
+          setSections(parseSections(r.fullText));
+          setStreaming(false);
+        } else {
+          start();
+        }
+      })
+      .catch(() => start());
+
+    refreshArchive(term);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term]);
+
+  // 卸载 / 切换 term 时终止在途请求
+  useEffect(() => {
     return () => {
-      // 在 cleanup 里递增 genIdRef，是用于让在途请求的回调自检过期。
+      // cleanup 时递增 genIdRef，让在途请求的回调自检过期。
       // eslint-disable-next-line react-hooks/exhaustive-deps
       genIdRef.current++;
       abortRef.current?.abort();
@@ -139,8 +222,23 @@ export default function AnalyzePage() {
         timerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term]);
+
+  /** 刷新侧栏「我的存档」（最近更新的主报告） */
+  const refreshArchive = useCallback((current: string) => {
+    getAllReports()
+      .then((rs) => {
+        // 只展示主报告（非深挖），按更新时间倒序，最多 8 条
+        const mains = rs
+          .filter((r) => !r.key.startsWith("drill:"))
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, 8);
+        setArchive(
+          mains.filter((r) => r.term !== current)
+        );
+      })
+      .catch(() => setArchive([]));
+  }, []);
 
   // term 变化时重置滚动跟随状态：开新报告默认跟随到最新
   useEffect(() => {
@@ -200,6 +298,33 @@ export default function AnalyzePage() {
     }
   };
 
+  const shareReport = async () => {
+    const text = fullTextRef.current || fullText;
+    if (!text) return;
+    const url = buildShareUrl(term, text);
+    try {
+      await navigator.clipboard.writeText(url);
+      setSharedCopied(true);
+      setTimeout(() => setSharedCopied(false), 2000);
+    } catch {
+      // 剪贴板不可用时降级到 prompt
+      window.prompt("复制分享链接：", url);
+    }
+  };
+
+  const exportMd = () => {
+    const text = fullTextRef.current || fullText;
+    if (!text) return;
+    const md = `# ${term}\n\n${text}\n`;
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${term.replace(/[\\/:*?"<>|]/g, "_")}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const toggle = (id: string) =>
     setCollapsed((c) => ({ ...c, [id]: !c[id] }));
 
@@ -252,8 +377,35 @@ export default function AnalyzePage() {
           )}
 
           <button
+            onClick={shareReport}
+            disabled={streaming || !fullText}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
+            title="复制分享链接"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            {sharedCopied ? "已复制链接" : "分享"}
+          </button>
+
+          <button
+            onClick={exportMd}
+            disabled={streaming || !fullText}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
+            title="导出 Markdown 文件"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M12 15V3" />
+            </svg>
+            导出
+          </button>
+
+          <button
             onClick={copyAll}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             title="复制全文"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -269,7 +421,7 @@ export default function AnalyzePage() {
         {/* 正文列 */}
         <div className="min-w-0 flex-1">
           {/* 词条标题 */}
-          <div className="mb-5 flex flex-wrap items-baseline gap-3">
+          <div className="mb-3 flex flex-wrap items-baseline gap-3">
             <h1 className="text-[26px] font-extrabold text-slate-900 break-all">
               {term}
             </h1>
@@ -288,6 +440,27 @@ export default function AnalyzePage() {
               </span>
             )}
           </div>
+
+          {/* 数据来源提示 */}
+          {!streaming && !error && fullText && (
+            <div className="mb-4">
+              {isShared ? (
+                <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-700">
+                  <span>🔗</span>
+                  <span>
+                    这是分享给你的报告（只读预览）。点「重新生成」可基于它生成本地版本。
+                  </span>
+                </div>
+              ) : cachedAt ? (
+                <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-2.5 text-[13px] text-sky-700">
+                  <span>📂</span>
+                  <span>
+                    已加载本地存档（更新于 {fmtTime(cachedAt)}）。「重新生成」可覆盖更新。
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {/* 错误提示卡片 */}
           {error && !streaming && (
@@ -355,10 +528,35 @@ export default function AnalyzePage() {
           )}
         </div>
 
-        {/* 目录侧栏 */}
-        {headings.length > 1 && (
-          <aside className="hidden lg:block w-56 shrink-0">
-            <div className="sticky top-20 rounded-2xl border border-[var(--line)] bg-white/80 p-4">
+        {/* 侧栏 */}
+        <aside className="hidden lg:block w-56 shrink-0">
+          {/* 我的存档 */}
+          {archive.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-[var(--line)] bg-white/80 p-4">
+              <div className="text-[12px] font-bold tracking-wider text-slate-400 mb-3">
+                我的存档
+              </div>
+              <nav className="space-y-1">
+                {archive.map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => router.push(`/analyze/${encodeURIComponent(r.term)}`)}
+                    className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    title={r.term}
+                  >
+                    <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-[10.5px] text-indigo-500">
+                      {r.term.slice(0, 1)}
+                    </span>
+                    <span className="truncate">{r.term}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
+
+          {/* 报告目录 */}
+          {headings.length > 1 && (
+            <div className="rounded-2xl border border-[var(--line)] bg-white/80 p-4">
               <div className="text-[12px] font-bold tracking-wider text-slate-400 mb-3">
                 报告目录
               </div>
@@ -381,15 +579,18 @@ export default function AnalyzePage() {
                 })}
               </nav>
             </div>
-          </aside>
-        )}
+          )}
+        </aside>
       </main>
 
       {/* 深挖抽屉 */}
       <DrillDownDrawer
         concept={drillConcept}
         parentTerm={term}
-        onClose={() => setDrillConcept(null)}
+        onClose={() => {
+          setDrillConcept(null);
+          refreshArchive(term);
+        }}
       />
     </div>
   );
