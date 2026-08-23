@@ -74,7 +74,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen hero-bg">
-      <main className="mx-auto max-w-5xl px-5 pt-16 pb-24">
+      <main className="mx-auto max-w-4xl px-5 pt-16 pb-24">
         {/* 品牌 */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="text-2xl">⛏️</span>
