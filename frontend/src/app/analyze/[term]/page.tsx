@@ -414,6 +414,19 @@ export default function AnalyzePage() {
           </button>
 
           <button
+            onClick={() => router.push(`/compare?a=${encodeURIComponent(term)}`)}
+            disabled={streaming}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
+            title="拿这个概念和其它概念做对比辨析"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            对比
+          </button>
+
+          <button
             onClick={() => router.push("/review")}
             className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             title="间隔重复复习自测题"

@@ -13,6 +13,15 @@ export interface SectionStyle {
 }
 
 export function styleForTitle(title: string): SectionStyle {
+  // —— 对比报告专用标题（放在通用关键词之前，避免误匹配） ——
+  if (title.includes("一句话辨析") || title.includes("辨析"))
+    return { accent: "#8b5cf6", badge: "#f5f3ff" };
+  if (title.includes("关键差异")) return { accent: "#6366f1", badge: "#eef2ff" };
+  if (title.includes("场景")) return { accent: "#10b981", badge: "#ecfdf5" };
+  if (title.includes("混淆")) return { accent: "#ef4444", badge: "#fef2f2" };
+  if (title.includes("协同") || title.includes("组合"))
+    return { accent: "#0d9488", badge: "#f0fdfa" };
+
   if (title.includes("定义")) return { accent: "#6366f1", badge: "#eef2ff" };
   if (title.includes("核心重点")) return { accent: "#f59e0b", badge: "#fffbeb" };
   if (title.includes("误区") || title.includes("易错"))
