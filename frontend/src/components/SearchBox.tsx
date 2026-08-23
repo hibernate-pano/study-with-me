@@ -29,8 +29,8 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
   };
 
   const isLarge = size === "lg";
-  const padding = isLarge ? "p-3.5 pl-6" : "p-1.5 pl-4";
-  const iconSize = isLarge ? 26 : 18;
+  const padding = isLarge ? "p-4 pl-7" : "p-1.5 pl-4";
+  const iconSize = isLarge ? 30 : 18;
 
   return (
     <div className="w-full">
@@ -84,7 +84,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
           maxLength={MAX_LEN}
           className={`flex-1 bg-transparent outline-none text-slate-800 placeholder:text-slate-400 resize-none leading-relaxed scroll-thin ${
             isLarge
-              ? "text-[19px] py-3 min-h-[52px]"
+              ? "text-[21px] py-3.5 min-h-[64px]"
               : "text-[15px] py-1.5 min-h-[36px]"
           }`}
         />
@@ -94,7 +94,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
             type="submit"
             disabled={!value.trim()}
             className={`shrink-0 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              isLarge ? "px-7 py-3.5 text-[16px]" : "px-4 py-2 text-sm"
+              isLarge ? "px-9 py-4 text-[17px]" : "px-4 py-2 text-sm"
             }`}
           >
             深挖
