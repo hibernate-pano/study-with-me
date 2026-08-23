@@ -93,23 +93,66 @@ describe("parseNetworkMarkdown", () => {
     expect(parseNetworkMarkdown("   \n\n  ")).toEqual([]);
   });
 
-  it("没有 ### 分组时不创建「其他」分组（fail-fast：提示词要求 5 个分组）", () => {
+  it("没有 ### 分组时，散落列表收进「其他」分组（容错：模型漏写分组）", () => {
     const md = `
 - **漂泊概念** — 没有任何分组
+- **漂泊二号** — 也没有分组
 `;
     const groups = parseNetworkMarkdown(md);
-    expect(groups).toEqual([]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].type).toBe("其他");
+    expect(groups[0].label).toBe("其他关联");
+    expect(groups[0].concepts).toHaveLength(2);
+    expect(groups[0].concepts[0].name).toBe("漂泊概念");
   });
 
-  it("过滤没有 **加粗** 概念名的条目", () => {
+  it("无加粗但有分隔符的条目 → 解析出概念（容错：模型没加粗）", () => {
     const md = `
 ### 前置知识
-- 没加粗的条目
+- 概念甲：这是它的描述
+- 概念乙 —— 破折号分隔
+- 概念丙 - 空格单连字符
+`;
+    const groups = parseNetworkMarkdown(md);
+    expect(groups[0].concepts).toHaveLength(3);
+    expect(groups[0].concepts.map((c) => c.name)).toEqual(["概念甲", "概念乙", "概念丙"]);
+    expect(groups[0].concepts[0].description).toBe("这是它的描述");
+    expect(groups[0].concepts[1].description).toBe("破折号分隔");
+    expect(groups[0].concepts[2].description).toBe("空格单连字符");
+  });
+
+  it("无加粗且无分隔符的整行 → 整行视作概念名（描述为空）", () => {
+    const md = `
+### 兄弟概念
+- 光秃秃的概念名
+`;
+    const groups = parseNetworkMarkdown(md);
+    expect(groups[0].concepts).toHaveLength(1);
+    expect(groups[0].concepts[0].name).toBe("光秃秃的概念名");
+    expect(groups[0].concepts[0].description).toBe("");
+  });
+
+  it("过滤纯标点残渣（---、…）与空条目", () => {
+    const md = `
+### 前置知识
+- ---
+- ……
 - **真名** — 描述
 `;
     const groups = parseNetworkMarkdown(md);
     expect(groups[0].concepts).toHaveLength(1);
     expect(groups[0].concepts[0].name).toBe("真名");
+  });
+
+  it("过滤超长概念名（超过 30 字符视为切分失败）", () => {
+    const md = `
+### 前置知识
+- 这是一个非常非常非常非常非常非常非常非常非常非常非常非常长的没有分隔符的完整句子
+- **短名** — 描述
+`;
+    const groups = parseNetworkMarkdown(md);
+    expect(groups[0].concepts).toHaveLength(1);
+    expect(groups[0].concepts[0].name).toBe("短名");
   });
 
   it("过滤空的分组", () => {
@@ -118,7 +161,7 @@ describe("parseNetworkMarkdown", () => {
 - **A** — desc
 
 ### 兄弟概念
-- 这行没有加粗概念
+- ---
 `;
     const groups = parseNetworkMarkdown(md);
     expect(groups).toHaveLength(1);

@@ -100,26 +100,31 @@ export function parseNetworkMarkdown(md: string): Group[] {
       continue;
     }
 
-    if (!current) continue;
-
     const itemMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+[.)]\s+(.+)$/);
     if (!itemMatch) continue;
 
-    const item = itemMatch[1];
-    const nameMatch = item.match(/^\*\*(.+?)\*\*/);
-    if (!nameMatch) continue;
+    if (!current) {
+      // 兜底：模型漏写 ### 分组，散落列表收进「其他」分组
+      const def = RELATION_DEFS.其他;
+      current = {
+        type: "其他",
+        label: def.defaultLabel,
+        subtitle: def.defaultSubtitle,
+        concepts: [],
+        color: def.color,
+        bg: def.bg,
+      };
+      groups.push(current);
+    }
 
-    const name = cleanInlineMarkdown(nameMatch[1]).trim();
-    const desc = cleanInlineMarkdown(
-      item
-        .slice(nameMatch[0].length)
-        .replace(/^[\s:,;:\u3000\uFF1A\uFF0C\uFF1B\u2014\u2013\u2212]+/, "")
-        .trim()
-    );
+    const parsed = parseConceptItem(itemMatch[1]);
+    if (!parsed) continue;
+    const name = parsed.name;
+    if (!plausibleConceptName(name)) continue;
 
     current.concepts.push({
       name,
-      description: desc,
+      description: parsed.description,
       relationType: current.type,
       groupLabel: current.label,
       color: current.color,
@@ -127,6 +132,40 @@ export function parseNetworkMarkdown(md: string): Group[] {
   }
 
   return groups.filter((g) => g.concepts.length > 0);
+}
+
+/**
+ * 解析一条列表项为「概念名 + 描述」。
+ * 主路径：**加粗名** 后接描述；
+ * 兜底路径：模型没加粗时，按常见分隔符（：/ : / —— / 空格-空格）切「名 — 描述」，
+ * 整行无分隔符则整行视作概念名。
+ */
+function parseConceptItem(item: string): { name: string; description: string } | null {
+  const nameMatch = item.match(/^\*\*(.+?)\*\*/);
+  if (nameMatch) {
+    const name = cleanInlineMarkdown(nameMatch[1]).trim();
+    const description = cleanInlineMarkdown(
+      item
+        .slice(nameMatch[0].length)
+        .replace(/^[\s:,;:\u3000\uFF1A\uFF0C\uFF1B\u2014\u2013\u2212]+/, "")
+        .trim()
+    );
+    return { name, description };
+  }
+
+  const sepMatch =
+    item.match(/^(.+?)[\s]*[：:][\s]*(.+)$/) ||
+    item.match(/^(.+?)\s*——\s*(.+)$/) ||
+    item.match(/^(.+?)\s+-\s+(.+)$/);
+  const name = cleanInlineMarkdown(sepMatch ? sepMatch[1] : item).trim();
+  const description = sepMatch ? cleanInlineMarkdown(sepMatch[2]).trim() : "";
+  return { name, description };
+}
+
+/** 概念名是否可信：非空、非纯标点（防 "-"、"---" 残渣）、长度防呆（过长说明切分失败） */
+function plausibleConceptName(name: string): boolean {
+  if (!name || name.length > 30) return false;
+  return /[\p{L}\p{N}]/u.test(name);
 }
 
 /**

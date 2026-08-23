@@ -32,7 +32,6 @@ function CompareInner() {
   const [error, setError] = useState("");
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
-  const [viewKey, setViewKey] = useState(""); // 当前展示的是哪对概念
 
   const bufferRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
@@ -69,7 +68,6 @@ function CompareInner() {
       setError("");
       setSaved(false);
       setCachedAt(null);
-      setViewKey(compareKey(x, y));
 
       try {
         const res = await fetch("/api/analyze", {
@@ -153,14 +151,37 @@ function CompareInner() {
     [start]
   );
 
-  // URL 带 ?a/?b 时自动开始
+  /** 尝试从本地存档读取对比报告；读到则展示（打开即读，不重复烧 token）并返回 true */
+  const loadFromCache = useCallback(
+    async (x: string, y: string): Promise<boolean> => {
+      const key = compareKey(x.trim(), y.trim());
+      const r = await getReport(key).catch(() => undefined);
+      if (!r || !r.fullText) return false;
+      genIdRef.current++; // 作废在途请求（防御：正常流程此时无请求）
+      abortRef.current?.abort();
+      bufferRef.current = "";
+      fullTextRef.current = r.fullText;
+      setFullText(r.fullText);
+      setSections(parseSections(r.fullText));
+      setStreaming(false);
+      setError("");
+      setSaved(true);
+      setCachedAt(r.updatedAt);
+      return true;
+    },
+    []
+  );
+
+  // URL 带 ?a/?b 时：缓存优先，无缓存才发起生成
   useEffect(() => {
     const x = (sp.get("a") || "").trim();
     const y = (sp.get("b") || "").trim();
     if (x && y) {
       setA(x);
       setB(y);
-      void start(x, y);
+      void loadFromCache(x, y).then((hit) => {
+        if (!hit) void start(x, y);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
