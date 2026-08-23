@@ -23,7 +23,7 @@
 ## 你的知识库（纯前端，零后端）
 
 报告**自动保存在浏览器本地（IndexedDB）**，刷新不丢失。**GitHub 登录后自动同步到云端**
-（Neon PostgreSQL），换设备照常读取：
+（Cloudflare D1），换设备照常读取：
 
 - **📂 打开即读**：再次进入同一概念直接显示已存报告，不重复烧 token；点「重新生成」可覆盖更新
 - **💾 导出**：一键下载 Markdown 文件
@@ -80,7 +80,7 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 - **Next.js 15.3**（App Router，前后端一体：AI 调用收在 `/api/analyze` 路由内，密钥只留在服务端）
 - **React 19 + Tailwind CSS 4**，仅 `react-markdown` + `lz-string`（旧分享链接解码）两个额外运行时依赖
 - **本地知识库**：IndexedDB（原生封装 `lib/storage.ts`，无第三方库）
-- **云端同步（可选）**：GitHub OAuth（手写，无 NextAuth）+ Neon PostgreSQL（`@neondatabase/serverless`），
+- **云端同步（可选）**：GitHub OAuth（手写，无 NextAuth）+ Cloudflare D1（SQLite，HTTP API 接入），
   HttpOnly Cookie 会话，云端为真相、本地为缓存，写操作防抖推送
 - **模型默认**：MiniMax 国内版 `MiniMax-M3`（OpenAI 兼容接口，OpenAI 兼容 SSE 流式）
 - **联网检索（可选）**：Tavily API
@@ -98,9 +98,11 @@ dev/start 命令内部使用 `dotenv-cli` 加载根 `.env`，所以 Next.js 进�
 | `TAVILY_MAX_RESULTS` | 可选 | 默认 5 |
 | `GITHUB_CLIENT_ID` | 可选（登录/云同步） | GitHub OAuth App 的 Client ID |
 | `GITHUB_CLIENT_SECRET` | 可选（登录/云同步） | GitHub OAuth App 的 Client Secret |
-| `DATABASE_URL` | 可选（登录/云同步） | Neon PostgreSQL pooled 连接串（https://neon.tech） |
+| `CLOUDFLARE_API_TOKEN` | 可选（登录/云同步） | Cloudflare API 令牌（需 D1 读写权限，1 分钟创建） |
+| `CLOUDFLARE_ACCOUNT_ID` | 可选（登录/云同步） | Cloudflare Account ID（dashboard 首页右侧） |
+| `D1_DATABASE_ID` | 可选（登录/云同步） | 已由自动化创建：`1fcb81c5-1f52-493f-8979-5fde475456d7` |
 
-> 登录/云同步需要同时配置上面 3 个变量 + 执行一次 `frontend/db/schema.sql`；
+> 登录/云同步需要同时配置上面 5 个变量（D1 库已建好并初始化 schema）；
 > 不配置则保持纯本地模式，登录按钮不显示。
 
 ## 目录结构
@@ -140,10 +142,10 @@ study-with-me/
 │   │       ├── search.ts                Tavily 客户端
 │   │       ├── auth.ts                  OAuth/会话纯逻辑
 │   │       ├── session.ts               HttpOnly cookie 约定
-│   │       ├── db.ts                    Neon 连接 + 数据操作
+│   │       ├── db.ts                    Cloudflare D1 数据操作
 │   │       ├── cloud.ts                 云同步客户端
 │   │       └── sync.ts                  登录态 + 防抖推送协调
-│   ├── db/schema.sql                    Neon 表结构（执行一次）
+│   ├── db/schema.sql                    D1 表结构（已自动化执行）
 │   └── package.json                     dev = `dotenv -e ../.env -- next dev`
 └── vitest 单元测试                        frontend/src/lib/*.test.ts（Vitest，107 用例）
 ```

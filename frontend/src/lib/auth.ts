@@ -99,18 +99,19 @@ export async function upsertUserFromGithub(
   gh: GithubUserInfo
 ): Promise<{ id: number; login: string; avatar_url: string | null; email: string | null }> {
   const rows = (await sql(
-    `INSERT INTO users (github_id, login, avatar_url, email)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?5)
      ON CONFLICT (github_id) DO UPDATE SET
-       login = EXCLUDED.login,
-       avatar_url = EXCLUDED.avatar_url,
-       email = COALESCE(EXCLUDED.email, users.email),
-       updated_at = now()
+       login = excluded.login,
+       avatar_url = excluded.avatar_url,
+       email = COALESCE(excluded.email, users.email),
+       updated_at = excluded.updated_at
      RETURNING id, login, avatar_url, email`,
     gh.id,
     gh.login,
     gh.avatar_url,
-    gh.email
+    gh.email,
+    Date.now()
   )) as { id: number; login: string; avatar_url: string | null; email: string | null }[];
   return rows[0];
 }
@@ -123,10 +124,10 @@ export async function createSession(
   const token = randomToken(32);
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_MS);
   await sql(
-    `INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)`,
+    `INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?1, ?2, ?3, ?3)`,
     token,
     userId,
-    expiresAt.toISOString()
+    expiresAt.getTime()
   );
   return { token, expiresAt };
 }
@@ -140,8 +141,9 @@ export async function getUserBySession(
   const rows = (await sql(
     `SELECT u.id, u.login, u.avatar_url
      FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.token = $1 AND s.expires_at > now()`,
-    token
+     WHERE s.token = ?1 AND s.expires_at > ?2`,
+    token,
+    Date.now()
   )) as { id: number; login: string; avatar_url: string | null }[];
   return rows[0] ?? null;
 }
@@ -151,5 +153,5 @@ export async function deleteSession(
   sql: (q: string, ...params: unknown[]) => Promise<unknown>,
   token: string
 ): Promise<void> {
-  await sql(`DELETE FROM sessions WHERE token = $1`, token);
+  await sql(`DELETE FROM sessions WHERE token = ?1`, token);
 }

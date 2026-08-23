@@ -1,40 +1,67 @@
-/** Neon PostgreSQL 连接（serverless HTTP driver，无连接池开销）。 */
+/**
+ * Cloudflare D1 数据访问层（HTTP API，适配 Vercel 部署）。
+ * 环境变量：
+ * - CLOUDFLARE_API_TOKEN（1 分钟创建：Cloudflare 控制台 → My Profile → API Tokens → Create → 选
+ *   "Edit Cloudflare Workers" 模板或自建，授予该 account 的 D1 读写权限）
+ * - CLOUDFLARE_ACCOUNT_ID（Cloudflare dashboard 首页右侧可查）
+ * - D1_DATABASE_ID（已由自动化创建：1fcb81c5-1f52-493f-8979-5fde475456d7）
+ */
 
-import { neon } from "@neondatabase/serverless";
+const API_BASE = "https://api.cloudflare.com/client/v4";
 
-let sql: ReturnType<typeof neon> | null = null;
+interface D1Response {
+  success: boolean;
+  errors: Array<{ code: number; message: string }>;
+  result?: Array<{ results: Record<string, unknown>[]; meta?: { changes?: number; last_row_id?: number } }>;
+}
 
-export function db() {
-  if (!sql) {
-    const conn = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
-    if (!conn) throw new Error("DATABASE_URL 未配置（Neon 连接串）");
-    sql = neon(conn);
+function d1Config() {
+  const token = process.env.CLOUDFLARE_API_TOKEN;
+  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const dbId = process.env.D1_DATABASE_ID;
+  if (!token || !account || !dbId) {
+    throw new Error("CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID / D1_DATABASE_ID 未配置");
   }
-  return sql;
+  return { token, account, dbId };
 }
 
 /**
- * 统一执行入口：query 字符串 + 占位参数。
- * 让业务代码不依赖 neon 的 tagged-template 调用形式（也便于测试/替换）。
+ * 统一执行入口：query 字符串 + 占位参数（?1 ?2 …）。
+ * 返回行数组；非查询语句返回 []。
  */
 export async function run<T = Record<string, unknown>>(
   query: string,
   ...params: unknown[]
 ): Promise<T[]> {
-  const conn = db();
-  return (await conn.query(query, params)) as T[];
+  const { token, account, dbId } = d1Config();
+  const res = await fetch(`${API_BASE}/accounts/${account}/d1/database/${dbId}/query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ sql: query, params }),
+  });
+  if (!res.ok) {
+    throw new Error(`D1 请求失败（${res.status}）`);
+  }
+  const data = (await res.json()) as D1Response;
+  if (!data.success) {
+    const msg = data.errors?.map((e) => e.message).join("; ");
+    throw new Error(`D1 查询失败: ${msg ?? "unknown"}`);
+  }
+  return (data.result?.[0]?.results as T[]) ?? [];
 }
 
-/** 业务数据与表 schema 的强类型视图（与 lib/storage.ts 的 StoredReport/Card 对齐） */
 export interface DbReport {
   key: string;
   term: string;
   parent_term: string | null;
   relation_type: string | null;
   full_text: string;
-  related: unknown[];
-  created_at: string;
-  updated_at: string;
+  related: string; // D1 存 JSON 字符串
+  created_at: number;
+  updated_at: number;
 }
 
 export interface DbCard {
@@ -46,8 +73,8 @@ export interface DbCard {
   interval_days: number;
   reps: number;
   status: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 }
 
 /** 一次性 upsert 整份报告（配 primary key ON CONFLICT） */
@@ -61,15 +88,16 @@ export async function upsertReport(userId: number, r: {
 }): Promise<void> {
   await run(
     `INSERT INTO reports (user_id, key, term, parent_term, relation_type, full_text, related, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
      ON CONFLICT (user_id, key) DO UPDATE SET
-       term = EXCLUDED.term,
-       parent_term = EXCLUDED.parent_term,
-       relation_type = EXCLUDED.relation_type,
-       full_text = EXCLUDED.full_text,
-       related = EXCLUDED.related,
-       updated_at = now()`,
-    userId, r.key, r.term, r.parent_term, r.relation_type, r.full_text, JSON.stringify(r.related)
+       term = excluded.term,
+       parent_term = excluded.parent_term,
+       relation_type = excluded.relation_type,
+       full_text = excluded.full_text,
+       related = excluded.related,
+       updated_at = excluded.updated_at`,
+    userId, r.key, r.term, r.parent_term, r.relation_type, r.full_text,
+    JSON.stringify(r.related), Date.now()
   );
 }
 
@@ -86,40 +114,40 @@ export async function upsertCard(userId: number, c: {
 }): Promise<void> {
   await run(
     `INSERT INTO cards (user_id, key, term, question, answer, due_at, interval_days, reps, status, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
      ON CONFLICT (user_id, key) DO UPDATE SET
-       term = EXCLUDED.term,
-       question = EXCLUDED.question,
-       answer = EXCLUDED.answer,
-       due_at = EXCLUDED.due_at,
-       interval_days = EXCLUDED.interval_days,
-       reps = EXCLUDED.reps,
-       status = EXCLUDED.status,
-       updated_at = now()`,
-    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status
+       term = excluded.term,
+       question = excluded.question,
+       answer = excluded.answer,
+       due_at = excluded.due_at,
+       interval_days = excluded.interval_days,
+       reps = excluded.reps,
+       status = excluded.status,
+       updated_at = excluded.updated_at`,
+    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status, Date.now()
   );
 }
 
 /** 删除用户的一份报告 / 一张卡 */
 export async function deleteReport(userId: number, key: string): Promise<void> {
-  await run(`DELETE FROM reports WHERE user_id = $1 AND key = $2`, userId, key);
+  await run(`DELETE FROM reports WHERE user_id = ?1 AND key = ?2`, userId, key);
 }
 
 export async function deleteCard(userId: number, key: string): Promise<void> {
-  await run(`DELETE FROM cards WHERE user_id = $1 AND key = $2`, userId, key);
+  await run(`DELETE FROM cards WHERE user_id = ?1 AND key = ?2`, userId, key);
 }
 
 /** 全量拉取用户数据（个人规模：几十份报告，一次拉全） */
 export async function fetchAll(userId: number): Promise<{ reports: DbReport[]; cards: DbCard[] }> {
-  const reports = (await run(
+  const reports = await run<DbReport>(
     `SELECT key, term, parent_term, relation_type, full_text, related, created_at, updated_at
-     FROM reports WHERE user_id = $1 ORDER BY updated_at DESC`,
+     FROM reports WHERE user_id = ?1 ORDER BY updated_at DESC`,
     userId
-  )) as DbReport[];
-  const cards = (await run(
+  );
+  const cards = await run<DbCard>(
     `SELECT key, term, question, answer, due_at, interval_days, reps, status, created_at, updated_at
-     FROM cards WHERE user_id = $1 ORDER BY updated_at DESC`,
+     FROM cards WHERE user_id = ?1 ORDER BY updated_at DESC`,
     userId
-  )) as DbCard[];
+  );
   return { reports, cards };
 }
