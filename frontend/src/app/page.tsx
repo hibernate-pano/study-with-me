@@ -162,6 +162,22 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* 🗺 知识网络地图入口（有存档时出现） */}
+        {library.length > 0 && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.push("/map")}
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-2.5 hover:bg-cyan-50 hover:border-cyan-300 transition-colors cursor-pointer"
+            >
+              <span className="text-[15px]">🗺</span>
+              <span className="text-[13px] font-medium text-cyan-700">
+                查看我的知识网络地图
+              </span>
+              <span className="text-[13px] font-bold text-cyan-700">→</span>
+            </button>
+          </div>
+        )}
+
         {/* 我的知识库：最近学过的概念（真实数据来自本地 IndexedDB） */}
         {library.length > 0 && (
           <div className="mt-12">
