@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import MapView from "@/components/MapView";
+import ConceptPreview from "@/components/ConceptPreview";
 import SearchBox from "@/components/SearchBox";
 import { getAllReports, getDueCards, type StoredReport } from "@/lib/storage";
+import type { MapNode } from "@/lib/map";
 
 const EXAMPLES = ["分布式锁", "十五规划", "Kafka", "费曼学习法", "Raft 共识算法", "什么是CPI"];
 
@@ -90,6 +92,32 @@ function LibraryHome({
   };
   openPaletteRef.current = openPalette;
 
+  // —— 节点预览抽屉状态 ——
+  const [previewNode, setPreviewNode] = useState<MapNode | null>(null);
+  const [previewReport, setPreviewReport] = useState<StoredReport | null>(null);
+
+  const handlePreview = useCallback(
+    (node: MapNode, report: StoredReport | null) => {
+      setPreviewNode(node);
+      setPreviewReport(report);
+    },
+    []
+  );
+  const closePreview = useCallback(() => {
+    setPreviewNode(null);
+    setPreviewReport(null);
+  }, []);
+
+  // 抽出"这个概念关联的其它概念"，用于预览面板
+  const relatedFromHere = useMemo(() => {
+    if (!previewReport) return [];
+    return previewReport.related.map((c) => ({
+      name: c.name,
+      relationType: c.relationType,
+      color: c.color,
+    }));
+  }, [previewReport]);
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[var(--bg)]">
       {/* 顶部：单行 solid 表面（不浮空），整合品牌/数据/搜索/登录 */}
@@ -158,7 +186,21 @@ function LibraryHome({
       </header>
 
       {/* 地图全屏 */}
-      <MapView reports={reports} className="absolute inset-0" />
+      <MapView
+        reports={reports}
+        className="absolute inset-0"
+        onPreview={handlePreview}
+      />
+
+      {/* 节点预览抽屉 */}
+      {previewNode && (
+        <ConceptPreview
+          node={previewNode}
+          report={previewReport}
+          onClose={closePreview}
+          relatedFromHere={relatedFromHere}
+        />
+      )}
 
       {/* 底部：单行操作提示 + 极简搜索（仅在用户主动需要时使用） */}
       <div className="absolute inset-x-0 bottom-6 z-20 pointer-events-none">

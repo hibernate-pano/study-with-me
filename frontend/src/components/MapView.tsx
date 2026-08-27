@@ -10,6 +10,7 @@ import {
   type MapNode,
 } from "@/lib/map";
 import { RELATION_DEFS, type RelationType } from "@/lib/network";
+import { loadPosCache, savePosCache, type PosMap } from "@/lib/mapPosCache";
 import type { StoredReport } from "@/lib/storage";
 
 /**
@@ -31,6 +32,11 @@ type Props = {
   /** 是否画背景点阵；首页 hero 不画（避免与画布冲突） */
   dotted?: boolean;
   className?: string;
+  /**
+   * 点击节点时回调（用于在父组件打开预览抽屉）。
+   * 不传则保持旧的直接跳转行为（/map 焦点模式用）。
+   */
+  onPreview?: (node: MapNode, report: StoredReport | null) => void;
 };
 
 export default function MapView({
@@ -38,12 +44,23 @@ export default function MapView({
   maxNodes = 90,
   dotted = false,
   className = "",
+  onPreview,
 }: Props) {
   const router = useRouter();
 
   const graph = useMemo<ConceptGraph>(() => {
     const g = buildConceptGraph(reports);
-    return layout(trimGraph(g, maxNodes));
+    const laid = layout(trimGraph(g, maxNodes));
+    // —— 把缓存位置套到节点上 ——
+    const cache = loadPosCache();
+    for (const n of laid.nodes) {
+      const c = cache[n.id];
+      if (c) {
+        n.x = c.x;
+        n.y = c.y;
+      }
+    }
+    return laid;
   }, [reports, maxNodes]);
 
   const [scale, setScale] = useState(1);
@@ -146,6 +163,14 @@ export default function MapView({
     setPinnedIds((s) => new Set(s).add(d.id));
     nodeDragRef.current = null;
     relaxOnce(graph, pinnedIds);
+    // —— 持久化所有非 pinned 节点的位置（轻量重排后） ——
+    const cache: PosMap = loadPosCache();
+    for (const n of graph.nodes) {
+      if (n.x !== undefined && n.y !== undefined) {
+        cache[n.id] = { x: n.x, y: n.y };
+      }
+    }
+    savePosCache(cache);
   };
 
   const mineCount = graph.nodes.filter((n) => n.kind === "mine").length;
@@ -277,7 +302,9 @@ export default function MapView({
                   onClick={(e) => {
                     if (nodeDragRef.current) return;
                     e.stopPropagation();
-                    router.push(`/analyze/${encodeURIComponent(n.label)}`);
+                    const report = reports.find((r) => r.term === n.label) || null;
+                    if (onPreview) onPreview(n, report);
+                    else router.push(`/analyze/${encodeURIComponent(n.label)}`);
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
@@ -334,7 +361,9 @@ export default function MapView({
                   onClick={(e) => {
                     if (nodeDragRef.current) return;
                     e.stopPropagation();
-                    router.push(`/analyze/${encodeURIComponent(n.label)}`);
+                    const report = reports.find((r) => r.term === n.label) || null;
+                    if (onPreview) onPreview(n, report);
+                    else router.push(`/analyze/${encodeURIComponent(n.label)}`);
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
