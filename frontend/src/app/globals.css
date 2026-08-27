@@ -8,6 +8,19 @@
   --line: #e7e9f2;
   --brand: #4f46e5;
   --brand-deep: #4338ca;
+  /* —— 新设计 token（v1.6.0 作品化升级） —— */
+  --ink-deep: #0f172a;
+  --paper: #fafaf7;        /* 暖纸色，给"阅读"语境用 */
+  --accent: #b45309;       /* 暖琥珀，作为点睛（不是 CTA 主色，是细节高光） */
+  --accent-soft: #fef3eb;
+  /* —— 字号节奏 —— */
+  --t-display: 1.875rem;   /* 30px，serif 大引语 */
+  --t-h: 1.0625rem;        /* 17px */
+  --t-body: 0.9375rem;     /* 15px */
+  --t-meta: 0.8125rem;     /* 13px */
+  --t-micro: 0.6875rem;    /* 11px */
+  /* —— 缓动 —— */
+  --ease-quiet: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 * {
@@ -25,7 +38,36 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+/* serif 用作"定义/引语"语义——只在少数地方用 */
+.font-serif-zh {
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC",
+    "STSong", "SimSun", ui-serif, Georgia, serif;
+  font-feature-settings: "kern", "palt";
+}
+
+/* 全局焦点环——键盘用户可见 */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 淡入（地图首屏加载） */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 320ms var(--ease-quiet) both; }
+
+/* 节点最近学习高亮（柔光呼吸） */
+@keyframes node-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(180, 83, 9, 0)); }
+  50%      { filter: drop-shadow(0 0 6px rgba(180, 83, 9, 0.55)); }
+}
+.recent-glow { animation: node-glow 2.6s ease-in-out infinite; }
 
 /* ---------- 首页 hero ---------- */
 .hero-bg {
@@ -145,3 +187,34 @@ body {
   background: #d4d8e6;
   border-radius: 4px;
 }
+
+/* —— 命令面板 —— */
+.kbar-backdrop {
+  background: radial-gradient(
+    ellipse at top,
+    rgba(15, 23, 42, 0.42),
+    rgba(15, 23, 42, 0.62) 60%
+  );
+  backdrop-filter: blur(6px);
+}
+.kbar-panel {
+  animation: kbar-pop 160ms var(--ease-quiet) both;
+}
+@keyframes kbar-pop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* —— 一句话定义的 serif 引语 —— */
+.lead-quote {
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+  font-size: var(--t-display);
+  line-height: 1.45;
+  color: var(--ink-deep);
+  letter-spacing: 0.005em;
+  font-weight: 500;
+}
+
+/* —— 地图画布光标 —— */
+.canvas-pannable { cursor: grab; }
+.canvas-pannable:active { cursor: grabbing; }

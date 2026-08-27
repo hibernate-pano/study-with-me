@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import VersionBadge from "@/components/VersionBadge";
 import AuthBar from "@/components/AuthBar";
+import CommandPalette from "@/components/CommandPalette";
 
 export const metadata: Metadata = {
   title: "概念深挖器 · 输入一个词，快速抓住重点",
@@ -18,6 +19,7 @@ export default function RootLayout({
         {children}
         <AuthBar />
         <VersionBadge />
+        <CommandPalette />
       </body>
     </html>
   );

@@ -7,6 +7,12 @@ interface Props {
   initial?: string;
   size?: "lg" | "md";
   autoFocus?: boolean;
+  /** 受控模式：值变化时回调（命令面板需要） */
+  onChange?: (v: string) => void;
+  /** 回车时回调（命令面板里用它跳转到选中的项） */
+  onEnter?: () => void;
+  /** 自定义键盘回调：返回 true 表示已处理，SearchBox 不再响应默认行为 */
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => boolean | void;
 }
 
 const MAX_LEN = 300;
@@ -17,7 +23,14 @@ const MAX_LEN = 300;
  * - 长文本 / 粘贴 / 按回车 → 自动撑高；
  * - 回车提交，Shift+Enter 换行（textarea 常规约定）。
  */
-export default function SearchBox({ initial = "", size = "lg", autoFocus }: Props) {
+export default function SearchBox({
+  initial = "",
+  size = "lg",
+  autoFocus,
+  onChange,
+  onEnter,
+  onKeyDown,
+}: Props) {
   const router = useRouter();
   const [value, setValue] = useState(initial);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -61,6 +74,7 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
           onChange={(e) => {
             const v = e.target.value.slice(0, MAX_LEN);
             setValue(v);
+            onChange?.(v);
             // 自动撑高
             const el = taRef.current;
             if (el) {
@@ -69,9 +83,12 @@ export default function SearchBox({ initial = "", size = "lg", autoFocus }: Prop
             }
           }}
           onKeyDown={(e) => {
+            // 委托给外部（命令面板用）
+            if (onKeyDown && onKeyDown(e)) return;
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              submit();
+              if (onEnter) onEnter();
+              else submit();
             }
           }}
           placeholder={
