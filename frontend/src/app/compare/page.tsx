@@ -191,7 +191,7 @@ function CompareInner() {
   return (
     <div className="min-h-screen pb-16">
       <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -222,7 +222,7 @@ function CompareInner() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pt-8">
+      <main className="mx-auto max-w-7xl px-4 pt-8">
         {/* 输入区 */}
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

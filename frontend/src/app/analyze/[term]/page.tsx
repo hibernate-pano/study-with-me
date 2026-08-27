@@ -344,7 +344,7 @@ export default function AnalyzePage() {
     <div className="min-h-screen">
       {/* 顶部操作栏 */}
       <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[rgba(250,248,243,0.78)] backdrop-blur-xl">
-        <div className={`mx-auto flex items-center gap-2 px-5 py-2.5 ${wide ? "max-w-7xl" : "max-w-6xl"}`}>
+        <div className={`mx-auto flex items-center gap-2 px-5 py-2.5 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
@@ -496,7 +496,7 @@ export default function AnalyzePage() {
         </div>
       </header>
 
-      <main className={`mx-auto flex gap-7 px-5 py-8 ${wide ? "max-w-7xl" : "max-w-6xl"}`}>
+      <main className={`mx-auto flex gap-7 px-5 py-8 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
         {/* 正文列 */}
         <div className="min-w-0 flex-1">
           {/* 词条标题：serif 大引语 */}
