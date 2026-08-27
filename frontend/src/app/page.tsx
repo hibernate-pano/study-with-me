@@ -1,19 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import MapView from "@/components/MapView";
-import ConceptPreview from "@/components/ConceptPreview";
 import SearchBox from "@/components/SearchBox";
-import { getAllReports, getDueCards, type StoredReport } from "@/lib/storage";
-import type { MapNode } from "@/lib/map";
+import { getAllReports, getDueCards } from "@/lib/storage";
 
 const EXAMPLES = ["分布式锁", "十五规划", "Kafka", "费曼学习法", "Raft 共识算法", "什么是CPI"];
 
-const fmtArchiveTime = (ts: number): string => {
+const fmtRel = (ts: number): string => {
   const d = new Date(ts);
-  const now = Date.now();
-  const diffMin = Math.floor((now - ts) / 60000);
+  const diffMin = Math.floor((Date.now() - ts) / 60000);
   if (diffMin < 1) return "刚刚";
   if (diffMin < 60) return `${diffMin} 分钟前`;
   const diffH = Math.floor(diffMin / 60);
@@ -23,19 +19,25 @@ const fmtArchiveTime = (ts: number): string => {
 
 export default function HomePage() {
   const router = useRouter();
-  const [reports, setReports] = useState<StoredReport[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [recentTerms, setRecentTerms] = useState<string[]>([]);
+  const [recentConcepts, setRecentConcepts] = useState<{ term: string; updatedAt: number }[]>([]);
+  const [stats, setStats] = useState({ mine: 0, total: 0 });
 
   const refresh = useCallback(() => {
     Promise.all([getAllReports(), getDueCards()])
       .then(([rs, cards]) => {
-        setReports(rs);
+        const mains = rs.filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:"));
+        setStats({
+          mine: mains.length,
+          total: mains.length + mains.reduce((acc, r) => acc + (r.related?.length ?? 0), 0),
+        });
+        setRecentConcepts(
+          mains.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5)
+        );
         setDueCount(cards.length);
-        setLoaded(true);
       })
-      .catch(() => setLoaded(true));
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -51,188 +53,46 @@ export default function HomePage() {
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
 
-  const mineReports = useMemo(
-    () => reports.filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")),
-    [reports]
+  return (
+    <WelcomeHome
+      onStart={(q) => router.push(`/analyze/${encodeURIComponent(q)}`)}
+      onOpenPalette={() => window.dispatchEvent(new CustomEvent("cd:open-palette"))}
+      stats={stats}
+      dueCount={dueCount}
+      recentTerms={recentTerms}
+      recentConcepts={recentConcepts}
+      onGoMap={() => router.push("/map")}
+      onGoReview={() => router.push("/review")}
+    />
   );
-  const hasLibrary = loaded && mineReports.length > 0;
-
-  if (hasLibrary) {
-    return (
-      <LibraryHome
-        reports={reports}
-        dueCount={dueCount}
-        recentTerms={recentTerms}
-      />
-    );
-  }
-  return <WelcomeHome onStart={(q) => router.push(`/analyze/${encodeURIComponent(q)}`)} />;
 }
 
-/* ============== 有存档 · 地图为家 ============== */
-function LibraryHome({
-  reports,
+/* ============== 首页（永远简单 · 不论有没有存档） ============== */
+function WelcomeHome({
+  onStart,
+  onOpenPalette,
+  stats,
   dueCount,
   recentTerms,
+  recentConcepts,
+  onGoMap,
+  onGoReview,
 }: {
-  reports: StoredReport[];
+  onStart: (q: string) => void;
+  onOpenPalette: () => void;
+  stats: { mine: number; total: number };
   dueCount: number;
   recentTerms: string[];
+  recentConcepts: { term: string; updatedAt: number }[];
+  onGoMap: () => void;
+  onGoReview: () => void;
 }) {
-  const router = useRouter();
-  const mineCount = reports.filter(
-    (r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")
-  ).length;
-  const totalNodes = mineCount + reports.reduce((acc, r) => acc + (r.related?.length ?? 0), 0);
-  const openPaletteRef = useRef<(() => void) | null>(null);
+  const has = stats.mine > 0;
 
-  // 顶部 ⌘K 按钮：派发一个自定义事件，全局 CommandPalette 监听
-  const openPalette = () => {
-    window.dispatchEvent(new CustomEvent("cd:open-palette"));
-  };
-  openPaletteRef.current = openPalette;
-
-  // —— 节点预览抽屉状态 ——
-  const [previewNode, setPreviewNode] = useState<MapNode | null>(null);
-  const [previewReport, setPreviewReport] = useState<StoredReport | null>(null);
-
-  const handlePreview = useCallback(
-    (node: MapNode, report: StoredReport | null) => {
-      setPreviewNode(node);
-      setPreviewReport(report);
-    },
-    []
-  );
-  const closePreview = useCallback(() => {
-    setPreviewNode(null);
-    setPreviewReport(null);
-  }, []);
-
-  // 抽出"这个概念关联的其它概念"，用于预览面板
-  const relatedFromHere = useMemo(() => {
-    if (!previewReport) return [];
-    return previewReport.related.map((c) => ({
-      name: c.name,
-      relationType: c.relationType,
-      color: c.color,
-    }));
-  }, [previewReport]);
-
-  return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[var(--bg)]">
-      {/* 顶部：单行 typographic 表面 */}
-      <header className="absolute inset-x-0 top-0 z-30">
-        <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-5 pt-4">
-          {/* 品牌（typographic，少 chrome） */}
-          <button
-            onClick={() => router.push("/")}
-            className="flex items-center gap-2 px-1 py-1.5 cursor-pointer"
-            title="概念深挖器"
-          >
-            <span className="text-[18px] leading-none">⛏️</span>
-            <span className="text-[14px] font-bold tracking-[0.04em] text-slate-800">
-              概念深挖器
-            </span>
-          </button>
-
-          {/* typographic 数据条：serif 数字 + 小标 */}
-          <div className="hidden md:flex items-baseline gap-4 ml-3 text-slate-600">
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-serif-zh text-[22px] font-semibold tabular-nums text-slate-900 leading-none">
-                {mineCount}
-              </span>
-              <span className="text-[11.5px] text-slate-500">学过的</span>
-            </div>
-            <span className="text-slate-300">·</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-serif-zh text-[22px] font-semibold tabular-nums text-slate-700 leading-none">
-                {totalNodes - mineCount}
-              </span>
-              <span className="text-[11.5px] text-slate-500">关联</span>
-            </div>
-            {dueCount > 0 && (
-              <>
-                <span className="text-slate-300">·</span>
-                <button
-                  onClick={() => router.push("/review")}
-                  className="flex items-baseline gap-1.5 cursor-pointer"
-                >
-                  <span className="font-serif-zh text-[22px] font-semibold tabular-nums text-amber-700 leading-none">
-                    {dueCount}
-                  </span>
-                  <span className="text-[11.5px] text-amber-700">到期复习</span>
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="flex-1" />
-
-          {/* + 新概念 按钮（无键盘用户） */}
-          <button
-            onClick={openPalette}
-            className="hidden sm:flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white/70 backdrop-blur px-3 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50/60 cursor-pointer"
-            title="深挖一个新概念（⌘K）"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            新概念
-          </button>
-
-          {/* ⌘K 触发器 */}
-          <button
-            onClick={openPalette}
-            className="surface flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] text-slate-500 hover:text-slate-800 cursor-pointer"
-            title="打开命令面板（⌘K）"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <span className="hidden md:inline">搜索</span>
-            <kbd className="rounded border border-slate-200 bg-white/80 px-1.5 py-0 text-[10px] font-mono text-slate-400">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-      </header>
-
-      {/* 地图全屏 */}
-      <MapView
-        reports={reports}
-        className="absolute inset-0"
-        onPreview={handlePreview}
-      />
-
-      {/* 节点预览抽屉 */}
-      {previewNode && (
-        <ConceptPreview
-          node={previewNode}
-          report={previewReport}
-          onClose={closePreview}
-          relatedFromHere={relatedFromHere}
-        />
-      )}
-
-      {/* 底部：仅一行键盘提示（极简） */}
-      <div className="absolute inset-x-0 bottom-4 z-20 pointer-events-none">
-        <div className="mx-auto max-w-2xl px-4 text-center">
-          <div className="text-[10.5px] text-slate-400/70 tracking-[0.05em]">
-            滚轮缩放 · 拖拽平移 · 拖动节点 · 点击深挖
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============== 无存档 · 欢迎首页（typographic 重设计） ============== */
-function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
   return (
     <div className="min-h-screen hero-bg">
-      <main className="mx-auto max-w-3xl px-6 pt-20 pb-24 fade-up">
-        {/* 品牌：打字机风 */}
+      <main className="mx-auto max-w-3xl px-6 pt-14 pb-20 fade-up">
+        {/* 品牌 */}
         <div className="flex items-center gap-2.5 mb-12">
           <span className="text-[20px] leading-none">⛏️</span>
           <span className="text-[14px] font-bold tracking-[0.04em] text-slate-700">
@@ -240,7 +100,7 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
           </span>
         </div>
 
-        {/* 大 serif 引语作 hero */}
+        {/* serif hero */}
         <h1 className="font-serif-zh text-[44px] md:text-[60px] leading-[1.1] tracking-tight">
           <span className="ink-grad">输入一个词，</span>
           <br />
@@ -284,6 +144,90 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
           </button>
         </div>
 
+        {/* 我的存档（仅在有存档时出现 · 不抢戏） */}
+        {has && (
+          <div className="mt-16 pt-10 border-t border-[var(--line)]">
+            <div className="flex items-baseline justify-between mb-5">
+              <div>
+                <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-1">
+                  你的知识库
+                </div>
+                <div className="flex items-baseline gap-3 text-slate-600">
+                  <span className="font-serif-zh text-[20px] font-semibold tabular-nums text-slate-900">
+                    {stats.mine}
+                  </span>
+                  <span className="text-[12.5px] text-slate-500">个概念</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="font-serif-zh text-[20px] font-semibold tabular-nums text-slate-700">
+                    {stats.total - stats.mine}
+                  </span>
+                  <span className="text-[12.5px] text-slate-500">关联</span>
+                  {dueCount > 0 && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <button
+                        onClick={onGoReview}
+                        className="font-serif-zh text-[20px] font-semibold tabular-nums text-amber-700 cursor-pointer hover:text-amber-800"
+                      >
+                        {dueCount}
+                      </button>
+                      <button
+                        onClick={onGoReview}
+                        className="text-[12.5px] text-amber-700 hover:text-amber-800 cursor-pointer"
+                      >
+                        张到期复习 →
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={onGoMap}
+                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+              >
+                <span>🗺</span>
+                <span>打开知识网络地图</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            {/* 最近学过的概念（横向 chips） */}
+            <div className="flex flex-wrap gap-2">
+              {recentConcepts.map((c) => (
+                <button
+                  key={c.term}
+                  onClick={() => onStart(c.term)}
+                  className="group flex items-baseline gap-2 rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 hover:border-indigo-300 hover:bg-white cursor-pointer"
+                >
+                  <span className="text-[13px] font-medium text-slate-800 group-hover:text-indigo-700">
+                    {c.term}
+                  </span>
+                  <span className="text-[10.5px] text-slate-400">
+                    {fmtRel(c.updatedAt)}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {recentTerms.length > 0 && (
+              <div className="mt-4 flex items-center gap-3 text-[11.5px] text-slate-400">
+                <span>最近搜索：</span>
+                <div className="flex flex-wrap items-center gap-x-3">
+                  {recentTerms.slice(0, 6).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => onStart(t)}
+                      className="text-slate-500 hover:text-indigo-600 cursor-pointer"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 三件套说明（typographic 列表） */}
         <div className="mt-20 pt-10 border-t border-[var(--line)]">
           <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-6">
@@ -306,7 +250,6 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
           </div>
         </div>
 
-        {/* 三个落地能力 */}
         <div className="mt-16 pt-10 border-t border-[var(--line)]">
           <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-6">
             不只生成 · 还能记住
@@ -330,9 +273,22 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
           </div>
         </div>
 
-        <p className="mt-20 text-center text-[11.5px] text-slate-400/80 tracking-wide">
-          内容由 AI 生成 · 请交叉验证关键信息 · 数据保存在你的浏览器本地
-        </p>
+        {/* ⌘K 提示 + footer */}
+        <div className="mt-16 flex flex-col items-center gap-3 text-center">
+          <button
+            onClick={onOpenPalette}
+            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 text-[12.5px] text-slate-600 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+          >
+            <span>按</span>
+            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10.5px] font-mono text-slate-500">
+              ⌘K
+            </kbd>
+            <span>唤起命令面板 · 搜索 / 跳转 / 对比 / 复习</span>
+          </button>
+          <p className="text-[11px] text-slate-400/70 tracking-wide">
+            内容由 AI 生成 · 请交叉验证关键信息 · 数据保存在你的浏览器本地
+          </p>
+        </div>
       </main>
     </div>
   );

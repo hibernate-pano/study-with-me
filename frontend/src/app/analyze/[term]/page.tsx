@@ -52,6 +52,7 @@ export default function AnalyzePage() {
   const [stickToBottom, setStickToBottom] = useState(true);
   const [drillConcept, setDrillConcept] = useState<FlatConcept | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [wide, setWide] = useState(false); // 宽屏模式（隐藏侧栏、主列加宽）
 
   // 数据来源提示：本地存档 | 全新生成
   const [cachedAt, setCachedAt] = useState<number | null>(null);
@@ -343,7 +344,7 @@ export default function AnalyzePage() {
     <div className="min-h-screen">
       {/* 顶部操作栏 */}
       <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[rgba(250,248,243,0.78)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center gap-2 px-5 py-2.5">
+        <div className={`mx-auto flex items-center gap-2 px-5 py-2.5 ${wide ? "max-w-7xl" : "max-w-6xl"}`}>
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
@@ -420,6 +421,35 @@ export default function AnalyzePage() {
             )}
           </button>
 
+          {/* 宽屏切换 */}
+          <button
+            onClick={() => setWide((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors cursor-pointer ${
+              wide
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-slate-500 hover:bg-[var(--bg-soft)]"
+            }`}
+            title={wide ? "切回标准宽度（显示侧栏）" : "切到宽屏（隐藏侧栏，列加宽）"}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {wide ? (
+                <>
+                  <path d="M3 6h13" />
+                  <path d="M3 12h13" />
+                  <path d="M3 18h13" />
+                  <rect x="18" y="3" width="3" height="18" rx="0.5" fill="currentColor" stroke="none" opacity="0.35" />
+                </>
+              ) : (
+                <>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <rect x="9" y="3" width="2" height="18" fill="currentColor" stroke="none" opacity="0.35" />
+                </>
+              )}
+            </svg>
+            {wide ? "宽屏" : "标准"}
+          </button>
+
           {/* 文件操作（图标菜单） */}
           <div className="relative">
             <button
@@ -466,7 +496,7 @@ export default function AnalyzePage() {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-5xl gap-7 px-5 py-8">
+      <main className={`mx-auto flex gap-7 px-5 py-8 ${wide ? "max-w-7xl" : "max-w-6xl"}`}>
         {/* 正文列 */}
         <div className="min-w-0 flex-1">
           {/* 词条标题：serif 大引语 */}
@@ -577,7 +607,7 @@ export default function AnalyzePage() {
         </div>
 
         {/* 侧栏 */}
-        <aside className="hidden lg:block w-56 shrink-0">
+        <aside className={`${wide ? "hidden" : "hidden lg:block"} w-56 shrink-0`}>
           {/* 我的存档 */}
           {archive.length > 0 && (
             <div className="mb-4 rounded-2xl border border-[var(--line)] bg-white/80 p-4">
