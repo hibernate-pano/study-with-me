@@ -15,6 +15,19 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        {/* 中文衬线字体（hero 大引语、概念标题用） */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Color+Emoji&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         {children}
         <AuthBar />

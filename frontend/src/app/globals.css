@@ -55,15 +55,18 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 /* serif 用作"定义/引语/概念标题"语义 */
+/* 优先 Google Fonts 的 Noto Serif SC（云端可用），然后 fallback 到系统 */
 .font-serif-zh {
-  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC",
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC",
     "STSong", "SimSun", ui-serif, Georgia, serif;
+  font-weight: 500;
   font-feature-settings: "kern", "palt";
 }
 

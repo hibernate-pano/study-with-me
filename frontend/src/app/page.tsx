@@ -21,20 +21,22 @@ export default function HomePage() {
   const router = useRouter();
   const [dueCount, setDueCount] = useState(0);
   const [recentTerms, setRecentTerms] = useState<string[]>([]);
-  const [recentConcepts, setRecentConcepts] = useState<{ term: string; updatedAt: number }[]>([]);
+  const [recentConcepts, setRecentConcepts] = useState<{ term: string; updatedAt: number }[]>(
+    []
+  );
   const [stats, setStats] = useState({ mine: 0, total: 0 });
 
   const refresh = useCallback(() => {
     Promise.all([getAllReports(), getDueCards()])
       .then(([rs, cards]) => {
-        const mains = rs.filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:"));
+        const mains = rs.filter(
+          (r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")
+        );
         setStats({
           mine: mains.length,
           total: mains.length + mains.reduce((acc, r) => acc + (r.related?.length ?? 0), 0),
         });
-        setRecentConcepts(
-          mains.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5)
-        );
+        setRecentConcepts(mains.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5));
         setDueCount(cards.length);
       })
       .catch(() => {});
@@ -91,91 +93,92 @@ function WelcomeHome({
 
   return (
     <div className="min-h-screen hero-bg">
-      <main className="mx-auto max-w-3xl px-6 pt-14 pb-20 fade-up">
+      <main className="mx-auto max-w-5xl px-6 pt-16 pb-24 fade-up">
         {/* 品牌 */}
-        <div className="flex items-center gap-2.5 mb-12">
-          <span className="text-[20px] leading-none">⛏️</span>
+        <div className="flex items-center gap-2.5 mb-14">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700">
+            <path d="M14 4l6 6" />
+            <path d="M11 7l-7 7v4h4l7-7" />
+            <path d="M5 19l4-4" />
+            <path d="M14 9l1 1" />
+          </svg>
           <span className="text-[14px] font-bold tracking-[0.04em] text-slate-700">
             概念深挖器
           </span>
         </div>
 
         {/* serif hero */}
-        <h1 className="font-serif-zh text-[44px] md:text-[60px] leading-[1.1] tracking-tight">
+        <h1 className="font-serif-zh text-[56px] md:text-[76px] leading-[1.05] tracking-[-0.015em]">
           <span className="ink-grad">输入一个词，</span>
           <br />
           <span className="text-slate-900">顺着网络，</span>
           <span className="text-slate-900">学下去。</span>
         </h1>
 
-        <p className="mt-6 text-[16px] text-slate-600 leading-[1.7] max-w-lg">
+        <p className="mt-7 text-[17px] text-slate-600 leading-[1.7] max-w-2xl">
           从「分布式锁」到「十五规划」，AI 流式给你一份深度解析，列出相关 / 相似 /
-          相反 / 跨领域概念。<br />
-          每个概念都是接力棒——<span className="font-semibold text-slate-800">点一下就深挖下一个</span>。
+          相反 / 跨领域概念。
+          <br />
+          每个概念都是接力棒——<span className="font-semibold text-slate-800">
+            点一下就深挖下一个
+          </span>
+          。
         </p>
 
-        <div className="mt-10">
+        {/* hero 内联搜索（视觉锚点） */}
+        <div className="mt-10 max-w-2xl">
           <SearchBox autoFocus />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {EXAMPLES.map((e) => (
+              <button
+                key={e}
+                onClick={() => onStart(e)}
+                className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white/60 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {EXAMPLES.map((e) => (
-            <button
-              key={e}
-              onClick={() => onStart(e)}
-              className="px-3.5 py-1.5 rounded-full border border-[var(--line)] bg-white/60 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
-            >
-              {e}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 max-w-xl">
-          <button
-            onClick={() => onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")}
-            className="w-full text-left rounded-xl border border-dashed border-indigo-200 bg-white/40 hover:bg-indigo-50/50 hover:border-indigo-300 px-4 py-3 transition-colors cursor-pointer"
-          >
-            <div className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-500 mb-1.5">
-              ✦ 完整段落输入
-            </div>
-            <div className="text-[13px] text-slate-600 leading-relaxed">
+        {/* 完整段落示例（一个，不多不少） */}
+        <button
+          onClick={() =>
+            onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")
+          }
+          className="mt-5 group flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-indigo-200 bg-white/40 px-4 py-2.5 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors cursor-pointer text-left"
+        >
+          <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-500 mt-0.5 shrink-0">
+            ✦
+          </span>
+          <span className="text-[13px] text-slate-600 leading-relaxed">
+            也支持完整段落 ——{" "}
+            <span className="text-slate-700">
               &ldquo;我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？&rdquo;
-            </div>
-          </button>
-        </div>
+            </span>
+          </span>
+        </button>
 
-        {/* 我的存档（仅在有存档时出现 · 不抢戏） */}
+        {/* ── 分隔 ── */}
+        <div className="mt-14 max-w-2xl border-t border-[var(--line)]" />
+
+        {/* 你的知识库（有存档时） */}
         {has && (
-          <div className="mt-16 pt-10 border-t border-[var(--line)]">
-            <div className="flex items-baseline justify-between mb-5">
+          <section className="mt-14 max-w-2xl">
+            <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
               <div>
-                <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-1">
+                <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-2">
                   你的知识库
                 </div>
-                <div className="flex items-baseline gap-3 text-slate-600">
-                  <span className="font-serif-zh text-[20px] font-semibold tabular-nums text-slate-900">
-                    {stats.mine}
-                  </span>
-                  <span className="text-[12.5px] text-slate-500">个概念</span>
+                <div className="flex items-baseline gap-3 flex-wrap text-slate-600">
+                  <Stat n={stats.mine} label="个概念" emphasize />
                   <span className="text-slate-300">·</span>
-                  <span className="font-serif-zh text-[20px] font-semibold tabular-nums text-slate-700">
-                    {stats.total - stats.mine}
-                  </span>
-                  <span className="text-[12.5px] text-slate-500">关联</span>
+                  <Stat n={stats.total - stats.mine} label="关联" />
                   {dueCount > 0 && (
                     <>
                       <span className="text-slate-300">·</span>
-                      <button
-                        onClick={onGoReview}
-                        className="font-serif-zh text-[20px] font-semibold tabular-nums text-amber-700 cursor-pointer hover:text-amber-800"
-                      >
-                        {dueCount}
-                      </button>
-                      <button
-                        onClick={onGoReview}
-                        className="text-[12.5px] text-amber-700 hover:text-amber-800 cursor-pointer"
-                      >
-                        张到期复习 →
+                      <button onClick={onGoReview} className="flex items-baseline gap-1.5 cursor-pointer hover:opacity-80">
+                        <Stat n={dueCount} label="张到期复习" amber />
                       </button>
                     </>
                   )}
@@ -186,12 +189,11 @@ function WelcomeHome({
                 className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
               >
                 <span>🗺</span>
-                <span>打开知识网络地图</span>
+                <span>知识网络地图</span>
                 <span>→</span>
               </button>
             </div>
 
-            {/* 最近学过的概念（横向 chips） */}
             <div className="flex flex-wrap gap-2">
               {recentConcepts.map((c) => (
                 <button
@@ -202,18 +204,16 @@ function WelcomeHome({
                   <span className="text-[13px] font-medium text-slate-800 group-hover:text-indigo-700">
                     {c.term}
                   </span>
-                  <span className="text-[10.5px] text-slate-400">
-                    {fmtRel(c.updatedAt)}
-                  </span>
+                  <span className="text-[10.5px] text-slate-400">{fmtRel(c.updatedAt)}</span>
                 </button>
               ))}
             </div>
 
             {recentTerms.length > 0 && (
-              <div className="mt-4 flex items-center gap-3 text-[11.5px] text-slate-400">
-                <span>最近搜索：</span>
+              <div className="mt-3 flex items-center gap-3 text-[11.5px] text-slate-400 flex-wrap">
+                <span>最近搜索</span>
                 <div className="flex flex-wrap items-center gap-x-3">
-                  {recentTerms.slice(0, 6).map((t) => (
+                  {recentTerms.slice(0, 5).map((t) => (
                     <button
                       key={t}
                       onClick={() => onStart(t)}
@@ -225,96 +225,77 @@ function WelcomeHome({
                 </div>
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        {/* 三件套说明（typographic 列表） */}
-        <div className="mt-20 pt-10 border-t border-[var(--line)]">
-          <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-6">
-            一份报告 · 八个模块
+        {/* 它能做什么（紧凑 typographic 列表，无分隔线） */}
+        <section className={`max-w-2xl ${has ? "mt-14" : "mt-16"}`}>
+          <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-4">
+            它能做什么
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
-            {MODULES.map((m) => (
-              <div key={m.title} className="flex items-baseline gap-3">
-                <span className="font-mono text-[10.5px] text-slate-400 tabular-nums w-6 shrink-0">
-                  {m.no}
-                </span>
-                <span className="font-serif-zh text-[15.5px] font-medium text-slate-800 shrink-0">
-                  {m.title}
-                </span>
-                <span className="text-[12.5px] text-slate-500 leading-snug">
-                  {m.desc}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+          <ul className="space-y-3">
+            <Cap
+              k="一份深度报告"
+              v="8 个模块流式解析：一句话定义 / 核心重点 / 常见误区 / 拆解分析 / 进阶路径 / 知识网络 / 深入追问 / 推荐资料。"
+            />
+            <Cap
+              k="自动入档 · 间隔复习"
+              v="本地 IndexedDB 持久化；自测题自动变成复习卡，忘了明天再来，记住了间隔翻倍。"
+            />
+            <Cap
+              k="串联成你自己的网络"
+              v="每个概念带 5–10 个相关概念，点击接力深挖。登录 GitHub 后云端同步，跨设备可用。"
+            />
+          </ul>
+        </section>
 
-        <div className="mt-16 pt-10 border-t border-[var(--line)]">
-          <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 mb-6">
-            不只生成 · 还能记住
-          </div>
-          <div className="space-y-4">
-            <Feature
-              icon="🗂"
-              title="间隔重复复习卡"
-              desc="报告里的自测题自动变成复习卡，忘了明天再来，记住了间隔翻倍。"
-            />
-            <Feature
-              icon="⚖️"
-              title="概念对比"
-              desc="把两个容易混淆的概念放一起辨析，五条关键差异一目了然。"
-            />
-            <Feature
-              icon="🗺"
-              title="你的知识网络地图"
-              desc="所有报告里的「🌐 知识网络」自动聚合成一张图，学得越多网越密。"
-            />
-          </div>
-        </div>
-
-        {/* ⌘K 提示 + footer */}
-        <div className="mt-16 flex flex-col items-center gap-3 text-center">
+        {/* 底部：⌘K */}
+        <div className="mt-12 flex items-center justify-center gap-3">
           <button
             onClick={onOpenPalette}
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 text-[12.5px] text-slate-600 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/70 px-3.5 py-1.5 text-[12px] text-slate-600 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
           >
-            <span>按</span>
+            <span>搜索 / 跳转 / 对比 / 复习</span>
             <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10.5px] font-mono text-slate-500">
               ⌘K
             </kbd>
-            <span>唤起命令面板 · 搜索 / 跳转 / 对比 / 复习</span>
           </button>
-          <p className="text-[11px] text-slate-400/70 tracking-wide">
-            内容由 AI 生成 · 请交叉验证关键信息 · 数据保存在你的浏览器本地
-          </p>
         </div>
+
+        <p className="mt-6 text-center text-[11px] text-slate-400/70 tracking-wide">
+          内容由 AI 生成 · 请交叉验证关键信息
+        </p>
       </main>
     </div>
   );
 }
 
-function Feature({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+/* 小元件 */
+function Stat({ n, label, emphasize, amber }: { n: number; label: string; emphasize?: boolean; amber?: boolean }) {
+  const color = amber
+    ? "text-amber-700"
+    : emphasize
+    ? "text-slate-900"
+    : "text-slate-700";
   return (
-    <div className="flex items-start gap-4">
-      <span className="text-[18px] mt-0.5">{icon}</span>
-      <div>
-        <div className="font-serif-zh text-[15px] font-medium text-slate-800">
-          {title}
-        </div>
-        <div className="text-[13px] text-slate-500 mt-0.5 leading-relaxed">{desc}</div>
-      </div>
-    </div>
+    <>
+      <span className={`font-serif-zh text-[22px] font-semibold tabular-nums leading-none ${color}`}>
+        {n}
+      </span>
+      <span className={`text-[12.5px] ${amber ? "text-amber-700" : "text-slate-500"}`}>
+        {label}
+      </span>
+    </>
   );
 }
 
-const MODULES = [
-  { no: "01", title: "一句话定义", desc: "1-2 句话秒懂", color: "#6366f1" },
-  { no: "02", title: "核心重点", desc: "先抓什么", color: "#f59e0b" },
-  { no: "03", title: "常见误区", desc: "错误认知→正确理解", color: "#ef4444" },
-  { no: "04", title: "拆解分析", desc: "拆成部分，讲清关联", color: "#8b5cf6" },
-  { no: "05", title: "进阶路径", desc: "从零到精通", color: "#10b981" },
-  { no: "06", title: "知识网络", desc: "构建你的知识网", color: "#06b6d4" },
-  { no: "07", title: "深入追问", desc: "自测题检验", color: "#ec4899" },
-  { no: "08", title: "推荐资料", desc: "书/联网检索", color: "#0ea5e9" },
-];
+function Cap({ k, v }: { k: string; v: string }) {
+  return (
+    <li className="flex gap-5">
+      <span className="font-serif-zh text-[14.5px] font-medium text-slate-800 shrink-0 w-[9rem]">
+        {k}
+      </span>
+      <span className="text-[13px] text-slate-500 leading-[1.7] flex-1">{v}</span>
+    </li>
+  );
+}
