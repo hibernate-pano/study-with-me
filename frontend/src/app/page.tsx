@@ -94,7 +94,7 @@ function WelcomeHome({
   return (
     <div className="min-h-screen hero-bg">
       <main className="mx-auto max-w-7xl px-6 pt-16 pb-24 fade-up">
-        {/* 品牌 */}
+        {/* 品牌（左上角） */}
         <div className="flex items-center gap-2.5 mb-14">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700">
             <path d="M14 4l6 6" />
@@ -107,64 +107,66 @@ function WelcomeHome({
           </span>
         </div>
 
-        {/* serif hero */}
-        <h1 className="font-serif-zh text-[56px] md:text-[76px] leading-[1.05] tracking-[-0.015em]">
-          <span className="ink-grad">输入一个词，</span>
-          <br />
-          <span className="text-slate-900">顺着网络，</span>
-          <span className="text-slate-900">学下去。</span>
-        </h1>
+        {/* Hero：居中布局（视觉重心在屏幕中） */}
+        <section className="mx-auto max-w-3xl text-center">
+          <h1 className="font-serif-zh text-[56px] md:text-[76px] leading-[1.05] tracking-[-0.015em]">
+            <span className="ink-grad">输入一个词，</span>
+            <br />
+            <span className="text-slate-900">顺着网络，</span>
+            <span className="text-slate-900">学下去。</span>
+          </h1>
 
-        <p className="mt-7 text-[17px] text-slate-600 leading-[1.7] max-w-2xl">
-          从「分布式锁」到「十五规划」，AI 流式给你一份深度解析，列出相关 / 相似 /
-          相反 / 跨领域概念。
-          <br />
-          每个概念都是接力棒——<span className="font-semibold text-slate-800">
-            点一下就深挖下一个
-          </span>
-          。
-        </p>
-
-        {/* hero 内联搜索（视觉锚点） */}
-        <div className="mt-10 max-w-2xl">
-          <SearchBox autoFocus />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {EXAMPLES.map((e) => (
-              <button
-                key={e}
-                onClick={() => onStart(e)}
-                className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white/60 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 完整段落示例（一个，不多不少） */}
-        <button
-          onClick={() =>
-            onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")
-          }
-          className="mt-5 group flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-indigo-200 bg-white/40 px-4 py-2.5 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors cursor-pointer text-left"
-        >
-          <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-500 mt-0.5 shrink-0">
-            ✦
-          </span>
-          <span className="text-[13px] text-slate-600 leading-relaxed">
-            也支持完整段落 ——{" "}
-            <span className="text-slate-700">
-              &ldquo;我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？&rdquo;
+          <p className="mt-7 text-[17px] text-slate-600 leading-[1.7]">
+            从「分布式锁」到「十五规划」，AI 流式给你一份深度解析，列出相关 / 相似 /
+            相反 / 跨领域概念。
+            <br />
+            每个概念都是接力棒——<span className="font-semibold text-slate-800">
+              点一下就深挖下一个
             </span>
-          </span>
-        </button>
+            。
+          </p>
+
+          {/* 搜索框（居中，最大 640px） */}
+          <div className="mt-10 mx-auto max-w-2xl">
+            <SearchBox autoFocus />
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => onStart(e)}
+                  className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white/60 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 完整段落示例（居中） */}
+          <button
+            onClick={() =>
+              onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")
+            }
+            className="mt-5 mx-auto flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-indigo-200 bg-white/40 px-4 py-2.5 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors cursor-pointer text-left"
+          >
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-500 mt-0.5 shrink-0">
+              ✦
+            </span>
+            <span className="text-[13px] text-slate-600 leading-relaxed">
+              也支持完整段落 ——{" "}
+              <span className="text-slate-700">
+                &ldquo;我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？&rdquo;
+              </span>
+            </span>
+          </button>
+        </section>
 
         {/* ── 分隔 ── */}
-        <div className="mt-14 max-w-2xl border-t border-[var(--line)]" />
+        <div className="mt-16 mx-auto max-w-3xl border-t border-[var(--line)]" />
 
         {/* 你的知识库（有存档时） */}
         {has && (
-          <section className="mt-14 max-w-2xl">
+          <section className="mt-14 mx-auto max-w-4xl">
             <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
               <div>
                 <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-2">
@@ -229,7 +231,7 @@ function WelcomeHome({
         )}
 
         {/* 它能做什么（紧凑 typographic 列表，无分隔线） */}
-        <section className={`max-w-2xl ${has ? "mt-14" : "mt-16"}`}>
+        <section className={`mx-auto max-w-3xl ${has ? "mt-14" : "mt-16"}`}>
           <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-4">
             它能做什么
           </div>
