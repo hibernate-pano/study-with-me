@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
 import SectionCard from "@/components/SectionCard";
 import DrillDownDrawer from "@/components/DrillDownDrawer";
+import { talkshowChallengeUrl } from "@/lib/talkshow";
 import { parseSections, extractSectionRaw, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
 import {
@@ -403,6 +404,26 @@ export default function AnalyzePage() {
             </svg>
             对比
           </button>
+
+          <a
+            href={talkshowChallengeUrl(term)}
+            target="_blank"
+            rel="noopener"
+            aria-disabled={streaming}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors cursor-pointer ${
+              streaming
+                ? "pointer-events-none opacity-40 text-slate-400"
+                : "text-slate-600 hover:bg-[var(--bg-soft)]"
+            }`}
+            title="去 Topic Talkshow 用这个词开一场限时讲解（新标签）"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <path d="M12 19v3" />
+            </svg>
+            开讲挑战
+          </a>
 
           <button
             onClick={() => router.push("/review")}
