@@ -3,6 +3,7 @@ import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
   fetchGithubUser,
+  oauthConfig,
   randomToken,
   upsertUserFromGithub,
   createSession,
@@ -10,6 +11,43 @@ import {
   deleteSession,
   SESSION_MAX_AGE_MS,
 } from "./auth";
+
+describe("oauth 配置选择", () => {
+  const OLD = process.env;
+  afterEach(() => {
+    process.env = OLD;
+  });
+
+  it("本地来源优先用 DEV 那组 key", () => {
+    process.env = {
+      ...OLD,
+      GITHUB_CLIENT_ID: "prod-id",
+      GITHUB_CLIENT_SECRET: "prod-secret",
+      GITHUB_CLIENT_ID_DEV: "dev-id",
+      GITHUB_CLIENT_SECRET_DEV: "dev-secret",
+    };
+    expect(oauthConfig("http://localhost:3000").clientId).toBe("dev-id");
+    expect(oauthConfig("http://127.0.0.1:3000").clientSecret).toBe("dev-secret");
+  });
+
+  it("线上来源始终用主 key；未配 DEV 时本地也回退主 key", () => {
+    process.env = {
+      ...OLD,
+      GITHUB_CLIENT_ID: "prod-id",
+      GITHUB_CLIENT_SECRET: "prod-secret",
+    };
+    expect(oauthConfig("https://studywithme.panbo.space").clientId).toBe("prod-id");
+    expect(oauthConfig().clientId).toBe("prod-id");
+    // 无 DEV 配置时本地回退主 key，不报错
+    expect(oauthConfig("http://localhost:3000").clientId).toBe("prod-id");
+  });
+
+  it("完全未配置时抛错", () => {
+    delete process.env.GITHUB_CLIENT_ID;
+    delete process.env.GITHUB_CLIENT_SECRET;
+    expect(() => oauthConfig()).toThrow(/未配置/);
+  });
+});
 
 describe("oauth 工具", () => {
   it("buildAuthorizeUrl 包含必要参数", () => {

@@ -21,7 +21,7 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/85 backdrop-blur">
+      <header className="topbar">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push("/")}
@@ -52,7 +52,7 @@ export default function MapPage() {
           </div>
         ) : isEmpty ? (
           <div className="absolute inset-0 grid place-items-center px-6">
-            <div className="rounded-2xl border border-[var(--line)] bg-white p-10 text-center max-w-sm">
+            <div className="card lift p-10 text-center max-w-sm">
               <div className="text-[34px]">🗺️</div>
               <div className="mt-3 text-[15px] font-bold text-slate-700">
                 地图还是空的

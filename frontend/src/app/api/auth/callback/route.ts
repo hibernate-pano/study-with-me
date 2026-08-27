@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { clientId, clientSecret } = oauthConfig();
+    const { clientId, clientSecret } = oauthConfig(req.nextUrl.origin);
     const token = await exchangeCodeForToken(clientId, clientSecret, code);
     const ghUser = await fetchGithubUser(token);
 

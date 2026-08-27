@@ -129,17 +129,8 @@ function WelcomeHome({
           {/* 搜索框（居中，最大 640px） */}
           <div className="mt-10 mx-auto max-w-2xl">
             <SearchBox autoFocus />
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {EXAMPLES.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => onStart(e)}
-                  className="px-3 py-1.5 rounded-full border border-[var(--line)] bg-white/60 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            {/* 概念接力带：产品核心隐喻的可视化，点击即开振 */}
+            <RelayStrip onStart={onStart} />
           </div>
 
           {/* 完整段落示例（居中） */}
@@ -230,12 +221,12 @@ function WelcomeHome({
           </section>
         )}
 
-        {/* 它能做什么（紧凑 typographic 列表，无分隔线） */}
-        <section className={`mx-auto max-w-3xl ${has ? "mt-14" : "mt-16"}`}>
+        {/* 它能做什么（三张轻卡片） */}
+        <section className={`mx-auto max-w-4xl ${has ? "mt-14" : "mt-16"}`}>
           <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-4">
             它能做什么
           </div>
-          <ul className="space-y-3">
+          <ul className="grid gap-3 sm:grid-cols-3">
             <Cap
               k="一份深度报告"
               v="8 个模块流式解析：一句话定义 / 核心重点 / 常见误区 / 拆解分析 / 进阶路径 / 知识网络 / 深入追问 / 推荐资料。"
@@ -255,7 +246,7 @@ function WelcomeHome({
         <div className="mt-12 flex items-center justify-center gap-3">
           <button
             onClick={onOpenPalette}
-            className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/70 px-3.5 py-1.5 text-[12px] text-slate-600 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+            className="chip !text-[12px]"
           >
             <span>搜索 / 跳转 / 对比 / 复习</span>
             <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10.5px] font-mono text-slate-500">
@@ -268,6 +259,36 @@ function WelcomeHome({
           内容由 AI 生成 · 请交叉验证关键信息
         </p>
       </main>
+    </div>
+  );
+}
+
+/* 概念接力带：虚线轨道上错峰浮动的接力胶囊，让“顺着网络学下去”看得见 */
+function RelayStrip({ onStart }: { onStart: (q: string) => void }) {
+  return (
+    <div className="relative mt-9">
+      <div
+        aria-hidden
+        className="dotted-rail absolute inset-x-8 top-1/2 hidden -translate-y-1/2 opacity-70 md:block"
+      />
+      <div className="relative flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+        {EXAMPLES.map((e, i) => (
+          <button
+            key={e}
+            onClick={() => onStart(e)}
+            style={{
+              animationDelay: `${i * 0.65}s`,
+              animationDuration: `${5.4 + i * 0.35}s`,
+            }}
+            className="float-slow chip"
+          >
+            <span aria-hidden className="mr-1.5 text-[10px] text-indigo-300">
+              ✦
+            </span>
+            {e}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -293,11 +314,14 @@ function Stat({ n, label, emphasize, amber }: { n: number; label: string; emphas
 
 function Cap({ k, v }: { k: string; v: string }) {
   return (
-    <li className="flex gap-5">
-      <span className="font-serif-zh text-[14.5px] font-medium text-slate-800 shrink-0 w-[9rem]">
-        {k}
-      </span>
-      <span className="text-[13px] text-slate-500 leading-[1.7] flex-1">{v}</span>
+    <li className="card lift cursor-default p-5">
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500" />
+        <span className="font-serif-zh text-[14.5px] font-semibold text-slate-800">
+          {k}
+        </span>
+      </div>
+      <p className="mt-2.5 text-[13px] leading-[1.75] text-slate-500">{v}</p>
     </li>
   );
 }

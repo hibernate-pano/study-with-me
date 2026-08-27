@@ -13,9 +13,9 @@ const STATE_COOKIE_MAX_AGE = 10 * 60;
  */
 export async function GET(req: NextRequest) {
   try {
-    const { clientId } = oauthConfig();
-    const state = randomToken(16);
     const origin = req.nextUrl.origin;
+    const { clientId } = oauthConfig(origin);
+    const state = randomToken(16);
     const redirectUri = `${origin}/api/auth/callback`;
     const url = buildAuthorizeUrl(clientId, state, redirectUri);
     const res = NextResponse.redirect(url);

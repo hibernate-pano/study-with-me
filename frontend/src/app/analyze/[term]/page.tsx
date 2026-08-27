@@ -343,7 +343,7 @@ export default function AnalyzePage() {
   return (
     <div className="min-h-screen">
       {/* 顶部操作栏 */}
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[rgba(250,248,243,0.78)] backdrop-blur-xl">
+      <header className="topbar relative">
         <div className={`mx-auto flex items-center gap-2 px-5 py-2.5 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
           <button
             onClick={() => router.push("/")}
@@ -494,6 +494,8 @@ export default function AnalyzePage() {
             )}
           </div>
         </div>
+        {/* 生成中：贴底边扫光的进度线 */}
+        {streaming && <div aria-hidden className="stream-line absolute inset-x-0 -bottom-px" />}
       </header>
 
       <main className={`mx-auto flex gap-7 px-5 py-8 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
@@ -586,19 +588,19 @@ export default function AnalyzePage() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                className="rounded-xl border border-[var(--line)] bg-white px-5 py-2.5 text-[13.5px] font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                className="btn-ghost px-5 py-2.5 text-[13.5px]"
               >
                 ↑ 回到顶部
               </button>
               <button
                 onClick={regenerate}
-                className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-[13.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="btn-primary px-5 py-2.5 text-[13.5px]"
               >
                 ↻ 同词重新生成
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="rounded-xl border border-[var(--line)] bg-white px-5 py-2.5 text-[13.5px] font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                className="btn-ghost px-5 py-2.5 text-[13.5px]"
               >
                 换个词
               </button>

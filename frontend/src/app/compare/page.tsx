@@ -190,7 +190,7 @@ function CompareInner() {
 
   return (
     <div className="min-h-screen pb-16">
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/90 backdrop-blur">
+      <header className="topbar">
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.push("/")}
@@ -224,7 +224,7 @@ function CompareInner() {
 
       <main className="mx-auto max-w-7xl px-4 pt-8">
         {/* 输入区 */}
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] p-5">
+        <div className="card p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               value={a}
@@ -234,7 +234,9 @@ function CompareInner() {
               disabled={streaming}
               onKeyDown={(e) => e.key === "Enter" && submit(a, b)}
             />
-            <div className="self-center text-[13px] font-bold text-slate-400">VS</div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full border border-[var(--line)] bg-white text-[11px] font-black tracking-widest text-slate-400 shadow-sm">
+              VS
+            </div>
             <input
               value={b}
               onChange={(e) => setB(e.target.value)}

@@ -25,10 +25,23 @@ export interface GithubUserInfo {
   email: string | null;
 }
 
-/** 服务端配置缺一不可（启动即校验，防误部署） */
-export function oauthConfig() {
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+/**
+ * 服务端配置缺一不可（启动即校验，防误部署）。
+ *
+ * GitHub OAuth App 只允许登记一个回调地址，而本项目有本地与线上两套入口，
+ * 所以支持可选的 DEV 双 key：本地（localhost/127.0.0.1/::1）优先用
+ * GITHUB_CLIENT_ID(_SECRET)_DEV 那组 App（回调填 http://localhost:3000/api/auth/callback），
+ * 未配 DEV 则回退主 key；线上始终用主 key（回调填 https://<生产域名>/api/auth/callback）。
+ */
+export function oauthConfig(origin?: string) {
+  const isLocal =
+    !!origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin);
+  const clientId = isLocal
+    ? (process.env.GITHUB_CLIENT_ID_DEV ?? process.env.GITHUB_CLIENT_ID)
+    : process.env.GITHUB_CLIENT_ID;
+  const clientSecret = isLocal
+    ? (process.env.GITHUB_CLIENT_SECRET_DEV ?? process.env.GITHUB_CLIENT_SECRET)
+    : process.env.GITHUB_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     throw new Error("GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET 未配置");
   }

@@ -39,13 +39,13 @@ export default function SectionCard({
   // —— 类型差异化壳层 ——
   const wrapperClass = (() => {
     if (isPitfall) {
-      return "card scroll-mt-24 overflow-hidden shadow-[0_4px_20px_-8px_rgba(185,28,0,0.10)] border-red-100";
+      return "card scroll-mt-24 fade-up overflow-hidden shadow-[0_4px_20px_-8px_rgba(185,28,0,0.10)] border-red-100";
     }
     if (isQuote) {
       // 引语段：不要 chrome，纯靠排版撑场
-      return "scroll-mt-24";
+      return "scroll-mt-24 fade-up";
     }
-    return "card scroll-mt-24 overflow-hidden hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.12)] transition-shadow";
+    return "card scroll-mt-24 fade-up overflow-hidden hover:shadow-[0_8px_28px_-10px_rgba(15,23,42,0.12)] transition-shadow";
   })();
 
   return (
@@ -141,7 +141,7 @@ function QuoteMarkdown({ content, streaming }: { content: string; streaming: boo
       {/* 大引号装饰 */}
       <span
         aria-hidden
-        className="absolute left-0 top-[-6px] font-serif-zh text-[56px] leading-none text-indigo-300/70 select-none"
+        className="absolute left-0 top-[-6px] font-serif-zh text-[56px] leading-none text-amber-400/60 select-none"
       >
         &ldquo;
       </span>

@@ -57,7 +57,7 @@ export default function ReviewPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/90 backdrop-blur">
+      <header className="topbar">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push("/")}
@@ -82,7 +82,7 @@ export default function ReviewPage() {
         {total !== null && total > 0 && (
           <div className="h-0.5 bg-slate-100">
             <div
-              className="h-full bg-indigo-500 transition-all duration-300"
+              className="brand-grad h-full rounded-full transition-all duration-300"
               style={{ width: `${Math.min(100, Math.max(4, ratio))}%` }}
             />
           </div>
@@ -138,7 +138,7 @@ export default function ReviewPage() {
 
         {/* 答题卡 */}
         {current && (
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--card)] shadow-[0_4px_20px_-8px_rgba(30,40,90,0.08)] overflow-hidden">
+          <div className="card lift overflow-hidden">
             {/* 卡头 */}
             <div className="flex items-center gap-2.5 px-5 pt-4">
               <button
@@ -176,13 +176,13 @@ export default function ReviewPage() {
               <div className="px-6 pb-8">
                 <button
                   onClick={() => setShowAnswer(true)}
-                  className="w-full rounded-xl bg-indigo-500 px-5 py-3 text-[14px] font-bold text-white hover:bg-indigo-600 transition-colors cursor-pointer"
+                  className="btn-primary w-full px-5 py-3 text-[14px]"
                 >
                   显示答案 / 自评
                 </button>
               </div>
             ) : (
-              <div className="px-6 pb-8 space-y-4">
+              <div className="fade-up px-6 pb-8 space-y-4">
                 {current.answer && (
                   <div className="rounded-xl border border-[var(--line)] bg-slate-50/70 px-4 py-3.5 text-[14px] text-slate-600 leading-relaxed whitespace-pre-wrap">
                     {current.answer}
@@ -191,13 +191,13 @@ export default function ReviewPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => grade(false)}
-                    className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-[14px] font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                    className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-[14px] font-bold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] cursor-pointer"
                   >
                     忘了 · 明天再来
                   </button>
                   <button
                     onClick={() => grade(true)}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-[14px] font-bold text-emerald-600 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-[14px] font-bold text-emerald-600 transition-all hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98] cursor-pointer"
                   >
                     记住了 · 间隔翻倍
                   </button>
