@@ -1,26 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f7fb;
+  /* ===== 调色板（v1.7 设计系统根本升级） =====
+   * 暖纸色基底 + 紫蓝主色 + 琥珀点睛
+   * 背景从冷灰 (#f6f7fb) 换成暖白 (#faf8f3)，让"思考"语境有温度
+   */
+  --bg: #faf8f3;            /* 暖纸色：整个产品基底 */
+  --bg-soft: #f4efe5;       /* 稍深：区块背景 */
   --card: #ffffff;
-  --ink: #1a2033;
+  --ink: #1f1d2a;           /* 主文本（暖黑） */
   --ink-soft: #5b6478;
-  --line: #e7e9f2;
+  --ink-deep: #0f0e1a;
+  --line: #e8e2d3;          /* 暖灰描边（呼应背景温度） */
+  --line-soft: #efeadd;
+
   --brand: #4f46e5;
   --brand-deep: #4338ca;
-  /* —— 新设计 token（v1.6.0 作品化升级） —— */
-  --ink-deep: #0f172a;
-  --paper: #fafaf7;        /* 暖纸色，给"阅读"语境用 */
-  --accent: #b45309;       /* 暖琥珀，作为点睛（不是 CTA 主色，是细节高光） */
+  --brand-soft: #eef2ff;
+
+  --accent: #b45309;        /* 暖琥珀（细节高光，不当 CTA 用） */
   --accent-soft: #fef3eb;
-  /* —— 字号节奏 —— */
-  --t-display: 1.875rem;   /* 30px，serif 大引语 */
-  --t-h: 1.0625rem;        /* 17px */
-  --t-body: 0.9375rem;     /* 15px */
-  --t-meta: 0.8125rem;     /* 13px */
-  --t-micro: 0.6875rem;    /* 11px */
-  /* —— 缓动 —— */
+  --accent-deep: #92400e;
+
+  /* 关系色（知识网络边的 5 类）—— 比之前更克制，避免视觉噪声 */
+  --r-prereq: #0e7490;      /* 前置知识：青 */
+  --r-sibling: #7c3aed;     /* 兄弟概念：紫 */
+  --r-successor: #047857;   /* 后继深入：绿 */
+  --r-opposite: #b91c1c;    /* 对立：深红 */
+  --r-analogy: #c2410c;     /* 类比：橙 */
+
+  /* 字号节奏 */
+  --t-display: 1.875rem;    /* 30px，serif 大引语 */
+  --t-mega: 2.5rem;         /* 40px，概念标题 */
+  --t-h: 1.0625rem;         /* 17px */
+  --t-body: 0.9375rem;      /* 15px */
+  --t-meta: 0.8125rem;      /* 13px */
+  --t-micro: 0.6875rem;     /* 11px */
+
+  /* 缓动 */
   --ease-quiet: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
@@ -41,7 +60,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* serif 用作"定义/引语"语义——只在少数地方用 */
+/* serif 用作"定义/引语/概念标题"语义 */
 .font-serif-zh {
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC",
     "STSong", "SimSun", ui-serif, Georgia, serif;
@@ -55,12 +74,18 @@ body {
   border-radius: 6px;
 }
 
-/* 淡入（地图首屏加载） */
+/* 淡入 */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .fade-up { animation: fade-up 320ms var(--ease-quiet) both; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fade-in 280ms var(--ease-quiet) both; }
 
 /* 节点最近学习高亮（柔光呼吸） */
 @keyframes node-glow {
@@ -69,7 +94,7 @@ body {
 }
 .recent-glow { animation: node-glow 2.6s ease-in-out infinite; }
 
-/* 地图边的描边动画（首屏加载，每条边错开 12ms 由 SVG 内联控制） */
+/* 地图边的描边动画 */
 @keyframes edge-draw {
   from { stroke-dashoffset: var(--edge-len, 400); }
   to   { stroke-dashoffset: 0; }
@@ -80,18 +105,33 @@ body {
   animation: edge-draw 900ms var(--ease-quiet) forwards;
 }
 
-/* 精致的容器边框 + 阴影 */
+/* ===== 容器样式 ===== */
+
+/* 精致表面：暖色温磨砂 + 三层柔和阴影 */
 .surface {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 253, 248, 0.85);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(232, 226, 211, 0.55);
   box-shadow:
-    0 1px 0 rgba(15, 23, 42, 0.02),
-    0 8px 30px -10px rgba(15, 23, 42, 0.12),
-    0 24px 60px -28px rgba(15, 23, 42, 0.18);
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 30px -10px rgba(15, 23, 42, 0.10),
+    0 24px 60px -28px rgba(15, 23, 42, 0.14);
 }
 
-/* 主品牌渐变（按钮/CTA） */
+/* 卡片：实心白，暖描边 */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 4px 18px -8px rgba(15, 23, 42, 0.08);
+}
+
+/* ===== 渐变 ===== */
+
+/* 主品牌渐变 */
 .brand-grad {
   background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #4f46e5 100%);
 }
@@ -99,66 +139,50 @@ body {
   background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #4338ca 100%);
 }
 
-/* 文本渐变（标题强调） */
+/* 标题渐变文本：暖紫黑 → 蓝紫 */
 .ink-grad {
-  background-image: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+  background-image: linear-gradient(135deg, #1f1d2a 0%, #312e81 55%, #4f46e5 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* ---------- 首页 hero ---------- */
+/* ===== 首页 hero ===== */
 .hero-bg {
   background:
-    radial-gradient(1100px 480px at 20% -10%, rgba(79, 70, 229, 0.14), transparent 60%),
-    radial-gradient(900px 420px at 90% -20%, rgba(14, 165, 233, 0.12), transparent 55%),
+    radial-gradient(1200px 600px at 50% -15%, rgba(180, 83, 9, 0.10), transparent 55%),
+    radial-gradient(1000px 500px at 100% 10%, rgba(99, 102, 241, 0.10), transparent 55%),
     var(--bg);
 }
 
-/* ---------- Markdown 正文渲染 ---------- */
+/* ===== 报告分区（Markdown 渲染）===== */
 .md {
   font-size: 15px;
   line-height: 1.85;
-  color: #2a3044;
+  color: #2a2740;
 }
-.md > :first-child {
-  margin-top: 0;
-}
-.md > :last-child {
-  margin-bottom: 0;
-}
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
 .md h3 {
   font-size: 15.5px;
   font-weight: 700;
   margin: 20px 0 8px;
-  color: #1a2033;
+  color: #1f1d2a;
+  letter-spacing: 0.01em;
 }
-.md p {
-  margin: 8px 0;
-}
-.md ul,
-.md ol {
-  margin: 8px 0;
-  padding-left: 22px;
-}
-.md li {
-  margin: 5px 0;
-}
-.md li::marker {
-  color: #8b93a8;
-}
-.md strong {
-  color: #141a2b;
-  font-weight: 700;
-}
+.md p { margin: 10px 0; }
+.md ul, .md ol { margin: 10px 0; padding-left: 22px; }
+.md li { margin: 6px 0; }
+.md li::marker { color: #a09484; }
+.md strong { color: #0f0e1a; font-weight: 700; }
 .md code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
-  background: #eef0f7;
-  border: 1px solid #e2e5f0;
+  background: #f4efe5;
+  border: 1px solid var(--line);
   border-radius: 5px;
   padding: 1px 5px;
-  color: #c0263d;
+  color: #b91c1c;
 }
 .md pre {
   background: #171c2c;
@@ -168,70 +192,55 @@ body {
   overflow-x: auto;
   margin: 12px 0;
 }
-.md pre code {
-  background: transparent;
-  border: none;
-  color: inherit;
-  padding: 0;
-  font-size: 13px;
-}
+.md pre code { background: transparent; border: none; color: inherit; padding: 0; font-size: 13px; }
 .md blockquote {
-  border-left: 3px solid #c7cbe3;
+  border-left: 3px solid var(--line);
   margin: 10px 0;
   padding: 2px 14px;
-  color: #5b6478;
-  background: #f8f9fd;
+  color: var(--ink-soft);
+  background: var(--bg-soft);
   border-radius: 0 8px 8px 0;
 }
 .md a {
   color: var(--brand);
   text-decoration: underline;
   text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
 }
 
-/* ---------- 骨架屏 ---------- */
+/* ===== 骨架屏 ===== */
 @keyframes shimmer {
-  0% {
-    background-position: -400px 0;
-  }
-  100% {
-    background-position: 400px 0;
-  }
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, #eceef5 25%, #f7f8fc 50%, #eceef5 75%);
+  background: linear-gradient(90deg, #ece8dc 25%, #f6f1e3 50%, #ece8dc 75%);
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
   border-radius: 8px;
 }
 
-/* ---------- 流式光标 ---------- */
+/* ===== 流式光标 ===== */
 .caret::after {
   content: "▍";
   color: var(--brand);
   animation: blink 1s step-start infinite;
 }
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
-}
+@keyframes blink { 50% { opacity: 0; } }
 
-/* ---------- 其他 ---------- */
-.scroll-thin::-webkit-scrollbar {
-  width: 5px;
-}
+/* ===== 其他 ===== */
+.scroll-thin::-webkit-scrollbar { width: 5px; }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: #d4d8e6;
+  background: #d4cdba;
   border-radius: 4px;
 }
 
-/* —— 命令面板 —— */
+/* ===== 命令面板 ===== */
 .kbar-backdrop {
   background: radial-gradient(
     ellipse at top,
-    rgba(15, 23, 42, 0.42),
-    rgba(15, 23, 42, 0.62) 60%
+    rgba(15, 14, 26, 0.42),
+    rgba(15, 14, 26, 0.62) 60%
   );
   backdrop-filter: blur(6px);
 }
@@ -243,16 +252,40 @@ body {
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-/* —— 一句话定义的 serif 引语 —— */
+/* ===== 引语 ===== */
 .lead-quote {
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
   font-size: var(--t-display);
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--ink-deep);
   letter-spacing: 0.005em;
   font-weight: 500;
 }
 
-/* —— 地图画布光标 —— */
+/* ===== 地图画布光标 ===== */
 .canvas-pannable { cursor: grab; }
 .canvas-pannable:active { cursor: grabbing; }
+
+/* ===== 庆祝完成（报告流式结束时的微动效） ===== */
+@keyframes complete-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.complete-pop { animation: complete-pop 480ms var(--ease-spring) both; }
+
+/* ===== 数字徽章（待复习/节点数等小数字） ===== */
+.badge-dot {
+  position: relative;
+}
+.badge-dot::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px white;
+}

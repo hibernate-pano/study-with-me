@@ -1,6 +1,6 @@
 {
   "name": "concept-digger",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "private": true,
   "description": "概念深挖器 - 输入一个词，快速厘清概念、抓住重点、找到进阶路径",
   "scripts": {

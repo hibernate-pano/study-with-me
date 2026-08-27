@@ -51,6 +51,7 @@ export default function AnalyzePage() {
   const [copied, setCopied] = useState(false);
   const [stickToBottom, setStickToBottom] = useState(true);
   const [drillConcept, setDrillConcept] = useState<FlatConcept | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // 数据来源提示：本地存档 | 全新生成
   const [cachedAt, setCachedAt] = useState<number | null>(null);
@@ -341,104 +342,127 @@ export default function AnalyzePage() {
   return (
     <div className="min-h-screen">
       {/* 顶部操作栏 */}
-      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[rgba(250,248,243,0.78)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
             title="返回首页"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
             </svg>
             首页
           </button>
 
-          <div className="flex-1 max-w-xl">
+          <div className="flex-1 max-w-md ml-1">
             <SearchBox initial={term} size="md" />
           </div>
 
-          <button
-            onClick={regenerate}
-            disabled={streaming}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer"
-            title="重新生成"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-              <path d="M21 3v6h-6" />
-            </svg>
-            {streaming ? "生成中…" : "重新生成"}
-          </button>
+          <div className="h-5 w-px bg-[var(--line)] mx-1" />
 
-          {streaming && (
+          {/* 主要动作（生成类） */}
+          {streaming ? (
             <button
               onClick={stop}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 text-[12.5px] font-medium text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
               title="停止生成"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              生成中 · 点此停止
+            </button>
+          ) : (
+            <button
+              onClick={regenerate}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+              title="重新生成"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
               </svg>
-              停止
+              重新生成
             </button>
           )}
 
+          <div className="h-5 w-px bg-[var(--line)] mx-1" />
+
+          {/* 关联动作（图标-only + 文字） */}
           <button
             onClick={() => router.push(`/compare?a=${encodeURIComponent(term)}`)}
             disabled={streaming}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
-            title="拿这个概念和其它概念做对比辨析"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-40 cursor-pointer"
+            title="和另一个概念做对比"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 3h5v5" />
+              <path d="M8 21H3v-5" />
+              <path d="M21 3 14 10" />
+              <path d="M3 21l7-7" />
             </svg>
             对比
           </button>
 
           <button
             onClick={() => router.push("/review")}
-            className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="间隔重复复习自测题"
+            className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+            title="间隔重复复习"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
             </svg>
             复习
             {dueCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9.5px] font-bold text-white">
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9.5px] font-bold text-white ring-2 ring-[var(--bg)]">
                 {dueCount > 9 ? "9+" : dueCount}
               </span>
             )}
           </button>
 
-          <button
-            onClick={exportMd}
-            disabled={streaming || !fullText}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
-            title="导出 Markdown 文件"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <path d="m7 10 5 5 5-5" />
-              <path d="M12 15V3" />
-            </svg>
-            导出
-          </button>
-
-          <button
-            onClick={copyAll}
-            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="复制全文"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-            {copied ? "已复制" : "复制"}
-          </button>
+          {/* 文件操作（图标菜单） */}
+          <div className="relative">
+            <button
+              onClick={() => setMoreOpen((v) => !v)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+              title="更多操作"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMoreOpen(false)} />
+                <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-[var(--line-soft)] bg-white shadow-lg fade-in">
+                  <button
+                    onClick={() => { exportMd(); setMoreOpen(false); }}
+                    disabled={streaming || !fullText}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path d="m7 10 5 5 5-5" />
+                      <path d="M12 15V3" />
+                    </svg>
+                    导出 Markdown
+                  </button>
+                  <button
+                    onClick={() => { copyAll(); setMoreOpen(false); }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] cursor-pointer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    {copied ? "已复制全文" : "复制全文"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
