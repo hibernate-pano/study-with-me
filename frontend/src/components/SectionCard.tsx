@@ -6,9 +6,11 @@ import KnowledgeNetworkCard from "./KnowledgeNetworkCard";
 import type { FlatConcept } from "@/lib/network";
 
 /**
- * 单个报告区块卡片。
- * 当标题是"🌐 知识网络"时，渲染 KnowledgeNetworkCard（按关联类型分组的卡片）。
- * 点击卡片里的概念 chip → 触发 onConceptDrillDown（在右侧抽屉里深挖，不离开当前报告）。
+ * 单个报告区块卡片（v1.6 设计语言应用版）
+ * - 标题：emoji + 中文标签，色块 accent
+ * - "一句话定义"卡片：serif 大引语 + 暖色背景（语言学意味的引语）
+ * - 其它卡片：默认 typography，hover 时轻微抬起
+ * - "🌐 知识网络"卡片：渲染为分组的概念 chips
  */
 
 interface Props {
@@ -29,11 +31,13 @@ export default function SectionCard({
   const style = styleForTitle(section.title);
   const isIntro = section.id === "sec-intro";
   const isNetwork = section.title.includes("知识网络");
+  // "一句话定义" / "一句话辨析" 走 serif 引语样式（首发段落的仪式感）
+  const isQuote = section.title.includes("一句话定义") || section.title.includes("一句话辨析");
 
   return (
     <section
       id={section.id}
-      className="scroll-mt-24 rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden shadow-[0_4px_20px_-8px_rgba(30,40,90,0.08)]"
+      className="scroll-mt-24 rounded-2xl border border-[var(--line)] bg-[var(--card)] overflow-hidden shadow-[0_4px_20px_-8px_rgba(30,40,90,0.08)] transition-shadow hover:shadow-[0_8px_28px_-10px_rgba(30,40,90,0.12)]"
     >
       <button
         onClick={onToggle}
@@ -62,8 +66,8 @@ export default function SectionCard({
 
       {!collapsed && (
         <div
-          className={`px-5 pb-5 pt-1 md ${isIntro ? "" : "caret"}`}
-          style={streaming ? { minHeight: 40 } : undefined }
+          className={`px-5 pb-5 pt-1 md ${isIntro || isQuote ? "" : "caret"}`}
+          style={streaming ? { minHeight: 40 } : undefined}
         >
           {isNetwork ? (
             <KnowledgeNetworkCard
@@ -72,13 +76,17 @@ export default function SectionCard({
               onConceptClick={onConceptDrillDown}
             />
           ) : section.content ? (
-            <ReactMarkdown
-              components={{
-                a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-              }}
-            >
-              {section.content}
-            </ReactMarkdown>
+            isQuote ? (
+              <QuoteMarkdown content={section.content} />
+            ) : (
+              <ReactMarkdown
+                components={{
+                  a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                }}
+              >
+                {section.content}
+              </ReactMarkdown>
+            )
           ) : streaming ? (
             <div className="space-y-2.5">
               <div className="shimmer h-4 w-full" />
@@ -89,5 +97,29 @@ export default function SectionCard({
         </div>
       )}
     </section>
+  );
+}
+
+/** 一句话定义/辨析：用 serif 大字号 + 引号视觉装饰（仪式感） */
+function QuoteMarkdown({ content }: { content: string }) {
+  return (
+    <div className="relative pl-5">
+      <span
+        aria-hidden
+        className="absolute left-0 top-[-2px] font-serif-zh text-[40px] leading-none text-indigo-300/70 select-none"
+      >
+        "
+      </span>
+      <div className="lead-quote">
+        <ReactMarkdown
+          components={{
+            a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+            p: ({ children }) => <p className="!my-0">{children}</p>,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    </div>
   );
 }

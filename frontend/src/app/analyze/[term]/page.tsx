@@ -341,7 +341,7 @@ export default function AnalyzePage() {
   return (
     <div className="min-h-screen">
       {/* 顶部操作栏 */}
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-white/40 bg-white/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push("/")}
@@ -445,25 +445,35 @@ export default function AnalyzePage() {
       <main className="mx-auto flex max-w-6xl gap-6 px-4 py-6">
         {/* 正文列 */}
         <div className="min-w-0 flex-1">
-          {/* 词条标题 */}
-          <div className="mb-3 flex flex-wrap items-baseline gap-3">
-            <h1 className="text-[26px] font-extrabold text-slate-900 break-all">
+          {/* 词条标题：serif 大引语 */}
+          <div className="mb-5">
+            <h1 className="font-serif-zh text-[34px] md:text-[44px] font-bold ink-grad leading-[1.1] tracking-tight break-words">
               {term}
             </h1>
-            {streaming ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[12px] font-medium text-indigo-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                AI 正在深挖…
-              </span>
-            ) : error ? (
-              <span className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-500">
-                生成失败
-              </span>
-            ) : (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-600">
-                完成
-              </span>
-            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2.5">
+              {streaming ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[12px] font-medium text-indigo-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  AI 正在深挖…
+                </span>
+              ) : error ? (
+                <span className="rounded-full bg-red-50 px-3 py-1 text-[12px] font-medium text-red-500">
+                  生成失败
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-600">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  深挖完成
+                </span>
+              )}
+              {cachedAt && !streaming && (
+                <span className="text-[11.5px] text-slate-400">
+                  本地存档 · {fmtTime(cachedAt)} 更新
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 数据来源提示 */}
