@@ -13,12 +13,12 @@ import { RELATION_DEFS, type RelationType } from "@/lib/network";
 import type { StoredReport } from "@/lib/storage";
 
 /**
- * 可复用的知识网络画布：
- * - 滚轮缩放（围绕光标中心）
- * - 拖拽平移
- * - 拖动节点（松手触发一次轻量弹簧重排）
- * - hover 高亮关系线 / 相邻节点
- * - 加载即显，无外部依赖（不引 D3）
+ * 知识网络画布（v1.6 视觉深化版）
+ * - 贝塞尔曲线边（不再用直线）
+ * - "我学过的"节点：紫色径向渐变 + 暖琥珀光晕
+ * - hover：高亮节点带柔光晕 + 周围节点暗下去
+ * - 滚轮缩放（围绕光标）+ 拖拽平移 + 拖动节点（松手轻量重排）
+ * - 加载 220ms 渐显，每条边走 stroke-dash 描边动画
  */
 const VB_W = 1000;
 const VB_H = 700;
@@ -27,43 +27,45 @@ const MAX_SCALE = 3;
 
 type Props = {
   reports: StoredReport[];
-  /** 最大节点数限制；超过会按 weight 裁剪 */
   maxNodes?: number;
-  /** 背景点阵开关——首页 hero 关掉（自己就是背景） */
+  /** 是否画背景点阵；首页 hero 不画（避免与画布冲突） */
   dotted?: boolean;
-  /** 容器 className，便于首页/地图页共用 */
   className?: string;
 };
 
-export default function MapView({ reports, maxNodes = 90, dotted = true, className = "" }: Props) {
+export default function MapView({
+  reports,
+  maxNodes = 90,
+  dotted = false,
+  className = "",
+}: Props) {
   const router = useRouter();
-  // 1) 构图 + 力导向（client 端跑一次）
+
   const graph = useMemo<ConceptGraph>(() => {
     const g = buildConceptGraph(reports);
     return layout(trimGraph(g, maxNodes));
   }, [reports, maxNodes]);
 
-  // 2) 视口状态：平移 + 缩放
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set());
 
-  // 客户端时间戳触发 hover 动效：避免 SSR 时读不到 Date.now
   useEffect(() => {
     const ts = new Set<string>();
+    const now = Date.now();
     for (const r of reports) {
-      if (!r.key.startsWith("drill:") && Date.now() - r.updatedAt < 1000 * 60 * 60 * 24 * 3) {
+      if (!r.key.startsWith("drill:") && now - r.updatedAt < 1000 * 60 * 60 * 24 * 3) {
         ts.add(r.term);
       }
     }
     setRecentIds(ts);
   }, [reports]);
 
-  // 3) 拖拽平移（不是节点时）
+  // —— 画布平移（点空白处） ——
   const panRef = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const onBgPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("[data-node]")) return; // 点到节点别抢
+    if ((e.target as HTMLElement).closest("[data-node]")) return;
     panRef.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -76,7 +78,7 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
     panRef.current = null;
   };
 
-  // 4) 滚轮缩放（围绕光标中心）
+  // —— 滚轮缩放（围绕光标） ——
   const svgRef = useRef<SVGSVGElement | null>(null);
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -87,7 +89,6 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
     const delta = -e.deltaY * 0.0015;
     setScale((prev) => {
       const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * (1 + delta)));
-      // 围绕光标：调整 pan，使光标下的逻辑点保持原位
       const ratio = next / prev;
       setPan((p) => ({
         x: cx - (cx - p.x) * ratio,
@@ -97,27 +98,27 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
     });
   };
 
-  // 5) 拖动节点（松手触发一次轻量重排）
+  // —— 节点拖动 ——
   const nodeDragRef = useRef<{
     id: string;
     pointerX: number;
     pointerY: number;
-    origX: number;
-    origY: number;
   } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
 
-  const screenToView = useCallback((clientX: number, clientY: number) => {
-    if (!svgRef.current) return { x: 0, y: 0 };
-    const rect = svgRef.current.getBoundingClientRect();
-    const vx = ((clientX - rect.left) / rect.width) * VB_W;
-    const vy = ((clientY - rect.top) / rect.height) * VB_H;
-    // 反向应用 viewBox transform
-    return {
-      x: (vx - pan.x) / scale,
-      y: (vy - pan.y) / scale,
-    };
-  }, [pan.x, pan.y, scale]);
+  const screenToView = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!svgRef.current) return { x: 0, y: 0 };
+      const rect = svgRef.current.getBoundingClientRect();
+      const vx = ((clientX - rect.left) / rect.width) * VB_W;
+      const vy = ((clientY - rect.top) / rect.height) * VB_H;
+      return {
+        x: (vx - pan.x) / scale,
+        y: (vy - pan.y) / scale,
+      };
+    },
+    [pan.x, pan.y, scale]
+  );
 
   const onNodePointerDown = (e: React.PointerEvent, n: MapNode) => {
     e.stopPropagation();
@@ -126,8 +127,6 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
       id: n.id,
       pointerX: e.clientX,
       pointerY: e.clientY,
-      origX: n.x,
-      origY: n.y,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -139,60 +138,119 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
     const v = screenToView(e.clientX, e.clientY);
     node.x = v.x;
     node.y = v.y;
-    // 触发 React 重渲染：用 setHovered 借道也可以，最简单是 force 一次
-    setHovered((h) => h); // 触发 rerender
+    setHovered((h) => h); // 触发重渲染
   };
   const onNodePointerUp = (_e: React.PointerEvent) => {
     const d = nodeDragRef.current;
     if (!d) return;
-    // 标记为 pinned，松手后这个节点不再被力推动
     setPinnedIds((s) => new Set(s).add(d.id));
     nodeDragRef.current = null;
-    // 一次轻量重排（无 pinned 节点参与）
     relaxOnce(graph, pinnedIds);
   };
 
-  // 6) 数据统计（放在图例/边角）
   const mineCount = graph.nodes.filter((n) => n.kind === "mine").length;
   const relatedCount = graph.nodes.length - mineCount;
 
   if (graph.nodes.length === 0) return null;
 
-  const edgeColor = (rel: RelationType) => RELATION_DEFS[rel]?.color ?? "#64748b";
+  const edgeColor = (rel: RelationType) => RELATION_DEFS[rel]?.color ?? "#94a3b8";
 
   return (
     <div
-      className={`relative overflow-hidden ${dotted ? "[background-image:radial-gradient(#e9ecf6_1px,transparent_1px)] [background-size:22px_22px]" : ""} ${className}`}
+      className={`relative overflow-hidden ${className}`}
       onWheel={onWheel}
     >
+      {/* 背景：暖纸色 + 极淡点阵 */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 40%, rgba(254,243,235,0.55) 0%, transparent 70%)",
+        }}
+      />
+      {dotted && (
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-60"
+          style={{
+            backgroundImage:
+              "radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+      )}
+
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
-        className="h-full w-full canvas-pannable select-none touch-none"
+        className="relative h-full w-full canvas-pannable select-none touch-none fade-up"
         onPointerDown={onBgPointerDown}
         onPointerMove={onBgPointerMove}
         onPointerUp={onBgPointerUp}
         onPointerCancel={onBgPointerUp}
       >
+        <defs>
+          {/* 我学过的节点：紫→蓝径向渐变 */}
+          <radialGradient id="mine-fill" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#a78bfa" />
+            <stop offset="60%" stopColor="#6366f1" />
+            <stop offset="100%" stopColor="#4338ca" />
+          </radialGradient>
+          {/* hover 状态更亮 */}
+          <radialGradient id="mine-fill-active" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#c4b5fd" />
+            <stop offset="55%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#4f46e5" />
+          </radialGradient>
+          {/* 暖光晕（filter） */}
+          <filter id="warm-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          {/* hover 时柔光晕 */}
+          <filter id="hover-halo" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="5" result="b" />
+            <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.55 0" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
         <g transform={`translate(${pan.x},${pan.y}) scale(${scale})`}>
-          {/* 边 */}
-          {graph.edges.map((e) => {
+          {/* 边：贝塞尔曲线 */}
+          {graph.edges.map((e, idx) => {
             const s = graph.nodes.find((n) => n.id === e.source);
             const t = graph.nodes.find((n) => n.id === e.target);
             if (!s || !t || s.x === undefined || t.x === undefined) return null;
             const active = hovered === e.source || hovered === e.target;
+            const color = edgeColor(e.relationType);
+            // 贝塞尔控制点：水平方向偏移，给曲线"弧度"
+            const dx = t.x - s.x;
+            const c1x = s.x + dx * 0.5;
+            const c1y = s.y;
+            const c2x = s.x + dx * 0.5;
+            const c2y = t.y;
+            const path = `M ${s.x} ${s.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${t.x} ${t.y}`;
             return (
-              <line
+              <path
                 key={`${e.source}->${e.target}`}
-                x1={s.x}
-                y1={s.y}
-                x2={t.x}
-                y2={t.y}
-                stroke={edgeColor(e.relationType)}
-                strokeWidth={active ? 2.4 : 1.1}
-                strokeOpacity={active ? 0.85 : hovered ? 0.1 : 0.32}
-                className="transition-all duration-200"
+                d={path}
+                stroke={color}
+                strokeWidth={active ? 2.4 : 1.2}
+                strokeOpacity={active ? 0.9 : hovered ? 0.08 : 0.35}
+                fill="none"
+                className="map-edge transition-all duration-200"
+                style={{
+                  // 描边动画：每条边错开 12ms
+                  animationDelay: `${Math.min(idx * 12, 1200)}ms`,
+                }}
               />
             );
           })}
@@ -202,7 +260,7 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
             .filter((n) => n.kind === "related")
             .map((n) => {
               if (n.x === undefined || n.y === undefined) return null;
-              const r = 4 + Math.min(n.weight, 10) * 0.6;
+              const r = 5 + Math.min(n.weight, 10) * 0.7;
               const active = hovered === n.id || isNeighbor(graph.edges, hovered, n.id);
               const dim = hovered && !active;
               const recent = recentIds.has(n.id);
@@ -211,31 +269,35 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
                   key={n.id}
                   data-node
                   transform={`translate(${n.x},${n.y})`}
-                  className={dim ? "opacity-25" : ""}
+                  className={`${dim ? "opacity-20" : ""} transition-opacity duration-200`}
+                  style={{ cursor: "grab" }}
                   onPointerDown={(e) => onNodePointerDown(e, n)}
                   onPointerMove={onNodePointerMove}
                   onPointerUp={onNodePointerUp}
                   onClick={(e) => {
-                    if (nodeDragRef.current) return; // 拖完不触发
+                    if (nodeDragRef.current) return;
                     e.stopPropagation();
                     router.push(`/analyze/${encodeURIComponent(n.label)}`);
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
-                  style={{ cursor: "grab" }}
                 >
+                  {/* hover 光晕 */}
+                  {active && (
+                    <circle r={r + 8} fill="#a5b4fc" opacity="0.25" />
+                  )}
                   <circle
-                    r={active ? r + 3 : r}
-                    fill="#fff"
+                    r={active ? r + 2.5 : r}
+                    fill={active ? "#eef2ff" : "#ffffff"}
                     stroke={active ? "#6366f1" : recent ? "#b45309" : "#94a3b8"}
-                    strokeWidth={active ? 2 : recent ? 1.6 : 1.2}
-                    className={`transition-all duration-150 ${recent ? "recent-glow" : ""}`}
+                    strokeWidth={active ? 2.2 : recent ? 1.8 : 1.2}
+                    className={`transition-all duration-200 ${recent ? "recent-glow" : ""}`}
                   />
                   <text
-                    y={16 + r}
+                    y={r + 16}
                     textAnchor="middle"
                     fontSize="11"
-                    fill={active ? "#4338ca" : "#64748b"}
+                    fill={active ? "#4338ca" : "#475569"}
                     fontWeight={active ? 600 : 400}
                     style={{ pointerEvents: "none" }}
                   >
@@ -250,12 +312,12 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
               );
             })}
 
-          {/* 我的概念（中心节点） */}
+          {/* 我的概念（中心节点）：渐变 + 暖琥珀边框（最近学习） */}
           {graph.nodes
             .filter((n) => n.kind === "mine")
             .map((n) => {
               if (n.x === undefined || n.y === undefined) return null;
-              const r = 14 + Math.min(n.weight, 8) * 2;
+              const r = 16 + Math.min(n.weight, 8) * 2;
               const active = hovered === n.id || isNeighbor(graph.edges, hovered, n.id);
               const dim = hovered && !active;
               const recent = recentIds.has(n.id);
@@ -264,7 +326,8 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
                   key={n.id}
                   data-node
                   transform={`translate(${n.x},${n.y})`}
-                  className={dim ? "opacity-25" : ""}
+                  className={`${dim ? "opacity-25" : ""} transition-opacity duration-200`}
+                  style={{ cursor: "grab" }}
                   onPointerDown={(e) => onNodePointerDown(e, n)}
                   onPointerMove={onNodePointerMove}
                   onPointerUp={onNodePointerUp}
@@ -275,23 +338,41 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
-                  style={{ cursor: "grab" }}
                 >
+                  {/* 外层柔光晕（最近学习的） */}
+                  {recent && (
+                    <circle
+                      r={r + 12}
+                      fill="none"
+                      stroke="#b45309"
+                      strokeOpacity="0.35"
+                      strokeWidth={3}
+                      className="recent-glow"
+                    />
+                  )}
+                  {/* hover 时额外光晕 */}
+                  {active && (
+                    <circle
+                      r={r + 6}
+                      fill="#a5b4fc"
+                      opacity="0.3"
+                    />
+                  )}
                   <circle
-                    r={active ? r + 4 : r}
-                    fill={active ? "#4f46e5" : recent ? "#7c3aed" : "#6366f1"}
-                    stroke="#312e81"
-                    strokeOpacity="0.25"
-                    strokeWidth="1.2"
-                    className={`transition-all duration-150 ${recent && !active ? "recent-glow" : ""}`}
+                    r={active ? r + 3 : r}
+                    fill={active ? "url(#mine-fill-active)" : "url(#mine-fill)"}
+                    stroke={recent ? "#b45309" : "#312e81"}
+                    strokeOpacity={recent ? "0.55" : "0.3"}
+                    strokeWidth={recent ? 1.8 : 1.2}
+                    className="transition-all duration-200"
                   />
                   <text
                     y={4}
                     textAnchor="middle"
                     fontSize="11.5"
-                    fill="#fff"
+                    fill="#ffffff"
                     fontWeight="700"
-                    style={{ pointerEvents: "none" }}
+                    style={{ pointerEvents: "none", letterSpacing: "0.02em" }}
                   >
                     {clipLabel(n.label, 8)}
                   </text>
@@ -302,20 +383,24 @@ export default function MapView({ reports, maxNodes = 90, dotted = true, classNa
         </g>
       </svg>
 
-      {/* 浮动数据角标——左下 */}
-      <div className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-slate-400/80 tracking-wider">
-        <span className="font-bold text-indigo-600/80">{mineCount}</span> 个我的 ·
-        <span className="font-bold text-slate-500/80"> {relatedCount}</span> 个相关
+      {/* 角标信息（左下） */}
+      <div className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-slate-400/80 tracking-wide">
+        <span className="font-semibold text-indigo-600/90">{mineCount}</span> 我的 ·
+        <span className="text-slate-500/90"> {relatedCount}</span> 相关
       </div>
-      {/* 操作提示——右下 */}
-      <div className="pointer-events-none absolute bottom-3 right-4 text-[11px] text-slate-400/80">
-        滚轮缩放 · 拖拽平移 · 拖动节点 · 点击深挖
+      {/* 操作提示（右下） */}
+      <div className="pointer-events-none absolute bottom-3 right-4 text-[10.5px] text-slate-400/70 tracking-wide">
+        滚轮缩放 · 拖拽平移 · 拖动节点
       </div>
     </div>
   );
 }
 
-function isNeighbor(edges: ConceptGraph["edges"], hovered: string | null, id: string): boolean {
+function isNeighbor(
+  edges: ConceptGraph["edges"],
+  hovered: string | null,
+  id: string
+): boolean {
   if (!hovered) return false;
   return edges.some(
     (e) =>
@@ -328,10 +413,7 @@ function clipLabel(label: string, max: number): string {
   return label.length > max ? label.slice(0, max) + "…" : label;
 }
 
-/**
- * 一次轻量重排——只在用户拖完节点后跑，避开 O(n²) 全图。
- * 只动非 pinned 节点，按弹簧向原理想距离拉近。
- */
+/** 一次轻量弹簧重排：用户拖完节点后跑，O(E·iters) 而不是 O(n²) */
 function relaxOnce(graph: ConceptGraph, pinned: Set<string>, iters = 30) {
   const { nodes, edges } = graph;
   if (nodes.length === 0) return;
@@ -361,7 +443,6 @@ function relaxOnce(graph: ConceptGraph, pinned: Set<string>, iters = 30) {
       }
     }
   }
-  // 边界保护
   for (const n of nodes) {
     if (n.x === undefined || n.y === undefined) continue;
     const cd = Math.hypot(n.x - cx, n.y - cy);

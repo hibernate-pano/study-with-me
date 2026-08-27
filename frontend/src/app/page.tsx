@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import MapView from "@/components/MapView";
 import SearchBox from "@/components/SearchBox";
@@ -21,16 +21,10 @@ const fmtArchiveTime = (ts: number): string => {
 
 export default function HomePage() {
   const router = useRouter();
-
-  // —— 全局数据：所有存档 + 到期卡 ——
   const [reports, setReports] = useState<StoredReport[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [recentTerms, setRecentTerms] = useState<string[]>([]);
-
-  // 命令面板状态（首页内置一个轻量入口：底部中央浮动按钮）
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [paletteSeed, setPaletteSeed] = useState("");
 
   const refresh = useCallback(() => {
     Promise.all([getAllReports(), getDueCards()])
@@ -50,38 +44,26 @@ export default function HomePage() {
       /* ignore */
     }
     refresh();
-    // 监听云同步完成事件后刷新一次
     const onFocus = () => refresh();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
 
-  // 过滤掉深挖/对比报告作为「我的概念」统计
   const mineReports = useMemo(
     () => reports.filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")),
     [reports]
   );
   const hasLibrary = loaded && mineReports.length > 0;
 
-  // —— 有存档时：地图为主角的极简首页 ——
   if (hasLibrary) {
     return (
       <LibraryHome
         reports={reports}
         dueCount={dueCount}
         recentTerms={recentTerms}
-        onSearchClick={() => {
-          setPaletteSeed("");
-          setPaletteOpen(true);
-        }}
-        paletteOpen={paletteOpen}
-        setPaletteOpen={setPaletteOpen}
-        paletteSeed={paletteSeed}
       />
     );
   }
-
-  // —— 无存档时：保留原有欢迎页（首次访问者引导） ——
   return <WelcomeHome onStart={(q) => router.push(`/analyze/${encodeURIComponent(q)}`)} />;
 }
 
@@ -90,279 +72,165 @@ function LibraryHome({
   reports,
   dueCount,
   recentTerms,
-  onSearchClick,
-  paletteOpen,
-  setPaletteOpen,
-  paletteSeed,
 }: {
   reports: StoredReport[];
   dueCount: number;
   recentTerms: string[];
-  onSearchClick: () => void;
-  paletteOpen: boolean;
-  setPaletteOpen: (v: boolean) => void;
-  paletteSeed: string;
 }) {
   const router = useRouter();
-  const mineCount = reports.filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")).length;
+  const mineCount = reports.filter(
+    (r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")
+  ).length;
   const totalNodes = mineCount + reports.reduce((acc, r) => acc + (r.related?.length ?? 0), 0);
+  const openPaletteRef = useRef<(() => void) | null>(null);
+
+  // 顶部 ⌘K 按钮：派发一个自定义事件，全局 CommandPalette 监听
+  const openPalette = () => {
+    window.dispatchEvent(new CustomEvent("cd:open-palette"));
+  };
+  openPaletteRef.current = openPalette;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[var(--bg)]">
-      {/* 顶部信息条 */}
-      <header className="absolute inset-x-0 top-0 z-20 pointer-events-none">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 pt-5">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-3.5 py-1.5 backdrop-blur shadow-[0_4px_14px_-4px_rgba(30,40,90,0.12)]">
-            <span className="text-base leading-none">⛏️</span>
-            <span className="text-[13px] font-bold tracking-wide text-slate-700">概念深挖器</span>
-          </div>
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-3.5 py-1.5 backdrop-blur text-[12.5px] text-slate-600 shadow-[0_4px_14px_-4px_rgba(30,40,90,0.12)]">
-            <span>我的知识网络</span>
-            <span className="font-bold text-indigo-600">{mineCount}</span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-500">{totalNodes} 个节点</span>
-          </div>
-          {dueCount > 0 && (
-            <button
-              onClick={() => router.push("/review")}
-              className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-[12.5px] font-medium text-amber-700 backdrop-blur shadow-[0_4px_14px_-4px_rgba(30,40,90,0.12)] hover:bg-amber-50 cursor-pointer"
-              title="有复习卡到期"
-            >
-              <span>🗂</span>
-              <span className="font-bold">{dueCount}</span>
-              <span>张到期</span>
-            </button>
-          )}
-          <div className="flex-1" />
+      {/* 顶部：单行 solid 表面（不浮空），整合品牌/数据/搜索/登录 */}
+      <header className="absolute inset-x-0 top-0 z-30">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 pt-4">
+          {/* 品牌 */}
           <button
-            onClick={onSearchClick}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/40 bg-white/80 px-3 py-1.5 text-[12.5px] text-slate-600 backdrop-blur shadow-[0_4px_14px_-4px_rgba(30,40,90,0.12)] hover:bg-white cursor-pointer"
+            onClick={() => router.push("/")}
+            className="surface flex items-center gap-2 rounded-full px-3.5 py-2 cursor-pointer"
+            title="概念深挖器"
+          >
+            <span className="text-[15px] leading-none">⛏️</span>
+            <span className="text-[13px] font-bold tracking-wide text-slate-800">
+              概念深挖器
+            </span>
+          </button>
+
+          {/* 数据条 */}
+          <div className="surface hidden sm:flex items-center gap-3 rounded-full px-3.5 py-2 text-[12.5px] text-slate-600">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span>
+                我的 <span className="font-bold text-slate-800">{mineCount}</span>
+              </span>
+            </span>
+            <span className="h-3 w-px bg-slate-200" />
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              <span>
+                相关 <span className="font-bold text-slate-800">{totalNodes - mineCount}</span>
+              </span>
+            </span>
+            {dueCount > 0 && (
+              <>
+                <span className="h-3 w-px bg-slate-200" />
+                <button
+                  onClick={() => router.push("/review")}
+                  className="flex items-center gap-1.5 text-amber-700 hover:text-amber-800 cursor-pointer"
+                >
+                  <span>🗂</span>
+                  <span className="font-bold">{dueCount}</span>
+                  <span>到期</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex-1" />
+
+          {/* ⌘K 触发器 */}
+          <button
+            onClick={openPalette}
+            className="surface flex items-center gap-2 rounded-full px-3 py-2 text-[12.5px] text-slate-500 hover:text-slate-800 cursor-pointer"
             title="打开命令面板（⌘K）"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-            搜索或跳转
-            <kbd className="ml-1 rounded border border-slate-200 bg-white px-1 py-0 text-[10px] font-mono text-slate-400">⌘K</kbd>
-          </button>
-          <button
-            onClick={() => router.push("/map")}
-            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/40 bg-white/80 px-3 py-1.5 text-[12.5px] text-slate-600 backdrop-blur shadow-[0_4px_14px_-4px_rgba(30,40,90,0.12)] hover:bg-white cursor-pointer"
-            title="全屏焦点地图"
-          >
-            <span>🗺</span>
-            <span>全屏</span>
+            <span className="hidden md:inline">搜索或跳转</span>
+            <kbd className="rounded border border-slate-200 bg-white/80 px-1.5 py-0 text-[10px] font-mono text-slate-400">
+              ⌘K
+            </kbd>
           </button>
         </div>
       </header>
 
-      {/* 地图占满整屏 */}
-      <MapView reports={reports} dotted className="absolute inset-0" />
+      {/* 地图全屏 */}
+      <MapView reports={reports} className="absolute inset-0" />
 
-      {/* 底部：浮动搜索条 */}
-      <div className="absolute inset-x-0 bottom-8 z-20 pointer-events-none">
-        <div className="mx-auto max-w-2xl px-4">
-          <div
-            className="pointer-events-auto mx-auto rounded-2xl border border-white/40 bg-white/85 backdrop-blur-md shadow-[0_20px_50px_-15px_rgba(15,23,42,0.25)]"
-          >
-            <SearchBox size="md" />
-          </div>
-          {/* 最近搜索 / 提示 */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11.5px] text-slate-500">
-            <span className="text-slate-400">最近：</span>
-            {recentTerms.slice(0, 5).map((t) => (
-              <button
-                key={t}
-                onClick={() => router.push(`/analyze/${encodeURIComponent(t)}`)}
-                className="rounded-full border border-white/40 bg-white/70 px-2.5 py-0.5 backdrop-blur hover:border-indigo-300 hover:text-indigo-600 transition-colors cursor-pointer"
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 内置一个迷你命令面板（避免空指针） */}
-      {paletteOpen && (
-        <MiniPalette
-          reports={reports}
-          seed={paletteSeed}
-          onClose={() => setPaletteOpen(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-/* ============== 内置迷你命令面板（首页浮动条触发） ============== */
-function MiniPalette({
-  reports,
-  seed,
-  onClose,
-}: {
-  reports: StoredReport[];
-  seed: string;
-  onClose: () => void;
-}) {
-  const router = useRouter();
-  const [q, setQ] = useState(seed);
-  const [active, setActive] = useState(0);
-
-  const mains = useMemo(
-    () =>
-      reports
-        .filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:"))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, 6),
-    [reports]
-  );
-
-  const items = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    const matched = qq
-      ? mains.filter((r) => r.term.toLowerCase().includes(qq))
-      : mains;
-    const acts = [
-      { id: "review", title: "去复习", icon: "🗂" },
-      { id: "map", title: "全屏地图", icon: "🗺" },
-      { id: "compare", title: "概念对比", icon: "⚖️" },
-    ];
-    return [
-      ...matched.map((r) => ({ kind: "report" as const, term: r.term, updatedAt: r.updatedAt })),
-      ...acts.map((a) => ({ kind: "action" as const, ...a })),
-    ];
-  }, [q, mains]);
-
-  // 键盘
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActive((i) => Math.min(items.length - 1, i + 1));
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActive((i) => Math.max(0, i - 1));
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const it = items[active];
-        if (!it) {
-          if (q.trim()) {
-            onClose();
-            router.push(`/analyze/${encodeURIComponent(q.trim())}`);
-          }
-          return;
-        }
-        onClose();
-        if (it.kind === "report") router.push(`/analyze/${encodeURIComponent(it.term)}`);
-        else if (it.id === "review") router.push("/review");
-        else if (it.id === "map") router.push("/map");
-        else if (it.id === "compare" && mains[0])
-          router.push(`/compare?a=${encodeURIComponent(mains[0].term)}`);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [items, active, q, mains, router, onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-start pt-[12vh] kbar-backdrop fade-up"
-      onClick={onClose}
-    >
-      <div
-        className="kbar-panel mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_30px_80px_-20px_rgba(15,23,42,0.45)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b border-slate-100 px-4 py-3">
-          <input
-            autoFocus
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setActive(0);
-            }}
-            placeholder="搜索你学过的概念，或深挖一个新概念…"
-            className="w-full bg-transparent text-[18px] outline-none placeholder:text-slate-400 text-slate-800"
-          />
-        </div>
-        <div className="max-h-[44vh] overflow-y-auto scroll-thin py-1">
-          {items.length === 0 ? (
-            <div className="px-5 py-8 text-center text-[13px] text-slate-400">
-              {q.trim() ? `按 Enter 深挖「${q.trim()}」` : "还没有存档"}
+      {/* 底部：单行操作提示 + 极简搜索（仅在用户主动需要时使用） */}
+      <div className="absolute inset-x-0 bottom-6 z-20 pointer-events-none">
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-2 px-4">
+          {/* 单行搜索条（仅当无最近搜索时显示，否则只显示提示） */}
+          {recentTerms.length === 0 ? (
+            <div
+              className="surface pointer-events-auto flex w-full items-center gap-2 rounded-full px-4 py-2 cursor-text"
+              onClick={openPalette}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-slate-400">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <span className="flex-1 text-[13px] text-slate-400">深挖一个新概念…</span>
+              <kbd className="rounded border border-slate-200 bg-white/80 px-1.5 py-0 text-[10px] font-mono text-slate-400">
+                ⌘K
+              </kbd>
             </div>
           ) : (
-            items.map((it, i) => {
-              const isActive = i === active;
-              const title = it.kind === "report" ? it.term : it.title;
-              return (
-                <button
-                  key={(it.kind === "report" ? "r:" : "a:") + (it.kind === "report" ? it.term : it.id)}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => {
-                    onClose();
-                    if (it.kind === "report") router.push(`/analyze/${encodeURIComponent(it.term)}`);
-                    else if (it.id === "review") router.push("/review");
-                    else if (it.id === "map") router.push("/map");
-                    else if (it.id === "compare" && mains[0])
-                      router.push(`/compare?a=${encodeURIComponent(mains[0].term)}`);
-                  }}
-                  className={`flex w-full items-center gap-3 px-5 py-2.5 text-left ${
-                    isActive ? "bg-indigo-50" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-100 text-[13px]">
-                    {it.kind === "report" ? it.term.slice(0, 1) : it.icon}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className={`block truncate text-[14px] ${isActive ? "text-indigo-700 font-semibold" : "text-slate-800"}`}>
-                      {title}
-                    </span>
-                    <span className="block truncate text-[11.5px] text-slate-400">
-                      {it.kind === "report" ? `学过的概念 · ${fmtArchiveTime(it.updatedAt)}` : "内置动作"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })
+            <div className="surface pointer-events-auto flex w-full items-center gap-2 rounded-full px-4 py-2 cursor-text" onClick={openPalette}>
+              <span className="text-[12px] text-slate-400">最近：</span>
+              <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                {recentTerms.slice(0, 4).map((t) => (
+                  <button
+                    key={t}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/analyze/${encodeURIComponent(t)}`);
+                    }}
+                    className="text-[12.5px] text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-slate-300">按 ⌘K 搜索更多</span>
+            </div>
           )}
-        </div>
-        <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-2 text-[11px] text-slate-500">
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">↑↓</kbd> 移动</span>
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">↵</kbd> 选择</span>
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">esc</kbd> 关闭</span>
+          {/* 键盘提示行 */}
+          <div className="text-[10.5px] text-slate-400/80 tracking-wide">
+            滚轮缩放 · 拖拽平移 · 拖动节点 · 点击深挖 · ⌘K 命令面板
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ============== 无存档 · 欢迎首页（首次访问） ============== */
+/* ============== 无存档 · 欢迎首页 ============== */
 function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
   return (
     <div className="min-h-screen hero-bg">
       <main className="mx-auto max-w-4xl px-5 pt-16 pb-24">
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="text-2xl">⛏️</span>
-          <span className="text-[15px] font-bold tracking-wide text-slate-700">概念深挖器</span>
+          <span className="text-[15px] font-bold tracking-wide text-slate-700">
+            概念深挖器
+          </span>
         </div>
 
-        <h1 className="text-center text-[34px] md:text-[42px] font-extrabold leading-tight tracking-tight text-slate-900">
-          输入一个词，
-          <br className="md:hidden" />
-          快速<span className="text-indigo-600">抓住重点</span>、搞懂概念
+        <h1 className="text-center text-[36px] md:text-[44px] font-extrabold leading-[1.15] tracking-tight">
+          <span className="ink-grad">输入一个词，</span>
+          <br />
+          抓住重点，搞懂概念
         </h1>
-        <p className="mt-4 text-center text-[15px] text-slate-500 leading-relaxed">
+        <p className="mt-5 text-center text-[15px] text-slate-500 leading-relaxed max-w-xl mx-auto">
           从「分布式锁」到「十五规划」——AI 帮你厘清概念、拆解分析、找出重点与误区，
-          <br className="hidden md:block" />
-          并帮你把它挂到一张知识网络上：相关、相似、相反、跨领域类比，一网打尽。
+          并把它挂到一张<span className="font-semibold text-slate-700">你自己的知识网络</span>上。
         </p>
 
-        <div className="mt-9">
+        <div className="mt-10">
           <SearchBox autoFocus />
         </div>
 
@@ -371,7 +239,7 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
             <button
               key={e}
               onClick={() => onStart(e)}
-              className="px-3.5 py-1.5 rounded-full border border-[var(--line)] bg-white text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 rounded-full border border-[var(--line)] bg-white/80 text-[13px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/60 transition-colors cursor-pointer"
             >
               {e}
             </button>
@@ -394,7 +262,7 @@ function WelcomeHome({ onStart }: { onStart: (q: string) => void }) {
         </div>
 
         <p className="mt-3 text-center text-[11.5px] text-slate-400">
-          提示：按 <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd> 随时唤起命令面板
+          按 <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd> 随时唤起命令面板
         </p>
 
         <div className="mt-16">

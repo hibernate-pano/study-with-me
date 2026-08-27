@@ -69,6 +69,44 @@ body {
 }
 .recent-glow { animation: node-glow 2.6s ease-in-out infinite; }
 
+/* 地图边的描边动画（首屏加载，每条边错开 12ms 由 SVG 内联控制） */
+@keyframes edge-draw {
+  from { stroke-dashoffset: var(--edge-len, 400); }
+  to   { stroke-dashoffset: 0; }
+}
+.map-edge {
+  stroke-dasharray: var(--edge-len, 400);
+  stroke-dashoffset: var(--edge-len, 400);
+  animation: edge-draw 900ms var(--ease-quiet) forwards;
+}
+
+/* 精致的容器边框 + 阴影 */
+.surface {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02),
+    0 8px 30px -10px rgba(15, 23, 42, 0.12),
+    0 24px 60px -28px rgba(15, 23, 42, 0.18);
+}
+
+/* 主品牌渐变（按钮/CTA） */
+.brand-grad {
+  background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #4f46e5 100%);
+}
+.brand-grad:hover {
+  background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #4338ca 100%);
+}
+
+/* 文本渐变（标题强调） */
+.ink-grad {
+  background-image: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* ---------- 首页 hero ---------- */
 .hero-bg {
   background:
