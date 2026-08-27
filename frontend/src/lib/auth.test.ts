@@ -6,11 +6,11 @@ import {
   oauthConfig,
   randomToken,
   upsertUserFromGithub,
-  createSession,
+  createSharedSession,
   getUserBySession,
   deleteSession,
-  SESSION_MAX_AGE_MS,
 } from "./auth";
+import { sharedCookieOptions, clearCookieOptions, readSessionToken } from "./session";
 
 describe("oauth 配置选择", () => {
   const OLD = process.env;
@@ -138,10 +138,13 @@ describe("oauth 工具", () => {
     });
   });
 
-  describe("会话（DB 交互用内存模拟）", () => {
-    // 极简内存"数据库"模拟 upsert/会话
+  describe("会话（共享 JWT + 内存 DB 模拟）", () => {
+    // 极简内存"数据库"模拟用户行 / legacy sessions
     const memSql = (() => {
-      const users = new Map<number, { id: number; github_id: number; login: string }>();
+      const users = new Map<
+        number,
+        { id: number; github_id: number; login: string; avatar_url: string | null }
+      >();
       const sessions = new Map<string, { token: string; user_id: number; expires_at: string }>();
       let nextUserId = 1;
       return {
@@ -151,8 +154,15 @@ describe("oauth 工具", () => {
           if (q.startsWith("INSERT INTO users")) {
             const [githubId, login] = params as [number, string];
             const existing = [...users.values()].find((u) => u.github_id === githubId);
-            const user = existing ? existing : { id: nextUserId++, github_id: githubId, login };
-            users.set(user.id, user);
+            const user = existing
+              ? existing
+              : {
+                  id: nextUserId++,
+                  github_id: githubId as number,
+                  login: login as string,
+                  avatar_url: null,
+                };
+            if (!existing) users.set(user.id, user);
             return [user];
           }
           if (q.startsWith("INSERT INTO sessions")) {
@@ -169,6 +179,11 @@ describe("oauth 工具", () => {
             if (new Date(s.expires_at).getTime() < Date.now()) return [];
             return [{ id: u.id, login: u.login, avatar_url: null }];
           }
+          if (q.includes("FROM users WHERE github_id")) {
+            const [ghId] = params as [number];
+            const u = [...users.values()].find((x) => x.github_id === ghId);
+            return u ? [{ id: u.id, login: u.login, avatar_url: u.avatar_url }] : [];
+          }
           if (q.startsWith("DELETE FROM sessions")) {
             const [token] = params as [string];
             sessions.delete(token);
@@ -180,36 +195,63 @@ describe("oauth 工具", () => {
     })();
     const sql = (q: string, ...p: unknown[]) => memSql.run(q, ...p);
 
-    it("upsert 用户：新用户入库并可再次写入", async () => {
-      await upsertUserFromGithub(sql, { id: 7, login: "panbo", avatar_url: null, email: null });
-      await upsertUserFromGithub(sql, { id: 7, login: "panbo", avatar_url: "a.png", email: "e@x.com" });
-      expect(memSql.users.size).toBe(1);
-      const u = [...memSql.users.values()][0];
-      expect(u.login).toBe("panbo");
-    });
-
-    it("创建会话后可凭 token 取得用户，过期返回 null", async () => {
-      const gh = await upsertUserFromGithub(sql, { id: 8, login: "tester", avatar_url: null, email: null });
-      const session = await createSession(sql, gh.id);
-      expect(session.token.length).toBe(64);
-      const diff = session.expiresAt.getTime() - Date.now();
-      expect(Math.abs(diff - SESSION_MAX_AGE_MS)).toBeLessThan(100); // 毫秒级容差
+    it("共享 JWT 凭证：首次跨应用登录自动落用户行并可取回身份", async () => {
+      // 用户只在 talkshow 登录过，这里凭 token 首次出现 —— 不需要手动 OAuth
+      const session = await createSharedSession({
+        userId: "9527",
+        login: "panbo",
+        name: "Panbo",
+        avatarUrl: "a.png",
+      });
+      expect(session.token.split(".")).toHaveLength(3); // header.payload.signature
       const me = await getUserBySession(sql, session.token);
-      expect(me?.login).toBe("tester");
+      expect(me?.login).toBe("panbo");
+      expect(memSql.users.size).toBe(1); // 自动落行，无需本地 OAuth
     });
 
-    it("无效/过期 token 返回 null", async () => {
+    it("无效/过期/空 token 返回 null", async () => {
       await expect(getUserBySession(sql, "nope")).resolves.toBeNull();
       await expect(getUserBySession(sql, null)).resolves.toBeNull();
       await expect(getUserBySession(sql, undefined)).resolves.toBeNull();
+      const forged = (await createSharedSession({ userId: "1" })).token.replace(/.$/, "x");
+      await expect(getUserBySession(sql, forged)).resolves.toBeNull(); // 签名篡改必拒
     });
 
-    it("登出删除会话后失效", async () => {
+    it("legacy 存储型 token（过渡兼容）仍可解析并在登出后失效", async () => {
       const gh = await upsertUserFromGithub(sql, { id: 9, login: "bye", avatar_url: null, email: null });
-      const s = await createSession(sql, gh.id);
-      await expect(getUserBySession(sql, s.token)).resolves.not.toBeNull();
-      await deleteSession(sql, s.token);
-      await expect(getUserBySession(sql, s.token)).resolves.toBeNull();
+      // 手工种一行未过期的 legacy 会话
+      await sql(
+        `INSERT INTO sessions (token, user_id, expires_at) VALUES (?1, ?2, ?3)`,
+        "legacy-token",
+        gh.id,
+        String(Date.now() + 86400000)
+      );
+      await expect(getUserBySession(sql, "legacy-token")).resolves.not.toBeNull();
+      await deleteSession(sql, "legacy-token");
+      await expect(getUserBySession(sql, "legacy-token")).resolves.toBeNull();
+    });
+
+    it("cookie 约定：生产环境 Domain=.panbo.space，本地不带 Domain；共享凭证优先于 legacy", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.resetModules();
+      const prod = await import("./session");
+      expect(prod.sharedCookieOptions().domain).toBe(".panbo.space");
+      expect(prod.sharedCookieOptions().secure).toBe(true);
+      vi.stubEnv("NODE_ENV", "development");
+      vi.resetModules();
+      const dev = await import("./session");
+      expect(dev.sharedCookieOptions().domain).toBeUndefined();
+      expect(dev.clearCookieOptions().maxAge).toBe(0);
+
+      // 读取优先级：tts_session 在前
+      const req = new Request("https://x.dev", {
+        headers: { cookie: `${dev.SHARED_COOKIE}=shared.jwt; ${dev.LEGACY_COOKIE}=old` },
+      });
+      expect(readSessionToken(req)).toBe("shared.jwt");
+      const reqLegacyOnly = new Request("https://x.dev", {
+        headers: { cookie: `${dev.LEGACY_COOKIE}=old` },
+      });
+      expect(readSessionToken(reqLegacyOnly)).toBe("old");
     });
   });
 });

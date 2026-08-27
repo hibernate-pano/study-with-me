@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildAuthorizeUrl, oauthConfig, randomToken } from "@/lib/auth";
-import { sessionCookie, SESSION_COOKIE } from "@/lib/session";
 
 export const runtime = "nodejs";
 

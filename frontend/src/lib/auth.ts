@@ -13,6 +13,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { SignJWT, jwtVerify } from "jose";
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -106,6 +107,50 @@ export async function fetchGithubUser(token: string): Promise<GithubUserInfo> {
 
 export const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
 
+/* ---------- 共享 JWT（与 topic-talkshow 同格式：HS256 / payload.userId） ---------- */
+
+function getJwtSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET;
+  if (!raw) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET 必须在生产环境配置（需与 topic-talkshow 一致）");
+    }
+    // 与 talkshow 的 dev 默认值一致：本地两端口共享 cookie 后直接互通
+    return new TextEncoder().encode("dev-only-do-not-use-in-prod");
+  }
+  return new TextEncoder().encode(raw);
+}
+
+export interface SessionClaims {
+  userId: string; // GitHub 全局数字 id 的字符串形式（talkshow 原样）
+  login?: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+}
+
+/** 签发跨应用共享会话 token（身份声明随身携带，另一边零 DB 依赖可验） */
+export async function createSharedSession(
+  claims: SessionClaims
+): Promise<{ token: string }> {
+  const token = await new SignJWT({ ...claims })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30d")
+    .sign(getJwtSecret());
+  return { token };
+}
+
+/** 验共享 token，返回声明；无效/过期 → null */
+async function verifySharedSession(token: string): Promise<SessionClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    if (payload.userId == null) return null;
+    return payload as unknown as SessionClaims;
+  } catch {
+    return null;
+  }
+}
+
 /** 根据 GitHub 用户 upsert 本地用户行，返回用户记录（id / login / avatar） */
 export async function upsertUserFromGithub(
   sql: (q: string, ...params: unknown[]) => Promise<unknown>,
@@ -129,28 +174,35 @@ export async function upsertUserFromGithub(
   return rows[0];
 }
 
-/** 建会话行，返回 (token, expiresAt) */
-export async function createSession(
-  sql: (q: string, ...params: unknown[]) => Promise<unknown>,
-  userId: number
-): Promise<{ token: string; expiresAt: Date }> {
-  const token = randomToken(32);
-  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_MS);
-  await sql(
-    `INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?1, ?2, ?3, ?3)`,
-    token,
-    userId,
-    expiresAt.getTime()
-  );
-  return { token, expiresAt };
-}
-
-/** 校验会话 token，返回用户或 null（过期/不存在 → null） */
+/**
+ * 会话解析（单点登录版）：
+ * 1. 共享 JWT 有效 → 取身份声明；用户行不存在则自动落一行（首次跨应用登录）；
+ * 2. 否则按旧存储型 token 查 D1 sessions（过渡兼容，过期/不存在 → null）。
+ */
 export async function getUserBySession(
   sql: (q: string, ...params: unknown[]) => Promise<unknown>,
   token: string | undefined | null
 ): Promise<{ id: number; login: string; avatar_url: string | null } | null> {
   if (!token) return null;
+  const claims = await verifySharedSession(token);
+  if (claims) {
+    const ghId = Number(claims.userId);
+    if (!Number.isFinite(ghId)) return null;
+    await sql(
+      `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
+       SELECT ?1, ?2, ?3, NULL, ?4, ?4
+       WHERE NOT EXISTS (SELECT 1 FROM users WHERE github_id = ?1)`,
+      ghId,
+      claims.login ?? "github-user",
+      claims.avatarUrl ?? null,
+      Date.now()
+    );
+    const rows = (await sql(
+      `SELECT id, login, avatar_url FROM users WHERE github_id = ?1`,
+      ghId
+    )) as { id: number; login: string; avatar_url: string | null }[];
+    return rows[0] ?? null;
+  }
   const rows = (await sql(
     `SELECT u.id, u.login, u.avatar_url
      FROM sessions s JOIN users u ON u.id = s.user_id

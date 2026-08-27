@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createSession,
+  createSharedSession,
   exchangeCodeForToken,
   fetchGithubUser,
   oauthConfig,
   upsertUserFromGithub,
 } from "@/lib/auth";
 import { run } from "@/lib/db";
-import { SESSION_COOKIE } from "@/lib/session";
+import { SHARED_COOKIE, LEGACY_COOKIE, sharedCookieOptions } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -49,24 +49,21 @@ export async function GET(req: NextRequest) {
       (q, ...p) => run(q, ...p),
       ghUser
     );
-    const session = await createSession(
-      (q, ...p) => run(q, ...p),
-      user.id
-    );
 
-    // 顺手清理过期会话（个人工具零成本维护，防表无限增长）
-    await run(`DELETE FROM sessions WHERE expires_at < ?1`, Date.now()).catch(() => {});
+    // 单点登录：身份声明随身签进共享 JWT（tts_session，Domain=.panbo.space），
+    // topic-talkshow 拿同一个 cookie 即可免登；反之亦然。
+    const session = await createSharedSession({
+      userId: String(user.id),
+      login: user.login,
+      name: null,
+      avatarUrl: user.avatar_url,
+    });
 
     const res = NextResponse.redirect(new URL("/", req.nextUrl.origin));
-    // 清掉 state cookie，种下 30 天会话 cookie
+    // 清掉 state cookie + 旧会话 cookie，种下 30 天共享会话
     res.cookies.set(STATE_COOKIE, "", { path: "/", maxAge: 0 });
-    res.cookies.set(SESSION_COOKIE, session.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
+    res.cookies.set(LEGACY_COOKIE, "", sharedCookieOptions(0));
+    res.cookies.set(SHARED_COOKIE, session.token, sharedCookieOptions());
     return res;
   } catch (e) {
     console.error("[auth/callback]", e);

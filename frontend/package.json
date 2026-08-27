@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "jose": "^6.2.10",
     "lz-string": "^1.5.0",
     "next": "^15.5.23",
     "react": "^19.0.0",
