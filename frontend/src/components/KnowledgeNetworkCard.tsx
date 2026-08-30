@@ -62,7 +62,7 @@ export default function KnowledgeNetworkCard({ markdown, streaming, onConceptCli
               {g.subtitle}
             </span>
             <span className="flex-1 border-t border-dashed border-slate-200/60 ml-1 mb-1" />
-            <span className="text-[10.5px] text-slate-400 font-mono tabular-nums">
+            <span className="text-[10.5px] text-slate-500 font-mono tabular-nums">
               {g.concepts.length}
             </span>
           </div>
@@ -94,7 +94,7 @@ export default function KnowledgeNetworkCard({ markdown, streaming, onConceptCli
         </div>
       ))}
 
-      <p className="text-[11px] text-slate-400/80 mt-1 pl-1">
+      <p className="text-[11px] text-slate-500/80 mt-1 pl-1">
         点击任意概念 → 在右侧抽屉深挖，不离开当前报告。
       </p>
     </div>

@@ -30,8 +30,9 @@ export interface CloudCard {
 }
 
 export interface CloudDump {
-  reports: (CloudReport & { created_at: string; updated_at: string })[];
-  cards: (CloudCard & { created_at: string; updated_at: string })[];
+  // D1 INTEGER 毫秒时间戳，序列化后仍为 number（不是 ISO 字符串）
+  reports: (CloudReport & { created_at: number; updated_at: number })[];
+  cards: (CloudCard & { created_at: number; updated_at: number })[];
 }
 
 /** 当前登录用户（未登录 → null）。失败按未登录处理。 */
@@ -105,7 +106,7 @@ export function cloudReportToLocal(r: CloudDump["reports"][number]) {
     relationType: r.relation_type ?? undefined,
     fullText: r.full_text,
     related: normalizeCloudRelated(r.related),
-    createdAt: Date.parse(r.created_at) || Date.now(),
-    updatedAt: Date.parse(r.updated_at) || Date.now(),
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
   };
 }

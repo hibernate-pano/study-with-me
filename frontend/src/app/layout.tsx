@@ -14,7 +14,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN">
+    // suppressHydrationWarning：浏览器翻译/暗色扩展常在 hydration 前往 <html> 注入属性，避免误报
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         {/* 中文衬线字体（hero 大引语、概念标题用） */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

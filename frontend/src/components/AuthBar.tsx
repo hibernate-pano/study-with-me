@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { initCloudSync, logoutUser, onAuthChange, onSyncStateChange, type SyncStatus } from "@/lib/sync";
 import { githubAuthUrl } from "@/lib/cloud";
 
@@ -11,6 +12,9 @@ import { githubAuthUrl } from "@/lib/cloud";
  * - 探测中：不渲染（避免闪动）。
  */
 export default function AuthBar() {
+  const pathname = usePathname();
+  // /analyze 的顶栏右侧有一排操作按钮（topbar z-20），登录栏下移避让
+  const onAnalyze = pathname?.startsWith("/analyze") ?? false;
   const [user, setUser] = useState<{ login: string; avatar_url: string | null } | null>(null);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
@@ -62,7 +66,7 @@ export default function AuthBar() {
   if (!ready) return null;
 
   return (
-    <div className="fixed right-4 top-4 z-50">
+    <div className={`fixed right-4 z-50 ${onAnalyze ? "top-14" : "top-4"}`}>
       {notice && (
         <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[12px] text-amber-700">
           {notice}

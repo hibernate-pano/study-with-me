@@ -413,12 +413,12 @@ export default function MapView({
       </svg>
 
       {/* 角标信息（左下） */}
-      <div className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-slate-400/80 tracking-wide">
+      <div className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-slate-500/80 tracking-wide">
         <span className="font-semibold text-indigo-600/90">{mineCount}</span> 我的 ·
         <span className="text-slate-500/90"> {relatedCount}</span> 相关
       </div>
       {/* 操作提示（右下） */}
-      <div className="pointer-events-none absolute bottom-3 right-4 text-[10.5px] text-slate-400/70 tracking-wide">
+      <div className="pointer-events-none absolute bottom-3 right-4 text-[10.5px] text-slate-500/70 tracking-wide">
         滚轮缩放 · 拖拽平移 · 拖动节点
       </div>
     </div>

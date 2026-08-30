@@ -7,6 +7,13 @@ import {
   deleteReport,
   mainKey,
   drillKey,
+  getRepoProgress,
+  saveRepoProgress,
+  repoProgressKey,
+  syncRepoCards,
+  getCardsByTerm,
+  markTalkshowDone,
+  isTalkshowDone,
   type StoredReport,
 } from "./storage";
 
@@ -157,5 +164,49 @@ describe("key 约定", () => {
     expect(k).toBe("drill:父概念::子概念");
     expect(k.startsWith("drill:")).toBe(true);
     expect(drillKey("父概念", "子概念")).toBe(k); // 稳定
+  });
+});
+
+describe("repo 进度与自测题（Phase 3）", () => {
+  const atlas = {
+    pitch: "p",
+    why: [],
+    modules: [
+      { id: "core", name: "核心", dir: "src/", role: "干活的", keyFiles: [], talksTo: [], questions: ["核心怎么动？", "为何这样设计？"] },
+      { id: "api", name: "接口", dir: "api/", role: "接请求", keyFiles: [], talksTo: [], questions: [] },
+    ],
+    path: [],
+  };
+
+  it("进度 roundtrip：空集 → 写入 → 读回，坏数据降级空集", async () => {
+    expect(await getRepoProgress("panbo/x")).toEqual(new Set());
+    await saveRepoProgress("panbo/x", new Set([2, 0]));
+    expect(await getRepoProgress("panbo/x")).toEqual(new Set([0, 2]));
+    // 进度是一份 repo: 前缀的报告记录，云同步可白嫖
+    const r = await getReport(repoProgressKey("panbo/x"));
+    expect(r?.key).toBe("repo:progress:panbo/x");
+    await saveReport({ key: repoProgressKey("panbo/y"), term: "x", fullText: "不是json", related: [], createdAt: 0, updatedAt: 0 });
+    expect(await getRepoProgress("panbo/y")).toEqual(new Set());
+  });
+
+  it("自测题 → 复习卡（幂等），term 带 repo: 前缀", async () => {
+    const first = await syncRepoCards("panbo/x", atlas);
+    expect(first).toBe(2);
+    const again = await syncRepoCards("panbo/x", atlas);
+    expect(again).toBe(0); // 幂等：重复加载不重复建卡
+    const cards = await getCardsByTerm("repo:panbo/x");
+    expect(cards).toHaveLength(2);
+    expect(cards[0].term).toBe("repo:panbo/x");
+    expect(cards[0].answer).toContain("核心");
+  });
+});
+
+describe("talkshow 已开讲标记", () => {
+  it("默认未开讲；标记后可查；多概念互不影响", () => {
+    expect(isTalkshowDone("分布式锁")).toBe(false);
+    markTalkshowDone("分布式锁");
+    markTalkshowDone("分布式锁"); // 幂等：重复标记不报错
+    expect(isTalkshowDone("分布式锁")).toBe(true);
+    expect(isTalkshowDone("CAP 定理")).toBe(false);
   });
 });

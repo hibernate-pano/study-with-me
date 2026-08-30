@@ -52,8 +52,11 @@ export async function GET(req: NextRequest) {
 
     // 单点登录：身份声明随身签进共享 JWT（tts_session，Domain=.panbo.space），
     // topic-talkshow 拿同一个 cookie 即可免登；反之亦然。
+    // 注意：userId 必须用 GitHub 全局数字 id（ghUser.id），与 talkshow 签发的 JWT
+    // 及 getUserBySession 的 WHERE github_id 查询语义一致；
+    // user.id 是 D1 内部自增 id，用它会导致会话反查失败并插出幽灵用户行。
     const session = await createSharedSession({
-      userId: String(user.id),
+      userId: String(ghUser.id),
       login: user.login,
       name: null,
       avatarUrl: user.avatar_url,

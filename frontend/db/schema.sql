@@ -48,3 +48,12 @@ CREATE TABLE IF NOT EXISTS cards (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, key)
 );
+
+-- AI 限流计数（rateLimit.ts 的 aiAccess）：
+-- key 约定：匿名分钟窗 `ip:<ip>:m<窗口起点毫秒>`；登录日配额 `u:<userId>:d<YYYY-MM-DD>`。
+-- 过期行不再被命中即自然失效，量级 = 活跃 IP×分钟 + 用户×天，暂不清理。
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);

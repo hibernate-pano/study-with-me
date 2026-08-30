@@ -28,9 +28,9 @@ export interface ConceptGraph {
   edges: MapEdge[];
 }
 
-/** judge：这个报告是否属于「主概念」（对比报告的展示名是 A ⚖️ B，不算） */
+/** judge：这个报告是否属于「主概念」（对比报告的展示名是 A ⚖️ B，不算；repo 是项目地图不是概念，也不算） */
 function isMainReport(key: string): boolean {
-  return !key.startsWith("drill:") && !key.startsWith("compare:");
+  return !key.startsWith("drill:") && !key.startsWith("compare:") && !key.startsWith("repo:");
 }
 
 /**

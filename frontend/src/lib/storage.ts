@@ -7,6 +7,7 @@
 import type { FlatConcept } from "./network";
 import { parseQuizSection, newCard, type Card } from "./cards";
 import { extractSectionRaw } from "./stream";
+import type { Atlas } from "./atlas";
 
 export interface StoredReport {
   key: string;
@@ -329,6 +330,57 @@ export async function deleteTermCards(term: string): Promise<void> {
   for (const c of cards) await deleteCard(c.key);
 }
 
+/** repo 项目地图的阅读进度：piggyback 成一份报告记录（key 带 repo: 前缀），云同步零改动复用 */
+export function repoProgressKey(repoTitle: string): string {
+  return `repo:progress:${repoTitle}`;
+}
+
+/** 读阅读路线进度（已完成站点索引）；无存档/坏数据 → 空集 */
+export async function getRepoProgress(repoTitle: string): Promise<Set<number>> {
+  try {
+    const r = await getReport(repoProgressKey(repoTitle));
+    if (!r?.fullText) return new Set();
+    const parsed: unknown = JSON.parse(r.fullText);
+    return new Set(Array.isArray(parsed) ? parsed.filter((n): n is number => typeof n === "number") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** 写阅读路线进度（本地 IndexedDB + 云推送） */
+export async function saveRepoProgress(repoTitle: string, done: Set<number>): Promise<void> {
+  await saveReport({
+    key: repoProgressKey(repoTitle),
+    term: `${repoTitle} 阅读进度`,
+    fullText: JSON.stringify([...done].sort((a, b) => a - b)),
+    related: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * repo 项目地图的模块自测题 → 复习卡（幂等：只新增从未见过的题）。
+ * term 用 repo: 前缀标记（复习页据此跳回 /repo 而非 /analyze）。
+ * 返回本次新增数量。
+ */
+export async function syncRepoCards(repoTitle: string, atlas: Atlas): Promise<number> {
+  const term = `repo:${repoTitle}`;
+  const now = Date.now();
+  let added = 0;
+  for (const m of atlas.modules) {
+    for (const question of m.questions) {
+      const card = newCard(term, { question, answer: `（模块：${m.name}）${m.role}` }, now);
+      const existing = await getCard(card.key);
+      if (!existing) {
+        await putCard(card);
+        added++;
+      }
+    }
+  }
+  return added;
+}
+
 /** 清空全部本地数据（reports + cards；用于测试重置，也可供"退出登录清空"类功能使用） */
 export async function clearAllLocalData(): Promise<void> {
   const db = await openDB();
@@ -339,4 +391,32 @@ export async function clearAllLocalData(): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+}
+
+// ---------------- talkshow 已开讲标记 ----------------
+
+const TALKSHOW_DONE_KEY = "cd-talkshow-done";
+
+/** 标记某概念已去 Topic Talkshow 开讲（点击「开讲挑战」时写入；轻量 flag，localStorage 即可） */
+export function markTalkshowDone(term: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const raw = localStorage.getItem(TALKSHOW_DONE_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(term)) list.push(term);
+    localStorage.setItem(TALKSHOW_DONE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 该概念是否已开讲过；无记录/坏数据 → false */
+export function isTalkshowDone(term: string): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(TALKSHOW_DONE_KEY);
+    return raw ? (JSON.parse(raw) as string[]).includes(term) : false;
+  } catch {
+    return false;
+  }
 }

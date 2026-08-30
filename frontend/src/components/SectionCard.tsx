@@ -3,6 +3,7 @@
 import ReactMarkdown from "react-markdown";
 import { styleForTitle, type Section } from "@/lib/stream";
 import KnowledgeNetworkCard from "./KnowledgeNetworkCard";
+import { markdownCodeComponents } from "./codeRenderer";
 import type { FlatConcept } from "@/lib/network";
 
 /**
@@ -80,13 +81,13 @@ export default function SectionCard({
               {section.title}
             </h2>
             {streaming && section.content && (
-              <span className="shrink-0 text-[11px] text-slate-400 animate-pulse">
+              <span className="shrink-0 text-[11px] text-slate-500 animate-pulse">
                 生成中…
               </span>
             )}
             {onToggle && (
               <svg
-                className={`shrink-0 text-slate-400 transition-transform ${collapsed ? "" : "rotate-180"}`}
+                className={`shrink-0 text-slate-500 transition-transform ${collapsed ? "" : "rotate-180"}`}
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
@@ -115,6 +116,8 @@ export default function SectionCard({
                 <ReactMarkdown
                   components={{
                     a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                    // 行内 `code` 与块级代码块分开渲染，见 codeRenderer.ts
+                    ...markdownCodeComponents,
                   }}
                 >
                   {section.content}

@@ -29,6 +29,25 @@ export default function ReviewPage() {
     })();
   }, []);
 
+  // 键盘快捷键：Space 翻面、1 忘了、2 记住了（监听写法参照 CommandPalette）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.code === "Space") {
+        e.preventDefault(); // 防止页面滚动
+        if (current && !showAnswer) setShowAnswer(true);
+      } else if (e.key === "1") {
+        if (current && showAnswer) void grade(false);
+      } else if (e.key === "2") {
+        if (current && showAnswer) void grade(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, showAnswer]);
+
   const grade = async (remember: boolean) => {
     if (!current) return;
     const updated = nextCard(current, remember);
@@ -42,6 +61,8 @@ export default function ReviewPage() {
 
   const removeCurrent = async () => {
     if (!current) return;
+    if (!window.confirm(`确定删除这张卡？「${current.question.slice(0, 30)}…」删除后不再复习。`))
+      return;
     await deleteCard(current.key).catch(() => {});
     setTotal((t) => (t === null ? t : Math.max(0, t - 1)));
     const rest = due.slice(1);
@@ -142,16 +163,20 @@ export default function ReviewPage() {
             {/* 卡头 */}
             <div className="flex items-center gap-2.5 px-5 pt-4">
               <button
-                onClick={() => router.push(`/analyze/${encodeURIComponent(current.term)}`)}
+                onClick={() =>
+                  current.term.startsWith("repo:")
+                    ? router.push(`/repo/${encodeURIComponent(current.term.slice(5).split("/")[0])}/${encodeURIComponent(current.term.slice(5).split("/").slice(1).join("/"))}`)
+                    : router.push(`/analyze/${encodeURIComponent(current.term)}`)
+                }
                 className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[11.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
-                title="回到这个概念的报告"
+                title="回到这份报告"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 3h6v6" />
                   <path d="M10 14 21 3" />
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 </svg>
-                {current.term}
+                {current.term.replace(/^repo:/, "")}
               </button>
               <span className="text-[11px] text-slate-400">{fmtCardInfo(current)}</span>
               <div className="flex-1" />
@@ -178,7 +203,7 @@ export default function ReviewPage() {
                   onClick={() => setShowAnswer(true)}
                   className="btn-primary w-full px-5 py-3 text-[14px]"
                 >
-                  显示答案 / 自评
+                  显示答案 / 自评 <kbd className="ml-1.5 rounded border border-white/40 bg-white/20 px-1.5 py-0.5 text-[10.5px] font-mono opacity-80">Space</kbd>
                 </button>
               </div>
             ) : (
@@ -193,13 +218,13 @@ export default function ReviewPage() {
                     onClick={() => grade(false)}
                     className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-[14px] font-bold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] cursor-pointer"
                   >
-                    忘了 · 明天再来
+                    忘了 · 明天再来 <kbd className="ml-1 rounded border border-red-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">1</kbd>
                   </button>
                   <button
                     onClick={() => grade(true)}
                     className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-[14px] font-bold text-emerald-600 transition-all hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98] cursor-pointer"
                   >
-                    记住了 · 间隔翻倍
+                    记住了 · 间隔翻倍 <kbd className="ml-1 rounded border border-emerald-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">2</kbd>
                   </button>
                 </div>
                 <p className="text-center text-[11px] text-slate-400">

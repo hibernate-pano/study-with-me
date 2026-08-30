@@ -63,7 +63,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               </span>
               <span
                 className={`text-[10.5px] font-bold tracking-wider uppercase ${
-                  isMine ? "text-indigo-600" : "text-slate-400"
+                  isMine ? "text-indigo-600" : "text-slate-500"
                 }`}
               >
                 {isMine ? "我学过的" : "相关概念"}
@@ -71,7 +71,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
               title="关闭（Esc）"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -87,7 +87,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
 
           {/* 权重条（出现频次） */}
           {node.weight > 1 && (
-            <div className="mt-2 flex items-center gap-2 text-[11.5px] text-slate-400">
+            <div className="mt-2 flex items-center gap-2 text-[11.5px] text-slate-500">
               <span>在网络中</span>
               <span className="font-bold text-slate-700">{node.weight}</span>
               <span>次关联</span>
@@ -112,7 +112,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
           {/* 我学过的：相关概念 mini 列表 */}
           {isMine && relatedFromHere && relatedFromHere.length > 0 && (
             <div className="mt-5 pt-4 border-t border-slate-100">
-              <div className="text-[10.5px] font-bold tracking-wider text-slate-400 mb-2">
+              <div className="text-[10.5px] font-bold tracking-wider text-slate-500 mb-2">
                 这个概念的关联
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -162,7 +162,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
 
           {/* 更新于 */}
           {report && (
-            <div className="mt-4 text-center text-[11px] text-slate-400">
+            <div className="mt-4 text-center text-[11px] text-slate-500">
               报告更新于 {fmtDate(report.updatedAt)}
             </div>
           )}
@@ -195,7 +195,7 @@ function MineBody({ definition, takeaways }: { definition: string; takeaways: st
       )}
       {takeaways && (
         <div className="mt-3">
-          <div className="text-[10.5px] font-bold tracking-wider text-slate-400 mb-1.5">
+          <div className="text-[10.5px] font-bold tracking-wider text-slate-500 mb-1.5">
             📌 核心重点 · 预览
           </div>
           <p className="text-[12.5px] leading-relaxed text-slate-600 line-clamp-4">
@@ -216,7 +216,7 @@ function RelatedBody({ description }: { description: string }) {
       <p className="text-[13px] leading-relaxed text-slate-700">
         {description || "暂无描述，深挖后会自动补全。"}
       </p>
-      <p className="mt-2 text-[11.5px] text-slate-400">
+      <p className="mt-2 text-[11.5px] text-slate-500">
         你还没学过这个概念。点下面深挖它会自动连入你的网络。
       </p>
     </div>

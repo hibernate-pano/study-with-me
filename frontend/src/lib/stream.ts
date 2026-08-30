@@ -17,6 +17,10 @@ export function styleForTitle(title: string): SectionStyle {
   if (title.includes("一句话辨析") || title.includes("辨析"))
     return { accent: "#8b5cf6", badge: "#f5f3ff" };
   if (title.includes("关键差异")) return { accent: "#6366f1", badge: "#eef2ff" };
+  if (title.includes("架构"))
+    return { accent: "#4f46e5", badge: "#eef2ff" }; // 仓库报告：架构/数据流
+  if (title.includes("亮点"))
+    return { accent: "#d97706", badge: "#fffbeb" }; // 仓库报告：为什么牛
   if (title.includes("场景")) return { accent: "#10b981", badge: "#ecfdf5" };
   if (title.includes("混淆")) return { accent: "#ef4444", badge: "#fef2f2" };
   if (title.includes("协同") || title.includes("组合"))

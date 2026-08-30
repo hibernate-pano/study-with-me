@@ -102,6 +102,196 @@ ${ctxBlock}
 export { SECTIONS };
 
 /**
+ * GitHub 项目地图提示词（repo 学习模式，独立于概念管线）。
+ * 输出不是 Markdown 文章，而是一个 ```json 代码块（schema 见 lib/atlas.ts）：
+ * UI 是交互地图（架构图 + 阅读路线 + 模块卡），需要结构化数据而非散文。
+ * 所有内容必须严格基于下方给定代码上下文（digest），面向零基础的完全新手。
+ */
+export function buildRepoAtlasPrompt(digest: string, pathList: string): string {
+  const input = clampPrompt(digest, 14000);
+  const paths = clampPrompt(pathList, 6000);
+  return `你是一个"开源项目读码导师"。用户想真正读懂一个 GitHub 项目的整体脉络：它是什么、由哪些模块组成、数据/请求怎么流动、该按什么顺序读。用户是零基础的完全新手，请通俗、具体、准确。
+
+—— 项目代码上下文 ——
+下面是一份从该仓库抓取的资料（含仓库简介、README、目录结构、若干核心文件），所有输出必须严格基于这些真实内容，不要凭空编造仓库不存在的模块或功能。
+
+"""
+${input}
+"""
+
+—— 仓库真实文件路径清单 ——
+keyFiles 只能从这个清单里逐字选取（若清单被截断，选不到的就别写）：
+
+"""
+${paths}
+"""
+
+—— 输出要求 ——
+只输出一个 \`\`\`json 代码块，不要任何前后文字。JSON 结构如下（字段名不可改）：
+
+{
+  "pitch": "1-2 句：这个项目是干什么的、为什么值得学（它的牛在哪）",
+  "stats": { "stars": 12345, "language": "主语言", "topics": ["主题标签，最多5个"] },
+  "why": ["3-5 条：这个项目的核心亮点/设计理念，每条具体不空洞"],
+  "modules": [
+    {
+      "id": "短英文 id（kebab-case，如 api-core）",
+      "name": "模块名（中文，如 请求处理层）",
+      "dir": "对应仓库里的目录或文件，如 src/api/",
+      "role": "1-2 句：这个模块的职责，以及它和谁协作",
+      "keyFiles": ["这个模块最该读的 1-3 个具体文件路径"],
+      "talksTo": ["有依赖/数据流动关系的其他模块 id"],
+      "questions": ["1-2 个自测题：检验是否真懂了这个模块"]
+    }
+  ],
+  "path": [
+    { "moduleId": "上面某个模块的 id", "title": "这一站的标题（建议：先读什么）", "goal": "这一站要弄懂什么，1 句具体的话" }
+  ]
+}
+
+—— 内容规则 ——
+1. modules 拆 5-8 个大块，尽量对应仓库真实顶层结构（顶层目录/关键子系统），合计覆盖项目的主干。
+2. talksTo 描绘真实的依赖/数据流方向（A 调用 B、A 产出给 B），这张关系网会被画成架构图。
+3. path 是给新手的一段"跟读路线"：4-7 站，从入口到核心到外围，顺序有学习逻辑（先看什么才不会迷路），每站 goal 点名具体文件或行为。
+4. keyFiles/dir 必须逐字来自上方真实文件路径清单或正文提及的文件，禁止编造路径。
+5. 全程中文；模块 id 与文件路径保留英文。
+6. 只输出 JSON 代码块，不要寒暄、不要解释、不要结尾总结。`;
+}
+
+function clampPrompt(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) + "\n…（上下文已截断）" : text;
+}
+
+/**
+ * repo 模块深挖提示词（Phase 2：点模块按需深读该模块源码）。
+ * 输出回到 "## " 一级标题协议（同概念报告），因此流式切卡 / 渲染样式直接复用。
+ * 输入是该模块的真实源码文件，讲解必须严格基于代码。
+ */
+export function buildRepoModulePrompt(ctx: {
+  repoName: string;
+  moduleName: string;
+  dir: string;
+  role: string;
+  talksToNames: string[];
+  filesDigest: string;
+}): string {
+  const input = clampPrompt(ctx.filesDigest, 14000);
+  const peers = ctx.talksToNames.length > 0 ? ctx.talksToNames.join("、") : "（无明确协作模块）";
+  return `你是一个"开源项目读码导师"。用户正在学习 GitHub 项目「${ctx.repoName}」，已看过项目地图，现在想深入理解其中的「${ctx.moduleName}」模块（对应 ${ctx.dir || "未指定目录"}）。该模块的已知职责：${ctx.role}。它在项目地图中与这些模块有协作关系：${peers}。
+
+—— 该模块的真实源码 ——
+
+"""
+${input}
+"""
+
+—— 输出结构 ——
+请严格按照下面的 Markdown 结构输出。每个 "## " 一级标题必须原样保留、一个都不能少，顺序不要变：
+
+## 📖 这个模块在项目中的位置
+2-3 段：它到底负责什么、上游谁把数据交给它、它把结果交给谁、在整个链路里为什么少不了它。
+
+## 🔍 核心代码走读
+这是最重要的模块。挑 2-4 段最核心的代码，每段用 ### 子标题分隔，**子标题必须写明来源文件路径**（如 ### src/index.ts · 入口分发），格式固定为：
+1. 一句话说明这段代码在干什么；
+2. 一个 \`\`\` 代码块摘录真实源码（从上面的源码里截取，可省略无关行，用 // … 标注省略处）；
+3. 3-6 句逐点讲透：关键变量/分支/边界条件、为什么这么写。
+
+## 🤝 它和谁握手
+3-5 条：它对外暴露什么（函数/接口/事件）、依赖哪些其他模块、调用方通常是谁。结合协作模块名单讲。
+
+## ⚠️ 设计取舍与坑
+3-5 条：这个模块为什么这样设计而不是那样设计（比如为什么不用更简单的写法）、初学者读这段代码最容易误解的点。
+
+—— 总体要求 ——
+1. 讲解必须严格基于上面给定的真实源码，代码摘录必须来自其中，禁止编造不存在的代码。
+2. 面向零基础新手，语言清晰直接，每句都落到实处。
+3. 全程中文；代码、文件名、API 名保留英文。
+4. 总长度约 1500-2500 字。
+5. 只输出上述 Markdown 结构，不要前导寒暄、不要结尾总结。`;
+}
+
+/**
+ * 模块内部地图提示词（L2 下钻）：与项目地图同一个 JSON schema（Atlas），
+ * 但节点是「模块内部的文件/子块」、边是「内部数据流」。复用 parseAtlas 与 SVG 图组件。
+ */
+export function buildModuleAtlasPrompt(ctx: {
+  repoName: string;
+  moduleName: string;
+  dir: string;
+  role: string;
+  filesDigest: string;
+}): string {
+  const input = clampPrompt(ctx.filesDigest, 12000);
+  return `你是一个"开源项目读码导师"。用户正在学习 GitHub 项目「${ctx.repoName}」，已在项目地图里选中了「${ctx.moduleName}」模块（对应 ${ctx.dir || "未指定目录"}，已知职责：${ctx.role}），现在想钻进去看这个模块**内部**由哪些文件/子块组成、它们之间怎么协作。
+
+—— 该模块的真实源码 ——
+
+"""
+${input}
+"""
+
+—— 输出要求 ——
+只输出一个 \`\`\`json 代码块，不要任何前后文字。JSON 结构与项目地图相同，但这里是模块内部视角：
+
+{
+  "pitch": "1-2 句：这个模块内部的运作方式一句话概括",
+  "why": ["2-3 条：读懂这个模块内部最关键的机关/巧思"],
+  "modules": [
+    {
+      "id": "短英文 id",
+      "name": "文件名或子块名（如 index.ts / 状态机）",
+      "dir": "对应的真实文件路径",
+      "role": "1-2 句：它在模块内部承担什么",
+      "keyFiles": ["它自己对应的文件路径（0 或 1 个）"],
+      "talksTo": ["内部有调用/数据流动关系的其他节点 id"],
+      "questions": ["1 个自测题：检验是否真懂了这个内部单元"]
+    }
+  ],
+  "path": [
+    { "moduleId": "...", "title": "建议的内部阅读顺序（可选，2-4 站）", "goal": "这一步弄懂什么" }
+  ]
+}
+
+—— 内容规则 ——
+1. modules 拆 4-7 个内部单元：优先按真实文件划分（一个核心文件一个节点），文件太大可按职责拆成多个节点。
+2. talksTo 是**模块内部**的真实调用/数据流方向，会被画成内部架构图。
+3. keyFiles/dir 必须来自给定源码的文件路径（### 标题），禁止编造。
+4. path 是模块内部的阅读顺序建议，可有可无。
+5. 全程中文；id 与文件路径保留英文。
+6. 只输出 JSON 代码块，不要寒暄、不要解释。`;
+}
+
+/**
+ * 模块深挖追问提示词（吸收 DeepTutor side-chat 的轻量版）：
+ * 基于已生成的走读报告答一轮追问，前端以 "## 💬 追问：…" 章节追加。
+ */
+export function buildModuleFollowUpPrompt(ctx: {
+  repoName: string;
+  moduleName: string;
+  priorReport: string;
+  question: string;
+}): string {
+  const report = clampPrompt(ctx.priorReport, 12000);
+  const q = ctx.question.trim().slice(0, 300);
+  return `你是一个"开源项目读码导师"。用户正在学习 GitHub 项目「${ctx.repoName}」的「${ctx.moduleName}」模块，刚读完下面这份讲解，现在有一个追问。请基于讲解内容（以及其中引用的代码）直接回答，不要重复讲解已覆盖的内容。
+
+—— 已生成的讲解 ——
+
+"""
+${report}
+"""
+
+—— 追问 ——
+${q}
+
+—— 输出要求 ——
+1. 直接回答追问，2-6 段，可引用讲解里的代码片段（必须来自讲解中已出现的内容）。
+2. 全程中文；代码与文件名保留英文。
+3. 只输出回答正文，不要标题、不要寒暄、不要总结。`;
+}
+
+/**
  * 概念对比（A vs B）提示词：输出“辨析”式报告，同样是 "## " 一级标题协议。
  * 用于用户学到相似/相关概念时，把两个概念放在一起对比，防止混淆。
  */

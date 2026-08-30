@@ -13,7 +13,7 @@ import { cardToCloud, getAllCards, getAllReports, reportToCloud, saveReport, put
 import type { Card } from "./cards";
 import { cloudReportToLocal } from "./cloud";
 
-/** 云端卡片 → 本地 Card（字段名对齐：due_at → dueAt 等） */
+/** 云端卡片 → 本地 Card（字段名对齐：due_at → dueAt 等；时间戳为 D1 毫秒 number） */
 function cloudCardToLocal(c: {
   key: string;
   term: string;
@@ -23,6 +23,8 @@ function cloudCardToLocal(c: {
   interval_days: number;
   reps: number;
   status: string;
+  created_at: number;
+  updated_at: number;
 }): Card {
   return {
     key: c.key,
@@ -33,8 +35,8 @@ function cloudCardToLocal(c: {
     intervalDays: c.interval_days,
     reps: c.reps,
     status: (c.status as Card["status"]) || "new",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
   };
 }
 

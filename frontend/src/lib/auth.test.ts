@@ -213,8 +213,38 @@ describe("oauth 工具", () => {
       await expect(getUserBySession(sql, "nope")).resolves.toBeNull();
       await expect(getUserBySession(sql, null)).resolves.toBeNull();
       await expect(getUserBySession(sql, undefined)).resolves.toBeNull();
-      const forged = (await createSharedSession({ userId: "1" })).token.replace(/.$/, "x");
+      // 篡改 payload 中段一个字符（避开 base64url 末字符低 2 bit 不参与解码的歧义，
+      // 那样可能字节级空操作导致测试间歇性红）
+      const token = (await createSharedSession({ userId: "1" })).token;
+      const [h, p, s] = token.split(".");
+      const mid = Math.floor(p.length / 2);
+      const tampered = p[mid] === "Q" ? "A" : "Q"; // 与原字符至少差 bit 4，解码字节必变
+      const forged = [h, p.slice(0, mid) + tampered + p.slice(mid + 1), s].join(".");
+      expect(forged).not.toBe(token);
       await expect(getUserBySession(sql, forged)).resolves.toBeNull(); // 签名篡改必拒
+    });
+
+    it("callback 签发 → getUserBySession 往返：GitHub id 语义一致，取回同一行且不插幽灵行", async () => {
+      // 回归 P0：callback 签发 JWT 曾误用 D1 内部自增 id（user.id），
+      // 而 getUserBySession 按 github_id（GitHub 全局数字 id）反查 → 永远查不到，
+      // 自动插幽灵用户行，同步数据落错行。
+      // 这里让 D1 内部 id 与 GitHub id 刻意错开（gh.id=5000 → 内部 id=1），
+      // 复刻 callback 签发逻辑：upsert → 用 String(ghUser.id) 签发 → 反查。
+      const gh = { id: 5000, login: "panbo", avatar_url: "a.png", email: null };
+      const sizeBefore = memSql.users.size;
+      const user = await upsertUserFromGithub(sql, gh);
+      expect(user.id).not.toBe(gh.id); // D1 内部自增 id ≠ GitHub id
+      const session = await createSharedSession({
+        userId: String(gh.id), // callback 修复后的语义（非 String(user.id)）
+        login: gh.login,
+        name: null,
+        avatarUrl: gh.avatar_url,
+      });
+      const me = await getUserBySession(sql, session.token);
+      expect(me).not.toBeNull();
+      expect(me!.id).toBe(user.id); // 取回同一行（内部 id 一致）
+      expect(me!.login).toBe(gh.login);
+      expect(memSql.users.size).toBe(sizeBefore + 1); // 只多 upsert 的那一行，无幽灵行
     });
 
     it("legacy 存储型 token（过渡兼容）仍可解析并在登出后失效", async () => {

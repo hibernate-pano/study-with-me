@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { parseGithubRef } from "@/lib/source";
 
 interface Props {
   initial?: string;
@@ -38,6 +39,12 @@ export default function SearchBox({
   const submit = () => {
     const term = value.trim();
     if (!term) return;
+    // 学习引擎：粘贴 GitHub 仓库地址 → 走 repo 学习模式
+    const ref = parseGithubRef(term);
+    if (ref) {
+      router.push(`/repo/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}`);
+      return;
+    }
     router.push(`/analyze/${encodeURIComponent(term)}`);
   };
 
@@ -55,7 +62,7 @@ export default function SearchBox({
         className={`group flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_-12px_rgba(30,40,90,0.18)] transition-all focus-within:border-indigo-400 focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.15)] ${padding}`}
       >
         <svg
-          className="shrink-0 text-slate-400 mt-2"
+          className="shrink-0 text-slate-500 mt-2"
           width={iconSize}
           height={iconSize}
           viewBox="0 0 24 24"
@@ -93,13 +100,14 @@ export default function SearchBox({
           }}
           placeholder={
             isLarge
-              ? "输入一个概念、一段话或一个完整的学习问题…例如：分布式锁、十五规划、什么是Kafka、我在学分布式系统设计，遇到 RCU 这个词，能讲讲吗？"
+              ? "输入概念、问题，或粘贴 GitHub 仓库地址…例如：分布式锁、什么是Kafka、github.com/vercel/next.js、我在学分布式系统设计，遇到 RCU 这个词，能讲讲吗？"
               : "换个输入…"
           }
+          aria-label={isLarge ? "输入要深挖的概念、问题或 GitHub 仓库地址" : "输入要深挖的概念"}
           autoFocus={autoFocus}
           rows={1}
           maxLength={MAX_LEN}
-          className={`flex-1 bg-transparent outline-none text-slate-800 placeholder:text-slate-400 resize-none leading-relaxed scroll-thin ${
+          className={`flex-1 bg-transparent outline-none text-slate-800 placeholder:text-slate-500 resize-none leading-relaxed scroll-thin ${
             isLarge
               ? "text-[21px] py-3.5 min-h-[72px]"
               : "text-[15px] py-1.5 min-h-[36px]"
@@ -117,7 +125,7 @@ export default function SearchBox({
             深挖
           </button>
           {isLarge && (
-            <span className="text-[10.5px] text-slate-400 mr-1 select-none">
+            <span className="text-[10.5px] text-slate-500 mr-1 select-none">
               {value.length}/{MAX_LEN}
             </span>
           )}
@@ -125,7 +133,7 @@ export default function SearchBox({
       </form>
 
       {isLarge && (
-        <p className="mt-2.5 text-center text-[11.5px] text-slate-400">
+        <p className="mt-2.5 text-center text-[11.5px] text-slate-500">
           Enter 提交 · Shift+Enter 换行 · 支持完整段落或问题
         </p>
       )}

@@ -21,6 +21,7 @@ export default function HomePage() {
   const router = useRouter();
   const [dueCount, setDueCount] = useState(0);
   const [recentTerms, setRecentTerms] = useState<string[]>([]);
+  const [recentRepos, setRecentRepos] = useState<string[]>([]);
   const [recentConcepts, setRecentConcepts] = useState<{ term: string; updatedAt: number }[]>(
     []
   );
@@ -30,7 +31,18 @@ export default function HomePage() {
     Promise.all([getAllReports(), getDueCards()])
       .then(([rs, cards]) => {
         const mains = rs.filter(
-          (r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:")
+          (r) =>
+            !r.key.startsWith("drill:") &&
+            !r.key.startsWith("compare:") &&
+            !r.key.startsWith("repo:")
+        );
+        // repo 学习痕迹露出：学过的仓库首页直接可回访（进度记录 repo:progress: 不算）
+        setRecentRepos(
+          rs
+            .filter((r) => r.key.startsWith("repo:") && !r.key.startsWith("repo:progress:"))
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .slice(0, 4)
+            .map((r) => r.term)
         );
         setStats({
           mine: mains.length,
@@ -62,6 +74,7 @@ export default function HomePage() {
       stats={stats}
       dueCount={dueCount}
       recentTerms={recentTerms}
+      recentRepos={recentRepos}
       recentConcepts={recentConcepts}
       onGoMap={() => router.push("/map")}
       onGoReview={() => router.push("/review")}
@@ -76,6 +89,7 @@ function WelcomeHome({
   stats,
   dueCount,
   recentTerms,
+  recentRepos,
   recentConcepts,
   onGoMap,
   onGoReview,
@@ -85,10 +99,12 @@ function WelcomeHome({
   stats: { mine: number; total: number };
   dueCount: number;
   recentTerms: string[];
+  recentRepos: string[];
   recentConcepts: { term: string; updatedAt: number }[];
   onGoMap: () => void;
   onGoReview: () => void;
 }) {
+  const router = useRouter();
   const has = stats.mine > 0;
 
   return (
@@ -152,6 +168,20 @@ function WelcomeHome({
           </button>
         </section>
 
+        {/* 今日到期复习提醒（dueCount > 0 时才出现，hero 下方第一触点） */}
+        {dueCount > 0 && (
+          <button
+            onClick={onGoReview}
+            className="mt-8 mx-auto flex max-w-3xl items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-3 text-[14px] font-medium text-amber-800 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-100 cursor-pointer"
+          >
+            <span aria-hidden>⏰</span>
+            <span>
+              你今天有 <span className="font-bold tabular-nums">{dueCount}</span> 张概念卡到期复习
+            </span>
+            <span aria-hidden className="font-bold">→</span>
+          </button>
+        )}
+
         {/* ── 分隔 ── */}
         <div className="mt-16 mx-auto max-w-3xl border-t border-[var(--line)]" />
 
@@ -198,6 +228,21 @@ function WelcomeHome({
                     {c.term}
                   </span>
                   <span className="text-[10.5px] text-slate-400">{fmtRel(c.updatedAt)}</span>
+                </button>
+              ))}
+              {recentRepos.map((repo) => (
+                <button
+                  key={repo}
+                  onClick={() => {
+                    const [owner, ...rest] = repo.split("/");
+                    router.push(`/repo/${encodeURIComponent(owner)}/${encodeURIComponent(rest.join("/"))}`);
+                  }}
+                  className="group flex items-baseline gap-2 rounded-full border border-indigo-100 bg-indigo-50/60 px-3 py-1.5 hover:border-indigo-300 hover:bg-white cursor-pointer"
+                >
+                  <span className="text-[13px] font-medium text-indigo-700 group-hover:text-indigo-800">
+                    ⌥ {repo}
+                  </span>
+                  <span className="text-[10.5px] text-indigo-300">repo</span>
                 </button>
               ))}
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { parseSections, extractSectionRaw, styleForTitle, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
@@ -26,6 +26,29 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState("");
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
+
+  // dialog 无障碍：Esc 关闭、锁 body 滚动、焦点移入/关闭归还。
+  // 两个 window keydown 监听互斥：命令面板打开时它浮在最上层，Esc 归面板，
+  // 抽屉不响应，避免一次 Esc 把抽屉和面板同时关掉。
+  useEffect(() => {
+    if (!concept) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    drawerRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (document.querySelector(".kbar-backdrop")) return; // 命令面板开着，让面板先吃掉这次 Esc
+      onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+      prevFocus?.focus?.();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concept?.name, concept?.relationType]);
 
   useEffect(() => {
     if (!concept) {
@@ -131,7 +154,14 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
         aria-hidden="true"
       />
       {/* 抽屉 */}
-      <aside className="fixed top-0 right-0 h-screen w-full sm:w-[560px] bg-white shadow-2xl z-40 flex flex-col animate-[slideInRight_0.25s_ease-out]">
+      <aside
+        ref={drawerRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`深挖：${concept.name}`}
+        className="fixed top-0 right-0 h-screen w-full sm:w-[560px] bg-white shadow-2xl z-40 flex flex-col outline-none animate-[slideInRight_0.25s_ease-out]"
+      >
         <header className="shrink-0 border-b border-[var(--line)] px-5 py-3 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -142,7 +172,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
               <span className="text-[11.5px] font-bold tracking-wide uppercase" style={{ color: concept.color }}>
                 {concept.groupLabel}
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-500">
                 · 你正在追问 <span className="font-bold text-slate-600">{parentTerm}</span> 时遇到的
               </span>
             </div>
@@ -194,7 +224,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
           ))}
 
           {streaming && visibleSections.length > 0 && (
-            <div className="text-[11.5px] text-slate-400 text-center py-2 animate-pulse">
+            <div className="text-[11.5px] text-slate-500 text-center py-2 animate-pulse">
               仍在生成…
             </div>
           )}
@@ -224,7 +254,7 @@ function DrawerSection({ section, streaming }: { section: Section; streaming: bo
         <span className="h-6 w-1 rounded-full shrink-0" style={{ background: s.accent }} />
         <h3 className="text-[14px] font-bold text-slate-800 flex-1">{section.title}</h3>
         {streaming && section.content && (
-          <span className="text-[10.5px] text-slate-400 animate-pulse">生成中…</span>
+          <span className="text-[10.5px] text-slate-500 animate-pulse">生成中…</span>
         )}
       </div>
       <div className={`px-4 pb-4 pt-1 md ${streaming ? "caret" : ""}`}>
