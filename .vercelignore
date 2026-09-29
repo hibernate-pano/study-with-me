@@ -1,0 +1,49 @@
+# Vercel 部署忽略清单
+#
+# 为什么显式写：没有这个文件时 Vercel CLI 会回退用 .gitignore 决定上传内容。
+# 根目录有 6 个 env 文件（.env / .env.local / .env.vercel / .env.debug /
+# .env.recovered），里面是 AI_API_KEY 和 GitHub 客户端密钥。
+# 显式列出比依赖回退行为可靠——密钥不该靠"应该会被挡住"。
+#
+# 注意：一旦存在本文件，它就**取代** .gitignore 作为唯一依据，
+# 所以下面必须把 .gitignore 里该挡的都挡住，而不是只写增量。
+
+# ---------- 环境变量与密钥（最重要）----------
+.env
+.env.*
+!.env.example
+
+# ---------- 依赖与构建产物 ----------
+node_modules
+.next
+out
+*.tsbuildinfo
+
+# ---------- 版本控制与工具目录 ----------
+.git
+.github
+.zcode
+.vscode
+.idea
+.pi
+.workbuddy
+.video_agent
+.mimosa
+.v2c
+
+# ---------- 日志与覆盖率 ----------
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage
+
+# ---------- 系统与编辑器 ----------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.pem
+
+# ---------- 文档（不参与构建）----------
+QWEN.md
+DEPLOY_VERCEL.md

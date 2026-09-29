@@ -10,7 +10,8 @@ node_modules/
 *.tsbuildinfo
 
 # ---------- Environment files ----------
-.env
+.env*
+!.env.example
 .env.development.local
 .env.test.local
 .env.production.local
@@ -54,3 +55,11 @@ coverage/
 # OS-specific
 *.pem
 .pi/
+.workbuddy/
+.video_agent/
+.mimosa/
+.v2c/
+.zcode/
+
+# UI 审计用 Playwright 跑浏览器时留下的控制台日志
+.playwright-mcp/

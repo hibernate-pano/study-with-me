@@ -5,12 +5,16 @@
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   github_id INTEGER UNIQUE NOT NULL,      -- GitHub 用户 ID（永不变化的主键依据）
-  login TEXT UNIQUE NOT NULL,            -- GitHub 用户名
+  login TEXT NOT NULL,                   -- GitHub 用户名：可被回收/改名，不可作唯一键
   avatar_url TEXT,
   email TEXT,                            -- 可能为 null（GitHub 隐私设置）
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+-- login 降级为普通索引：GitHub 用户名可被回收，A 改名不回来期间 B 接管同名，
+-- UNIQUE 会让 B 的登录 callback 撞约束失败（?auth=error），也会让「首次落用户行」
+-- 的读路径 INSERT 撞约束、把 A 静默降级成游客。
+CREATE INDEX IF NOT EXISTS idx_users_login ON users(login);
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,                -- crypto 随机 32 字节 hex
@@ -50,8 +54,11 @@ CREATE TABLE IF NOT EXISTS cards (
 );
 
 -- AI 限流计数（rateLimit.ts 的 aiAccess）：
--- key 约定：匿名分钟窗 `ip:<ip>:m<窗口起点毫秒>`；登录日配额 `u:<userId>:d<YYYY-MM-DD>`。
--- 过期行不再被命中即自然失效，量级 = 活跃 IP×分钟 + 用户×天，暂不清理。
+-- key 固定为 `ip:<ip>`（匿名 60s 窗）/ `u:<userId>`（登录日配额）/ `d:ip:<ip>`（匿名日配额），
+-- **不把窗口起点编进 key**（早前 `ip:<ip>:m<窗口起点>` 每活跃窗口新增一行、永久累积）；
+-- 窗口归属由行上的 updated_at 判定，所以行数只随「独立 IP / 独立用户」增长。
+-- 仍存的缺口：不活跃 IP / 不再登录的用户的旧行也长期驻留，彻底回收需要一个
+-- 带 D1 凭据的清理端点 + cron（vercel.json crons 只能调度 HTTP 端点、执行不了 SQL）。
 CREATE TABLE IF NOT EXISTS rate_limits (
   key TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0,

@@ -39,7 +39,7 @@ setup_env_file() {
 install_dependencies() {
     print_info "正在安装 frontend 依赖..."
     cd frontend
-    npm install
+    pnpm install --frozen-lockfile
     local ok=$?
     cd ..
     if [ $ok -ne 0 ]; then
@@ -52,7 +52,7 @@ install_dependencies() {
 build_project() {
     print_info "正在构建 frontend..."
     cd frontend
-    npm run build
+    pnpm run build
     local ok=$?
     cd ..
     if [ $ok -ne 0 ]; then
