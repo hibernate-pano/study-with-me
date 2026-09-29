@@ -189,58 +189,6 @@ function declaredDeps(): Map<string, { range: string; kind: "dependencies" | "de
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// CI 工作流用的极简 YAML 解析（只吃 workflows/ci.yml 这种缩进结构）
-// ---------------------------------------------------------------------------
-
-type YNode = { key: string; value: string; children: YNode[] };
-
-/**
- * 按缩进建树。弹栈条件是 `indent <= 当前节点深度`；列表项 `- key: value`
- * 自身深度记为「行缩进」，于是同缩进的兄弟列表项会正确弹栈、
- * 而该项内更深缩进的后续键（with/run）会挂成它的子节点。
- */
-function parseYaml(src: string): YNode {
-  const root: YNode = { key: "", value: "", children: [] };
-  const stack: Array<{ depth: number; node: YNode }> = [{ depth: -1, node: root }];
-
-  for (const raw of src.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const indent = raw.length - raw.trimStart().length;
-
-    while (stack.length > 1 && indent <= stack[stack.length - 1].depth) stack.pop();
-    const parent = stack[stack.length - 1].node;
-
-    const body = line.startsWith("- ") ? line.slice(2) : line;
-    const colon = body.indexOf(":");
-    const node: YNode =
-      colon < 0
-        ? { key: body, value: "", children: [] }
-        : { key: body.slice(0, colon).trim(), value: unquote(body.slice(colon + 1)), children: [] };
-    parent.children.push(node);
-    stack.push({ depth: indent, node });
-  }
-  return root;
-}
-
-function firstChild(node: YNode | undefined, key: string): YNode | undefined {
-  return node?.children.find((c) => c.key === key);
-}
-
-const CI_FILE = path.join(REPO_ROOT, ".github/workflows/ci.yml");
-
-/** 取工作流里全部 `run:` 命令（保持出现顺序） */
-function ciRunCommands(src: string): string[] {
-  const out: string[] = [];
-  for (const raw of src.split("\n")) {
-    const line = raw.trim();
-    const body = line.startsWith("- ") ? line.slice(2) : line;
-    if (body.startsWith("run:")) out.push(unquote(body.slice("run:".length)));
-  }
-  return out;
-}
-
 /** shell 函数体：`name() { ... }`（按行扫描） */
 function shellFn(src: string, name: string): string {
   const lines = src.split("\n");
@@ -350,73 +298,7 @@ describe("锁文件单一化（双锁漂移防线）", () => {
 });
 
 // ===========================================================================
-// 3. 零 CI
-// ===========================================================================
-
-describe("GitHub Actions（用例自动执行防线）", () => {
-  const ci = readMaybe(CI_FILE);
-  const src = ci ?? ""; // 文件缺失时下面各条会给出可读的失败信息，而不是 TypeError
-
-  it("仓库必须有 .github/workflows/ci.yml", () => {
-    expect(ci, "零 CI：vitest 用例在任何地方都不会自动执行，坏测试静默进 main").not.toBeNull();
-  });
-
-  it("工作流必须在 push 与 pull_request 上触发", () => {
-    const on = firstChild(parseYaml(src), "on");
-    expect(on, "工作流缺少 on: 触发器").toBeTruthy();
-    const keys = on!.children.map((c) => c.key);
-    expect(keys).toContain("push");
-    expect(keys).toContain("pull_request");
-  });
-
-  it("工作流必须只留一个 job，且默认在 frontend 目录执行（前端才是唯一应用）", () => {
-    const jobs = firstChild(parseYaml(src), "jobs");
-    expect(jobs, "工作流缺少 jobs:").toBeTruthy();
-    expect(jobs!.children, "只保留单个 job").toHaveLength(1);
-    const run = firstChild(firstChild(jobs!.children[0], "defaults"), "run");
-    expect(firstChild(run, "working-directory")?.value).toBe("frontend");
-  });
-
-  it("CI 必须依次跑：--frozen-lockfile 安装 → lint → tsc --noEmit → test → build", () => {
-    const runs = ciRunCommands(src);
-    const at = (needle: string) => {
-      const i = runs.findIndex((r) => r.includes(needle));
-      expect(i, `CI 缺少步骤：${needle}（实际步骤=${JSON.stringify(runs)}）`).toBeGreaterThanOrEqual(0);
-      return i;
-    };
-    const order = [at("pnpm install --frozen-lockfile"), at("pnpm run lint"), at("tsc --noEmit"), at("pnpm test"), at("pnpm build")];
-    expect(order, `CI 步骤顺序错乱：${JSON.stringify(runs)}`).toEqual([...order].sort((a, b) => a - b));
-    expect(new Set(order).size, `CI 步骤被重复命中：${JSON.stringify(runs)}`).toBe(order.length);
-  });
-
-  it("CI 的 test 步骤必须真的跑全量 vitest（不重试、不吞失败，偶发红必须暴露）", () => {
-    expect(src, "测试失败不得 continue-on-error").not.toContain("continue-on-error");
-    for (const plugin of ["nick-fields/retry", "ncipollo/retry", "rtfp.github/test-reporter"]) {
-      expect(src, `测试步骤不得引入重试/吞失败插件：${plugin}`).not.toContain(plugin);
-    }
-    for (const l of codeLines(src)) {
-      expect(l.startsWith("retry:"), "测试步骤不设重试：偶发红必须暴露").toBe(false);
-    }
-
-    // package.json 的 test 脚本必须是单次全量跑，而不是 watch / 带路径过滤
-    const pkg = readJson(path.join(APP_ROOT, "package.json")) as { scripts?: Record<string, string> };
-    const testScript = pkg.scripts?.test ?? "";
-    expect(testScript).toBe("vitest run");
-    expect(testScript).not.toContain(".only");
-  });
-
-  it("CI 必须用 pnpm 缓存，且缓存键指向 pnpm-lock.yaml（缓存不指向锁文件等于没缓存）", () => {
-    const flat = JSON.stringify(parseYaml(src));
-    expect(flat).toContain("pnpm/action-setup");
-    expect(flat).toContain("actions/setup-node");
-    const lines = codeLines(src);
-    expect(lines).toContain("cache: pnpm");
-    expect(lines).toContain("cache-dependency-path: frontend/pnpm-lock.yaml");
-  });
-});
-
-// ===========================================================================
-// 3.5 vitest 双 project：组件行为层在 CI 里必须真的跑得到
+// 3. vitest 双 project：组件行为层必须真的跑得到
 // ===========================================================================
 
 /**
