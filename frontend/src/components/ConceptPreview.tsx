@@ -42,10 +42,14 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
   const conceptDesc = node.description || "";
 
   return (
+    // 这里刻意不声明 aria-modal：这是一块无遮罩的侧边预览，背后的地图始终可见可点
+    // （点别的节点会直接换预览内容）。声明 aria-modal 等于告诉读屏「背景是惰性的」，
+    // 而它并不惰性——要么对 AT 谎报，要么就把背景 inert 掉、顺带废掉地图的交互。
+    // 非模态 dialog 是合法的 ARIA 组合，只是要补上可访问名。
     <div
       className="fixed inset-y-0 right-0 z-40 w-full sm:w-[380px] pointer-events-none fade-up"
       role="dialog"
-      aria-modal
+      aria-label={`概念预览：${node.label}`}
     >
       <div className="h-full pointer-events-auto surface border-l border-white/40 rounded-none sm:rounded-l-2xl overflow-y-auto scroll-thin">
         <div className="px-6 py-5">

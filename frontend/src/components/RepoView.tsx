@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { stripStreamMarkers } from "@/lib/stream";
 import { parseAtlas, type Atlas, type AtlasModule } from "@/lib/atlas";
 import { getReport, saveReport, getRepoProgress, saveRepoProgress, syncRepoCards } from "@/lib/storage";
 import RepoModuleDrawer from "./RepoModuleDrawer";
@@ -111,7 +112,8 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
           setModuleAtlas(parsed);
           setSubSelected(parsed.path[0]?.moduleId ?? parsed.modules[0]?.id ?? null);
           setModuleMapState("idle");
-          saveReport({ key: mapKey, term: `${title} · ${mod.name} 内部地图`, fullText: buf, related: [], createdAt: Date.now(), updatedAt: Date.now() }).catch(() => {});
+          // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
+          saveReport({ key: mapKey, term: `${title} · ${mod.name} 内部地图`, fullText: stripStreamMarkers(buf), related: [], createdAt: Date.now(), updatedAt: Date.now() }).catch(() => {});
         } catch (err: unknown) {
           if (myGen !== drillGenRef.current) return;
           if (typeof err === "object" && err !== null && "name" in err && (err as { name?: string }).name === "AbortError") return;
@@ -177,7 +179,8 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
       setSelected(parsed.path[0]?.moduleId ?? parsed.modules[0]?.id ?? null);
       setStreaming(false);
       setCachedAt(Date.now());
-      saveReport({ key: storageKey, term: title, fullText: bufferRef.current, related: [], createdAt: Date.now(), updatedAt: Date.now() }).catch(() => {});
+      // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
+      saveReport({ key: storageKey, term: title, fullText: stripStreamMarkers(bufferRef.current), related: [], createdAt: Date.now(), updatedAt: Date.now() }).catch(() => {});
       // 路线内容已变：旧进度按索引对不上，重置（进度本身也同步重置到云端）
       setDoneSteps(new Set());
       void saveRepoProgress(storageKey, new Set()).catch(() => {});

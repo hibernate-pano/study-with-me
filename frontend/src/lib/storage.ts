@@ -8,6 +8,8 @@ import type { FlatConcept } from "./network";
 import { parseQuizSection, newCard, type Card } from "./cards";
 import { extractSectionRaw } from "./stream";
 import type { Atlas } from "./atlas";
+import type { Reflection, Task, Zone } from "./tasks";
+import type { ExamSet } from "./exams";
 
 export interface StoredReport {
   key: string;
@@ -23,7 +25,10 @@ export interface StoredReport {
 const DB_NAME = "concept-digger";
 const REPORTS_STORE = "reports";
 const CARDS_STORE = "cards";
-const DB_VERSION = 2;
+const TASKS_STORE = "tasks"; // 拉伸区任务（每日）
+const REFLECTIONS_STORE = "reflections"; // 每日反思（每日一条）
+const EXAM_SETS_STORE = "exam_sets"; // 出题大师：题库 + 试卷 + 作答记录
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -35,7 +40,25 @@ function openDB(): Promise<IDBDatabase> {
       reject(new Error("indexedDB not available"));
       return;
     }
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const fail = (e: Error) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      reject(e);
+    };
+    // 5s 兜底：正常路径（连接关闭）会立即 resolve，挂死说明连接泄漏/浏览器异常，
+    // 给出可读错误，配合下面的重置逻辑允许重试。
+    timer = setTimeout(
+      () => fail(new Error("IndexedDB 打开超时，请关闭其他页面后刷新")),
+      5000
+    );
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+    // onblocked：升级被其他标签页的旧连接挡住。连接一旦关闭挂起的 open 会立刻 resolve，
+    // 所以不处理只是「无提示地卡住」；显式 reject 让调用方能报错并重试。
+    req.onblocked = () =>
+      fail(new Error("IndexedDB 升级被其他标签页阻塞，请关闭其他页面后刷新"));
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(REPORTS_STORE)) {
@@ -47,9 +70,27 @@ function openDB(): Promise<IDBDatabase> {
         cards.createIndex("dueAt", "dueAt");
         cards.createIndex("term", "term");
       }
+      if (!db.objectStoreNames.contains(TASKS_STORE)) {
+        const tasks = db.createObjectStore(TASKS_STORE, { keyPath: "id", autoIncrement: true });
+        tasks.createIndex("date", "date");
+      }
+      if (!db.objectStoreNames.contains(REFLECTIONS_STORE)) {
+        db.createObjectStore(REFLECTIONS_STORE, { keyPath: "date" });
+      }
+      if (!db.objectStoreNames.contains(EXAM_SETS_STORE)) {
+        const exams = db.createObjectStore(EXAM_SETS_STORE, { keyPath: "id" });
+        exams.createIndex("updatedAt", "updatedAt");
+      }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // 其他标签页要升版本时主动让路，否则它们会一直停在 onblocked
+      db.onversionchange = () => db.close();
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve(db);
+    };
+    req.onerror = () => fail(req.error ?? new Error("indexedDB open failed"));
   });
 
   // 失败后允许重试（如隐私模式下的 IndexedDB 异常）
@@ -170,14 +211,23 @@ function notifyCloud(payload: CloudPushPayload): void {
 
 // ---------------- reports ----------------
 
-/** 保存/覆盖一份报告（写入本地 + 触发云推送） */
-export async function saveReport(report: StoredReport): Promise<void> {
+/** saveReport 入参：updatedAt 可省略（省略时由 storage 补 Date.now()） */
+export type SaveReportInput = Omit<StoredReport, "updatedAt"> & { updatedAt?: number };
+
+/** 保存/覆盖一份报告（写入本地 + 触发云推送）
+ *
+ *  updatedAt 语义：调用方显式传入时**尊重它**，只有缺省才用 now。
+ *  云端拉取必须把 updated_at 原样带下来——曾经这里无条件 `updatedAt: now`，
+ *  于是每次整页加载都会把「本地比云端新」的副本退回旧版、时间戳还刷成 now，
+ *  用户看到的是「刚刚更新 + 旧内容」。
+ */
+export async function saveReport(report: SaveReportInput): Promise<void> {
   const now = Date.now();
   const existing = await getReport(report.key);
   const record: StoredReport = {
     ...report,
     createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
+    updatedAt: report.updatedAt ?? now,
   };
   // 写操作需要完整事务，不能用上面的简写 tx；连接保持复用，不 close（单页应用常态）
   const db = await openDB();
@@ -381,16 +431,151 @@ export async function syncRepoCards(repoTitle: string, atlas: Atlas): Promise<nu
   return added;
 }
 
-/** 清空全部本地数据（reports + cards；用于测试重置，也可供"退出登录清空"类功能使用） */
+/** 清空全部本地数据（用于测试重置；供未来"清空本机数据"功能复用）。 */
 export async function clearAllLocalData(): Promise<void> {
   const db = await openDB();
   await new Promise<void>((resolve, reject) => {
-    const t = db.transaction([REPORTS_STORE, CARDS_STORE], "readwrite");
-    t.objectStore(REPORTS_STORE).clear();
-    t.objectStore(CARDS_STORE).clear();
+    const t = db.transaction(
+      [REPORTS_STORE, CARDS_STORE, TASKS_STORE, REFLECTIONS_STORE, EXAM_SETS_STORE],
+      "readwrite"
+    );
+    for (const store of [
+      REPORTS_STORE,
+      CARDS_STORE,
+      TASKS_STORE,
+      REFLECTIONS_STORE,
+      EXAM_SETS_STORE,
+    ]) {
+      t.objectStore(store).clear();
+    }
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
+}
+
+// ---------------- 出题大师 ----------------
+
+/** 保存整套题库、试卷和作答记录。 */
+export async function saveExamSet(exam: ExamSet): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(EXAM_SETS_STORE, "readwrite");
+    t.objectStore(EXAM_SETS_STORE).put(exam);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+export function getExamSet(id: string): Promise<ExamSet | undefined> {
+  return tx(EXAM_SETS_STORE, "readonly", (store) => store.get(id)).then(
+    (value) => value as ExamSet | undefined
+  );
+}
+
+export async function getAllExamSets(): Promise<ExamSet[]> {
+  const all = (await tx(
+    EXAM_SETS_STORE,
+    "readonly",
+    (store) => store.getAll()
+  )) as ExamSet[];
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function deleteExamSet(id: string): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(EXAM_SETS_STORE, "readwrite");
+    t.objectStore(EXAM_SETS_STORE).delete(id);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+// ---------------- 每日任务 / 反思 ----------------
+// ponytail: 当前仅本地 IndexedDB；登录态云同步（D1 tasks/reflections 表）暂不接，
+// 单设备够用。升级路径——补 D1 schema + sync payload 即可复用 reports/ 那套 cloudPusher。
+
+const VALID_ZONES: ReadonlySet<Zone> = new Set(["comfort", "stretch", "difficult"]);
+
+/** 当天任务列表（按 id 顺序） */
+export async function getTasksByDate(date: string): Promise<Task[]> {
+  const all = (await tx(TASKS_STORE, "readonly", (s) => s.getAll())) as Task[];
+  return all
+    .filter((t) => t.date === date)
+    .sort((a, b) => a.id - b.id);
+}
+
+/** 全部任务（趋势页统计用） */
+export async function getAllTasks(): Promise<Task[]> {
+  return (await tx(TASKS_STORE, "readonly", (s) => s.getAll())) as Task[];
+}
+
+/** 读取某天的反思；没有 → 空记录 */
+export async function getReflection(date: string): Promise<Reflection> {
+  const r = (await tx(REFLECTIONS_STORE, "readonly", (s) => s.get(date))) as
+    | Reflection
+    | undefined;
+  return r ?? { date, autopilot: "", stretch: "", updatedAt: 0 };
+}
+
+/** 全部反思（时间线 + 趋势统计用） */
+export async function getAllReflections(): Promise<Reflection[]> {
+  return (await tx(REFLECTIONS_STORE, "readonly", (s) => s.getAll())) as Reflection[];
+}
+
+/** 新增一条任务；返回新 id */
+export async function addTask(date: string, content: string, zone: Zone): Promise<number> {
+  const db = await openDB();
+  return new Promise<number>((resolve, reject) => {
+    const t = db.transaction(TASKS_STORE, "readwrite");
+    const req = t.objectStore(TASKS_STORE).add({ date, content, zone, done: 0 });
+    req.onsuccess = () => resolve(req.result as number);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** 切换任务 done 状态 */
+export async function toggleTask(id: number, done: 0 | 1): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(TASKS_STORE, "readwrite");
+    const store = t.objectStore(TASKS_STORE);
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const cur = getReq.result as Task | undefined;
+      if (!cur) return;
+      store.put({ ...cur, done });
+    };
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+/** 删除一条任务 */
+export async function deleteTask(id: number): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(TASKS_STORE, "readwrite");
+    t.objectStore(TASKS_STORE).delete(id);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+/** upsert 一天的反思 */
+export async function saveReflection(r: Reflection): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(REFLECTIONS_STORE, "readwrite");
+    t.objectStore(REFLECTIONS_STORE).put({ ...r, updatedAt: Date.now() });
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+/** 复用：清洗 zone 入参 */
+export function normalizeZone(z: unknown): Zone {
+  return VALID_ZONES.has(z as Zone) ? (z as Zone) : "stretch";
 }
 
 // ---------------- talkshow 已开讲标记 ----------------

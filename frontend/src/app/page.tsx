@@ -78,6 +78,8 @@ export default function HomePage() {
       recentConcepts={recentConcepts}
       onGoMap={() => router.push("/map")}
       onGoReview={() => router.push("/review")}
+      onGoToday={() => router.push("/today")}
+      onGoExam={() => router.push("/exam")}
     />
   );
 }
@@ -93,6 +95,8 @@ function WelcomeHome({
   recentConcepts,
   onGoMap,
   onGoReview,
+  onGoToday,
+  onGoExam,
 }: {
   onStart: (q: string) => void;
   onOpenPalette: () => void;
@@ -103,6 +107,8 @@ function WelcomeHome({
   recentConcepts: { term: string; updatedAt: number }[];
   onGoMap: () => void;
   onGoReview: () => void;
+  onGoToday: () => void;
+  onGoExam: () => void;
 }) {
   const router = useRouter();
   const has = stats.mine > 0;
@@ -166,6 +172,17 @@ function WelcomeHome({
               </span>
             </span>
           </button>
+
+          <button
+            onClick={onGoExam}
+            className="mt-4 mx-auto flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-[13px] font-medium text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+          >
+            <span aria-hidden>📝</span>
+            <span>出题大师</span>
+            <span className="text-indigo-300">·</span>
+            <span className="text-indigo-600">上传课本，生成多套试卷</span>
+            <span aria-hidden>→</span>
+          </button>
         </section>
 
         {/* 今日到期复习提醒（dueCount > 0 时才出现，hero 下方第一触点） */}
@@ -213,6 +230,14 @@ function WelcomeHome({
               >
                 <span>🗺</span>
                 <span>知识网络地图</span>
+                <span>→</span>
+              </button>
+              <button
+                onClick={onGoToday}
+                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+              >
+                <span>📅</span>
+                <span>今日打卡</span>
                 <span>→</span>
               </button>
             </div>

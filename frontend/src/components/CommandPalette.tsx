@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
+import { useFocusTrap } from "@/components/useFocusTrap";
 import { getAllReports, getDueCards } from "@/lib/storage";
 
 /**
@@ -18,6 +19,7 @@ type NewItem = { kind: "new" };
 type Item = ReportItem | ActionItem | NewItem;
 
 const ACTIONS: ActionItem[] = [
+  { kind: "action", id: "exam", title: "出题大师", subtitle: "上传课本，生成题库和多套试卷", icon: "📝" },
   { kind: "action", id: "review", title: "去复习", subtitle: "间隔重复自测题", icon: "🗂" },
   { kind: "action", id: "map", title: "我的知识网络（焦点）", subtitle: "全屏沉浸式地图", icon: "🗺" },
   { kind: "action", id: "compare", title: "概念对比", subtitle: "把两个概念放一起辨析", icon: "⚖️" },
@@ -30,6 +32,7 @@ export default function CommandPalette() {
   const [reports, setReports] = useState<{ term: string; updatedAt: number; isRepo?: boolean }[]>([]);
   const [dueCount, setDueCount] = useState(0);
   const [active, setActive] = useState(0);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   // ⌘K / Ctrl+K 触发 + 自定义事件（让任意按钮能打开）
   useEffect(() => {
@@ -106,6 +109,7 @@ export default function CommandPalette() {
         return;
       }
       if (item.id === "review") router.push("/review");
+      else if (item.id === "exam") router.push("/exam");
       else if (item.id === "map") router.push("/map");
       else if (item.id === "compare") {
         // 用最近的两个概念做对比；不够则去 /compare 自填
@@ -136,6 +140,10 @@ export default function CommandPalette() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, flat.length]);
+
+  // 模态无障碍：焦点进面板（第一个可聚焦元素就是搜索框）、Tab 在面板内循环、
+  // 背景置 inert、关闭后把焦点还给触发它的那个元素。
+  useFocusTrap(panelRef, open, { initialFocus: "first" });
 
   if (!open) return null;
 
@@ -179,10 +187,13 @@ export default function CommandPalette() {
       className="fixed inset-0 z-[100] grid place-items-start pt-[12vh] kbar-backdrop fade-up"
       onClick={() => setOpen(false)}
       role="dialog"
-      aria-modal
+      aria-modal="true"
+      aria-label="命令面板"
     >
       <div
-        className="kbar-panel mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_30px_80px_-20px_rgba(15,23,42,0.5)]"
+        ref={panelRef}
+        tabIndex={-1}
+        className="kbar-panel mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_30px_80px_-20px_rgba(15,23,42,0.5)] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 输入区 */}

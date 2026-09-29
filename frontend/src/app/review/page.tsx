@@ -34,9 +34,14 @@ export default function ReviewPage() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      // 只认裸按键：⌘1..9 / Ctrl+1..9 / Alt+1..9 是浏览器切标签页，切走前 keydown
+      // 会先派发到本页，误落进下面的 grade 分支会静默抹掉这张卡的间隔与已学次数。
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "Space") {
-        e.preventDefault(); // 防止页面滚动
-        if (current && !showAnswer) setShowAnswer(true);
+        if (current && !showAnswer) {
+          e.preventDefault(); // 防止页面滚动
+          setShowAnswer(true);
+        }
       } else if (e.key === "1") {
         if (current && showAnswer) void grade(false);
       } else if (e.key === "2") {

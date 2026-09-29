@@ -40,6 +40,17 @@ export function readSessionToken(req: Request): string | null {
   return cookies[SHARED_COOKIE] || cookies[LEGACY_COOKIE] || null;
 }
 
+/**
+ * 只读旧的存储型 cookie（cd_session）。
+ * 登出用它决定要不要删 sessions 行：共享 JWT 不写该表（删了也命中 0 行），
+ * 旧 token 才有行可删、删了才真失效。
+ */
+export function readLegacySessionToken(req: Request): string | null {
+  const header = req.headers.get("cookie");
+  if (!header) return null;
+  return parseCookies(header)[LEGACY_COOKIE] || null;
+}
+
 /** NextResponse.cookies.set 用的一组属性 */
 export function sharedCookieOptions(maxAge = MAX_AGE_SECONDS) {
   return {

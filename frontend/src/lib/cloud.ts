@@ -81,6 +81,12 @@ export async function pushCloud(payload: {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`云端推送失败（${res.status}）`);
+  const data = (await res.json().catch(() => null)) as
+    | { ok?: boolean; failures?: string[] }
+    | null;
+  if (data?.ok === false) {
+    throw new Error(`部分数据同步失败：${data.failures?.join(", ") || "未知错误"}`);
+  }
 }
 
 /** 云端 related（JSON 字符串或数组）→ 数组 */

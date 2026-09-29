@@ -12,6 +12,32 @@ export interface SectionStyle {
   badge: string; // 徽标底色
 }
 
+export const STREAM_ERROR_MARKER = "<!-- STREAM_ERROR -->";
+/** 上游因 max_tokens 截断时下发：内容残缺，不得当作完成报告入库。 */
+export const STREAM_TRUNCATED_MARKER = "<!-- TRUNCATED -->";
+/** 正常收尾标记：缺失即代表连接提前结束（截断/中断），前端必须拒绝入库。 */
+export const STREAM_DONE_MARKER = "<!-- DONE -->";
+
+/** 服务端流式中断标记：存在时前端不得把残缺内容当作完成报告入库。 */
+export function hasStreamError(text: string): boolean {
+  return text.includes(STREAM_ERROR_MARKER);
+}
+
+const ALL_STREAM_MARKERS = [STREAM_DONE_MARKER, STREAM_TRUNCATED_MARKER, STREAM_ERROR_MARKER];
+
+/**
+ * 剥掉流式协议标记（DONE / TRUNCATED / STREAM_ERROR）。
+ * 这些是传输层信号，不属于报告正文：入库、复制、导出前统一走这里，
+ * 避免存档里混入 `<!-- DONE -->`。
+ */
+export function stripStreamMarkers(text: string): string {
+  let out = text;
+  for (const m of ALL_STREAM_MARKERS) {
+    out = out.split(m).join("");
+  }
+  return out.trimEnd();
+}
+
 export function styleForTitle(title: string): SectionStyle {
   // —— 对比报告专用标题（放在通用关键词之前，避免误匹配） ——
   if (title.includes("一句话辨析") || title.includes("辨析"))
@@ -108,13 +134,19 @@ export function extractSectionText(md: string, titleIncludes: string, maxLen = 1
 export function parseSections(md: string): Section[] {
   const lines = md.split("\n");
   const sections: Section[] = [];
+  const used = new Set<string>();
   let current: Section | null = null;
 
   for (const line of lines) {
     const m = line.match(/^##\s+(.+)$/);
     if (m) {
       const title = m[1].trim();
-      current = { id: slugifyTitle(title), title, content: "" };
+      // 同名标题会产生同一个 slug：撞名时加序号后缀，避免折叠状态联动 + 目录锚点重复
+      const base = slugifyTitle(title);
+      let id = base;
+      for (let i = 2; used.has(id); i++) id = `${base}-${i}`;
+      used.add(id);
+      current = { id, title, content: "" };
       sections.push(current);
     } else if (current) {
       current.content += line + "\n";

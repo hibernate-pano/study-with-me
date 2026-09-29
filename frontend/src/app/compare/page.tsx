@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SectionCard from "@/components/SectionCard";
-import { parseSections, extractSectionRaw, type Section } from "@/lib/stream";
+import { parseSections, extractSectionRaw, stripStreamMarkers, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups } from "@/lib/network";
 import { saveReport, getReport } from "@/lib/storage";
 
@@ -108,7 +108,8 @@ function CompareInner() {
         flushRef.current();
 
         // 完成才入库（对比报告也是知识库的一页）
-        const text = bufferRef.current;
+        // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
+        const text = stripStreamMarkers(bufferRef.current);
         const groups = parseNetworkMarkdown(extractSectionRaw(text, "知识网络"));
         await saveReport({
           key: compareKey(x, y),

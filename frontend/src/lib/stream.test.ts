@@ -1,5 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { createElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ReactMarkdown from "react-markdown";
+import { markdownCodeComponents } from "@/components/codeRenderer";
 import { parseSections, slugifyTitle, styleForTitle, extractSectionRaw, extractSectionText } from "./stream";
+
+// CodeBlock.tsx 含 JSX，vitest 在 tsconfig jsx:preserve 下无法解析 .tsx（同 SectionCard.test.ts 的处理）。
+// 这里只关心「流式半截 buffer 会不会被当成 mermaid 代码块交给 CodeBlock」，用替身记录入参即可。
+const { codeBlockCalls } = vi.hoisted(() => ({
+  codeBlockCalls: [] as { className?: string; text: string }[],
+}));
+vi.mock("@/components/CodeBlock", () => ({
+  default: ({ children, className }: { children?: ReactNode; className?: string }) => {
+    codeBlockCalls.push({ className, text: String(children ?? "") });
+    return createElement("pre", null, createElement("code", { className }, children));
+  },
+}));
 
 describe("parseSections", () => {
   it("解析标准 ## 分区", () => {
@@ -191,5 +207,61 @@ describe("extractSectionText", () => {
 
   it("没命中返回空串", () => {
     expect(extractSectionText("## x\n内容", "yyy")).toBe("");
+  });
+});
+
+/**
+ * 流式半截 mermaid 围栏 —— Mermaid 失败态的**输入侧**。
+ *
+ * 这组不测组件（node 环境无 DOM，.tsx 也无法被 vitest 解析，见 Mermaid.contract.test.ts 顶部说明），
+ * 而是把「Mermaid 为什么会先失败一次」这条链路用真实代码跑通：流式期间前端每 120ms 用当前
+ * buffer 重跑一次 parseSections，未闭合的 ``` 围栏在 CommonMark 里合法，照样产出代码节点。
+ * 它守的是 Mermaid 必须扛住半截输入这个前提——前提没了，组件里的 setError(null) 就白写了。
+ */
+describe("流式半截 mermaid 围栏（喂给 Mermaid 的输入侧）", () => {
+  const ARCH = "架构模块";
+  // 一段真实会产出 mermaid 的深挖输出，截成流式过程中的若干帧
+  const STREAM_FRAMES = [
+    `## ${ARCH}\n\n\`\`\`mermaid\n`,
+    `## ${ARCH}\n\n\`\`\`mermaid\ng`,
+    `## ${ARCH}\n\n\`\`\`mermaid\ngraph T`,
+    `## ${ARCH}\n\n\`\`\`mermaid\ngraph TD\n A[深挖] -->`,
+    `## ${ARCH}\n\n\`\`\`mermaid\ngraph TD\n A[深挖] --> B[复习卡]\n\`\`\``,
+  ];
+
+  const renderFrame = (frame: string): void => {
+    codeBlockCalls.length = 0;
+    const arch = parseSections(frame).find((s) => s.title === ARCH);
+    expect(arch, `帧没解析出「${ARCH}」section：${JSON.stringify(frame)}`).toBeTruthy();
+    renderToStaticMarkup(createElement(ReactMarkdown, { components: markdownCodeComponents }, arch!.content));
+  };
+
+  it("半截围栏原样进 section content，parseSections 不得缓冲或丢弃", () => {
+    for (const frame of STREAM_FRAMES) {
+      const arch = parseSections(frame).find((s) => s.title === ARCH);
+      expect(arch, "帧没解析出「架构模块」section").toBeTruthy();
+      expect(arch!.content, "半截围栏必须原样保留，否则流式过程中这段代码会整段闪没").toContain("```mermaid");
+    }
+  });
+
+  it("围栏未闭合时照样被渲染成 language-mermaid 代码块（Mermaid 每帧都会被喂一次半截输入）", () => {
+    for (const frame of STREAM_FRAMES.slice(0, -1)) {
+      renderFrame(frame);
+      const mermaid = codeBlockCalls.find((c) => (c.className ?? "").includes("language-mermaid"));
+      expect(mermaid, `半截围栏没被识别成 mermaid 代码块：${JSON.stringify(frame)}`).toBeTruthy();
+    }
+  });
+
+  it("只有最后一帧才是完整可渲染的图（半截帧的 text 都是残缺的）", () => {
+    for (const frame of STREAM_FRAMES.slice(0, -1)) {
+      renderFrame(frame);
+      const mermaid = codeBlockCalls.find((c) => (c.className ?? "").includes("language-mermaid"))!;
+      expect(mermaid.text, `这一帧的 mermaid 应当是半截的：${JSON.stringify(mermaid.text)}`).not.toContain("B[复习卡]");
+    }
+    renderFrame(STREAM_FRAMES[STREAM_FRAMES.length - 1]);
+    const complete = codeBlockCalls.find((c) => (c.className ?? "").includes("language-mermaid"))!;
+    expect(complete.text).toContain("graph TD");
+    expect(complete.text).toContain("A[深挖] --> B[复习卡]");
+    expect(complete.text.trimEnd().endsWith("```"), "闭合后不应把围栏本身带进代码").toBe(false);
   });
 });

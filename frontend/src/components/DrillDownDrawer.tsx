@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { parseSections, extractSectionRaw, styleForTitle, type Section } from "@/lib/stream";
+import { parseSections, extractSectionRaw, styleForTitle, stripStreamMarkers, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
+import { useFocusTrap } from "@/components/useFocusTrap";
 import { saveReport, drillKey } from "@/lib/storage";
 
 /**
@@ -28,13 +29,16 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
 
-  // dialog 无障碍：Esc 关闭、锁 body 滚动、焦点移入/关闭归还。
+  // 模态无障碍：焦点移入/归还、Tab 循环、背景 inert 隔离（统一走 useFocusTrap）。
+  // 焦点落点保持「抽屉自身」——沿用上一轮的行为，抽屉内容是流式长文，
+  // 直接把焦点丢到关闭按钮上会和它逐段生长的内容打架。
+  useFocusTrap(drawerRef, !!concept, { initialFocus: "container" });
+
+  // Esc 关闭 + 锁 body 滚动。
   // 两个 window keydown 监听互斥：命令面板打开时它浮在最上层，Esc 归面板，
   // 抽屉不响应，避免一次 Esc 把抽屉和面板同时关掉。
   useEffect(() => {
     if (!concept) return;
-    const prevFocus = document.activeElement as HTMLElement | null;
-    drawerRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (document.querySelector(".kbar-backdrop")) return; // 命令面板开着，让面板先吃掉这次 Esc
@@ -45,7 +49,6 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
-      prevFocus?.focus?.();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concept?.name, concept?.relationType]);
@@ -105,7 +108,8 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
         setStreaming(false);
 
         // 深挖报告也入库：让每次追问都沉淀为知识库的一页
-        const final = buf;
+        // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
+        const final = stripStreamMarkers(buf);
         if (final) {
           const groups = parseNetworkMarkdown(extractSectionRaw(final, "知识网络"));
           saveReport({
@@ -147,7 +151,8 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
 
   return (
     <>
-      {/* 遮罩 */}
+      {/* 遮罩。aria-hidden 同时让 useFocusTrap 的背景隔离跳过它——
+          这层要保持可点，否则「点击空白处关闭」会被 inert 吃掉。 */}
       <div
         className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30"
         onClick={onClose}

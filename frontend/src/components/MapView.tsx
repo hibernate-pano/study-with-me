@@ -43,7 +43,7 @@ export default function MapView({
   reports,
   maxNodes = 90,
   dotted = false,
-  className = "",
+  className = "relative h-full w-full",
   onPreview,
 }: Props) {
   const router = useRouter();
@@ -96,24 +96,39 @@ export default function MapView({
   };
 
   // —— 滚轮缩放（围绕光标） ——
+  // 必须用原生监听而不是 onWheel：wheel 走 React 根容器委托且以 passive:true
+  // 注册，onWheel 里的 e.preventDefault() 会被忽略（控制台报 passive 警告），
+  // 页面会跟着滚轮一起动。
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const cx = ((e.clientX - rect.left) / rect.width) * VB_W;
-    const cy = ((e.clientY - rect.top) / rect.height) * VB_H;
-    const delta = -e.deltaY * 0.0015;
-    setScale((prev) => {
-      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * (1 + delta)));
-      const ratio = next / prev;
-      setPan((p) => ({
-        x: cx - (cx - p.x) * ratio,
-        y: cy - (cy - p.y) * ratio,
-      }));
-      return next;
-    });
-  };
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (!svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const cx = ((e.clientX - rect.left) / rect.width) * VB_W;
+      const cy = ((e.clientY - rect.top) / rect.height) * VB_H;
+      // 指数映射而不是线性的 (1 + deltaY·k)：线性映射下 deltaY=400（一次快速
+      // 滚动/触控板惯性）会直接把 scale 乘到 0.4 钉在 MIN_SCALE 上，且回滚时
+      // 同样 400 只涨回 1.6 倍、上下不对称。指数映射一格（deltaY=100）缩放
+      // 约 15%，无论多大的 deltaY 都不会越过上下限之外。
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      setScale((prev) => {
+        const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
+        const ratio = next / prev;
+        setPan((p) => ({
+          x: cx - (cx - p.x) * ratio,
+          y: cy - (cy - p.y) * ratio,
+        }));
+        return next;
+      });
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+    // svg 只在有节点时才渲染，依赖节点数保证挂载后能补挂监听
+  }, [graph.nodes.length]);
 
   // —— 节点拖动 ——
   const nodeDragRef = useRef<{
@@ -173,6 +188,14 @@ export default function MapView({
     savePosCache(cache);
   };
 
+  // 打开节点：鼠标点击与键盘激活走同一条分支
+  const openNode = (n: MapNode) => {
+    if (nodeDragRef.current) return;
+    const report = reports.find((r) => r.term === n.label) || null;
+    if (onPreview) onPreview(n, report);
+    else router.push(`/analyze/${encodeURIComponent(n.label)}`);
+  };
+
   const mineCount = graph.nodes.filter((n) => n.kind === "mine").length;
   const relatedCount = graph.nodes.length - mineCount;
 
@@ -181,10 +204,10 @@ export default function MapView({
   const edgeColor = (rel: RelationType) => RELATION_DEFS[rel]?.color ?? "#94a3b8";
 
   return (
-    <div
-      className={`relative overflow-hidden ${className}`}
-      onWheel={onWheel}
-    >
+    // 这里不再硬编码 relative：调用方传 absolute inset-0 时，.relative 与
+    // .absolute 同特异性、由 CSS 生成顺序决定胜负（.relative 在后），容器会
+    // 退化成内容高度、地图就填不满 /map 的 main。
+    <div className={`overflow-hidden ${className}`}>
       {/* 背景：暖纸色 + 极淡点阵 */}
       <div
         aria-hidden
@@ -210,6 +233,8 @@ export default function MapView({
         ref={svgRef}
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
+        role="group"
+        aria-label="概念网络图"
         className="relative h-full w-full canvas-pannable select-none touch-none fade-up"
         onPointerDown={onBgPointerDown}
         onPointerMove={onBgPointerMove}
@@ -296,15 +321,21 @@ export default function MapView({
                   transform={`translate(${n.x},${n.y})`}
                   className={`${dim ? "opacity-20" : ""} transition-opacity duration-200`}
                   style={{ cursor: "grab" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={n.label}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openNode(n);
+                    }
+                  }}
                   onPointerDown={(e) => onNodePointerDown(e, n)}
                   onPointerMove={onNodePointerMove}
                   onPointerUp={onNodePointerUp}
                   onClick={(e) => {
-                    if (nodeDragRef.current) return;
                     e.stopPropagation();
-                    const report = reports.find((r) => r.term === n.label) || null;
-                    if (onPreview) onPreview(n, report);
-                    else router.push(`/analyze/${encodeURIComponent(n.label)}`);
+                    openNode(n);
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
@@ -355,15 +386,21 @@ export default function MapView({
                   transform={`translate(${n.x},${n.y})`}
                   className={`${dim ? "opacity-25" : ""} transition-opacity duration-200`}
                   style={{ cursor: "grab" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={n.label}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openNode(n);
+                    }
+                  }}
                   onPointerDown={(e) => onNodePointerDown(e, n)}
                   onPointerMove={onNodePointerMove}
                   onPointerUp={onNodePointerUp}
                   onClick={(e) => {
-                    if (nodeDragRef.current) return;
                     e.stopPropagation();
-                    const report = reports.find((r) => r.term === n.label) || null;
-                    if (onPreview) onPreview(n, report);
-                    else router.push(`/analyze/${encodeURIComponent(n.label)}`);
+                    openNode(n);
                   }}
                   onMouseEnter={() => setHovered(n.id)}
                   onMouseLeave={() => setHovered(null)}
@@ -417,9 +454,10 @@ export default function MapView({
         <span className="font-semibold text-indigo-600/90">{mineCount}</span> 我的 ·
         <span className="text-slate-500/90"> {relatedCount}</span> 相关
       </div>
-      {/* 操作提示（右下） */}
+      {/* 操作提示（右下）：触屏没有滚轮，隐藏「滚轮缩放」那一段 */}
       <div className="pointer-events-none absolute bottom-3 right-4 text-[10.5px] text-slate-500/70 tracking-wide">
-        滚轮缩放 · 拖拽平移 · 拖动节点
+        <span className="[@media(hover:hover)]:inline">滚轮缩放 · </span>
+        拖拽平移 · 拖动节点
       </div>
     </div>
   );

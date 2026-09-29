@@ -6,7 +6,15 @@ import SearchBox from "@/components/SearchBox";
 import SectionCard from "@/components/SectionCard";
 import DrillDownDrawer from "@/components/DrillDownDrawer";
 import { talkshowChallengeUrl } from "@/lib/talkshow";
-import { parseSections, extractSectionRaw, type Section } from "@/lib/stream";
+import {
+  parseSections,
+  extractSectionRaw,
+  hasStreamError,
+  stripStreamMarkers,
+  STREAM_DONE_MARKER,
+  STREAM_TRUNCATED_MARKER,
+  type Section,
+} from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
 import {
   saveReport,
@@ -75,6 +83,9 @@ export default function AnalyzeView() {
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const genIdRef = useRef(0);
+  // 挂载 effect 闭包外的「当前 term」：异步回调回来时用它判断自己是否已过期
+  const termRef = useRef(term);
+  termRef.current = term;
 
   /** 把当前缓冲渲染到页面（限频调用） */
   const flush = useCallback(() => {
@@ -97,21 +108,25 @@ export default function AnalyzeView() {
   const persist = useCallback(
     (text: string) => {
       if (!text) return;
-      const groups = parseNetworkMarkdown(extractSectionRaw(text, "知识网络"));
+      // 入库前剥掉流式协议标记（<!-- DONE --> 等），否则会随全文进 IndexedDB / 云端
+      const clean = stripStreamMarkers(text);
+      if (!clean) return;
+      const groups = parseNetworkMarkdown(extractSectionRaw(clean, "知识网络"));
       saveReport({
         key: storageKey,
         term,
-        fullText: text,
+        fullText: clean,
         related: flattenGroups(groups),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       })
         .then(() => setCachedAt(Date.now()))
-        .catch(() => {
-          /* 隐私模式等场景写失败就静默 */
+        .catch((err: unknown) => {
+          // 隐私模式 / IndexedDB 挂起等场景：静默失败会让用户刚生成的报告凭空消失且零报错
+          console.error("[analyze] saveReport failed:", err);
         });
       // 自测题 → 复习卡（幂等：只新增从未见过的题）
-      syncCardsFromReport(term, text)
+      syncCardsFromReport(term, clean)
         .then(() => refreshDueCount())
         .catch(() => {});
     },
@@ -168,6 +183,8 @@ export default function AnalyzeView() {
 
         while (true) {
           const { done, value } = await reader.read();
+          // 每轮自检：被新请求取代后立刻退出，别再往共享 bufferRef 里写（A 的收尾也不会清掉 B 的定时器）
+          if (myGen !== genIdRef.current) return;
           if (done) break;
           bufferRef.current += decoder.decode(value, { stream: true });
         }
@@ -177,17 +194,30 @@ export default function AnalyzeView() {
         }
 
         if (myGen !== genIdRef.current) return; // 已被新请求取代
+        if (hasStreamError(bufferRef.current)) {
+          throw new Error("生成过程中连接中断，残缺内容未存入知识库");
+        }
+        // 先判后剥：只有服务端明确收尾（DONE）才允许入库，
+        // 截断/中断的残缺报告会静默污染缓存，用户下次打开直接命中半截内容
+        if (!bufferRef.current.includes(STREAM_DONE_MARKER)) {
+          throw new Error(
+            bufferRef.current.includes(STREAM_TRUNCATED_MARKER)
+              ? "输出被上游截断，报告不完整，请重新生成"
+              : "连接提前结束，残缺内容未入库"
+          );
+        }
         setStreaming(false);
         flush(); // 最终刷新
 
         // 只有完成（非停止、非报错）的文本才入库
         persist(bufferRef.current);
       } catch (err: unknown) {
+        // 守卫放在最前：已被新请求取代时连定时器都不许碰（否则会清掉新请求的 flush 定时器）
+        if (myGen !== genIdRef.current) return;
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        if (myGen !== genIdRef.current) return; // 已被新请求取代
         const aborted =
           typeof err === "object" &&
           err !== null &&
@@ -210,6 +240,10 @@ export default function AnalyzeView() {
 
   // 首次进入：分享链接 > 本地存档 > 发起生成
   useEffect(() => {
+    // 存活守卫：effect 重跑（换 term）或组件卸载后，异步回调一律不得再 setState / 发起生成
+    let alive = true;
+    const myTerm = term;
+
     setStopped(false);
     setTalkshowDone(isTalkshowDone(term));
     recordRecent(term);
@@ -222,12 +256,15 @@ export default function AnalyzeView() {
       setSections(parseSections(shared));
       setStreaming(false);
       refreshArchive(term);
-      return;
+      return () => {
+        alive = false;
+      };
     }
 
     // 2) 本地存档优先（wiki 化：打开即读，不重复烧 token）
     getReport(storageKey)
       .then((r) => {
+        if (!alive) return;
         if (r && r.fullText) {
           setCachedAt(r.updatedAt);
           fullTextRef.current = r.fullText;
@@ -239,12 +276,20 @@ export default function AnalyzeView() {
             .then(() => refreshDueCount())
             .catch(() => {});
         } else {
+          if (myTerm !== termRef.current) return; // 期间已切到别的词，别给旧词烧 token
           start();
         }
       })
-      .catch(() => start());
+      .catch(() => {
+        if (!alive) return;
+        if (myTerm !== termRef.current) return;
+        start();
+      });
 
     refreshArchive(term);
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term, storageKey]);
 

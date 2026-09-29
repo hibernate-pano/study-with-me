@@ -239,6 +239,19 @@ body {
   border-radius: 4px;
 }
 
+/* 可访问的视觉隐藏：保留屏幕阅读器语义，不占布局。 */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 /* ===== 命令面板 ===== */
 .kbar-backdrop {
   background: radial-gradient(

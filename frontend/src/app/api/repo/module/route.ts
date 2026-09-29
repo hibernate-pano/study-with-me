@@ -1,5 +1,5 @@
 import { buildRepoModulePrompt, buildModuleFollowUpPrompt } from "@/lib/prompt";
-import { parseRepoParam, fetchModuleDigest } from "@/lib/github";
+import { parseRepoParam, fetchModuleDigest, GitHubFetchError } from "@/lib/github";
 import { ThinkingFilter } from "@/lib/thinkingFilter";
 import { aiAccess, rateLimitedResponse } from "@/lib/rateLimit";
 import { getUserBySession } from "@/lib/auth";
@@ -96,6 +96,19 @@ export async function POST(req: Request) {
       }
     } catch (err: unknown) {
       console.error("[repo/module] fetch failed:", err);
+      // 配额耗尽要回传 Retry-After，不能一律改写成"请稍后重试"让客户端空转
+      if (err instanceof GitHubFetchError && err.reason === "quota") {
+        return new Response(JSON.stringify({ error: "GitHub API 配额已用尽，请稍后重试或配置 GITHUB_TOKEN" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json; charset=utf-8", "Retry-After": String(err.retryAfter ?? 60) },
+        });
+      }
+      if (err instanceof GitHubFetchError && err.reason === "private") {
+        return new Response(JSON.stringify({ error: "不支持私有仓库，请提供公开仓库地址。" }), {
+          status: 422,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      }
       return new Response(JSON.stringify({ error: "无法抓取该模块源码，请稍后重试。" }), { status: 422, headers: { "Content-Type": "application/json; charset=utf-8" } });
     }
     userContent = buildRepoModulePrompt({ repoName: term, moduleName, dir, role, talksToNames, filesDigest });

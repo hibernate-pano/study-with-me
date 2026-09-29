@@ -14,8 +14,13 @@ import {
   getCardsByTerm,
   markTalkshowDone,
   isTalkshowDone,
+  saveExamSet,
+  getExamSet,
+  getAllExamSets,
+  deleteExamSet,
   type StoredReport,
 } from "./storage";
+import type { ExamSet } from "./exams";
 
 function makeReport(key: string, term: string, updatedAt: number): StoredReport {
   return {
@@ -32,6 +37,8 @@ beforeEach(async () => {
   // 清空（fake-indexeddb 内存库，测试间隔离）
   const all = await getAllReports();
   for (const r of all) await deleteReport(r.key);
+  const exams = await getAllExamSets();
+  for (const exam of exams) await deleteExamSet(exam.id);
 });
 
 describe("storage 基础读写", () => {
@@ -47,18 +54,26 @@ describe("storage 基础读写", () => {
     expect(got).toBeUndefined();
   });
 
-  it("覆盖保存：createdAt 保留首次、updatedAt 更新", async () => {
+  it("覆盖保存：createdAt 保留首次、updatedAt 由调用方决定", async () => {
     await saveReport(makeReport("k", "t", 1000));
     const first = (await getReport("k"))!;
     // 首次创建的两种时间初始一致
     expect(first.createdAt).toBeGreaterThan(0);
-    // 覆盖保存（模拟重新生成）
+    // 覆盖保存（模拟重新生成）——updatedAt 由调用方显式传入，storage 不得覆盖成 now
     await new Promise((r) => setTimeout(r, 5));
     await saveReport(makeReport("k", "t", 5000));
     const got = (await getReport("k"))!;
     expect(got.createdAt).toBe(first.createdAt); // 首次创建时间保留
-    expect(got.updatedAt).toBeGreaterThan(first.updatedAt); // 更新时间前进
+    expect(got.updatedAt).toBe(5000); // 尊重调用方传入的 updatedAt（云端拉取必须保留云端时间戳）
     expect(got.fullText).toContain("t 的定义");
+  });
+
+  it("updatedAt 缺省时才用 now（本地新建路径不受影响）", async () => {
+    const before = Date.now();
+    const { updatedAt: _omit, ...withoutTs } = makeReport("k2", "t2", 12345);
+    await saveReport(withoutTs);
+    const got = (await getReport("k2"))!;
+    expect(got.updatedAt).toBeGreaterThanOrEqual(before);
   });
 
   it("删除后 get 不到", async () => {
@@ -70,8 +85,9 @@ describe("storage 基础读写", () => {
 
 describe("related 归一化（修复：D1 JSON 字符串误入库导致的 .map 崩溃）", () => {
   it("旧版脏数据（related 为 JSON 字符串）读取时自动转数组", async () => {
-    // 直接模拟"字符串相关数据"入库的旧版本路径：用底层 IndexedDB 写入字符串
-    const req = indexedDB.open("concept-digger", 2);
+    // 直接模拟"字符串相关数据"入库的脏数据：用底层 IndexedDB 写入字符串
+    // 版本与生产对齐到当前 DB_VERSION（v4），验证 getReport 的归一化逻辑
+    const req = indexedDB.open("concept-digger", 4);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -101,7 +117,7 @@ describe("related 归一化（修复：D1 JSON 字符串误入库导致的 .map 
   });
 
   it("无法解析的字符串容错为空数组", async () => {
-    const req = indexedDB.open("concept-digger", 2);
+    const req = indexedDB.open("concept-digger", 4);
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -127,17 +143,16 @@ describe("related 归一化（修复：D1 JSON 字符串误入库导致的 .map 
 
 describe("getRecent 排序", () => {
   it("按 updatedAt 降序返回并尊重 limit", async () => {
-    // saveReport 用真实时间戳，按保存先后排序
+    // saveReport 尊重调用方传入的 updatedAt（云端拉取要保留云端时间戳），
+    // 排序直接由传入值决定，不再依赖保存先后
     await saveReport(makeReport("a", "a", 100));
-    await new Promise((r) => setTimeout(r, 5));
     await saveReport(makeReport("b", "b", 300));
-    await new Promise((r) => setTimeout(r, 5));
     await saveReport(makeReport("c", "c", 200));
     const recent = await getRecent(2);
-    expect(recent.map((r) => r.term)).toEqual(["c", "b"]);
+    expect(recent.map((r) => r.term)).toEqual(["b", "c"]);
     // limit 生效
     const one = await getRecent(1);
-    expect(one.map((r) => r.term)).toEqual(["c"]);
+    expect(one.map((r) => r.term)).toEqual(["b"]);
   });
 
   it("空库返回空数组", async () => {
@@ -208,5 +223,53 @@ describe("talkshow 已开讲标记", () => {
     markTalkshowDone("分布式锁"); // 幂等：重复标记不报错
     expect(isTalkshowDone("分布式锁")).toBe(true);
     expect(isTalkshowDone("CAP 定理")).toBe(false);
+  });
+});
+
+describe("出题大师本地题库", () => {
+  const makeExamSet = (id: string): ExamSet => ({
+    id,
+    title: `题库 ${id}`,
+    sourceName: "课本.pdf",
+    focus: "第一章",
+    sourceText: "原文",
+    difficulty: 2,
+    questions: [
+      {
+        id: "q1",
+        type: "single_choice",
+        stem: "题目",
+        options: ["A", "B"],
+        answer: ["0"],
+        keyPoints: [],
+        explanation: "",
+        knowledgePoint: "知识点",
+        difficulty: 1,
+      },
+    ],
+    papers: [],
+    attempts: [],
+    createdAt: 100,
+    updatedAt: 100,
+  });
+
+  it("保存后可按 id 读回", async () => {
+    await saveExamSet(makeExamSet("e1"));
+    const got = await getExamSet("e1");
+    expect(got?.title).toBe("题库 e1");
+    expect(got?.questions).toHaveLength(1);
+  });
+
+  it("按更新时间倒序返回全部题库", async () => {
+    await saveExamSet({ ...makeExamSet("old"), updatedAt: 100 });
+    await saveExamSet({ ...makeExamSet("new"), updatedAt: 200 });
+    const all = await getAllExamSets();
+    expect(all.map((e) => e.id)).toEqual(["new", "old"]);
+  });
+
+  it("删除后读不到", async () => {
+    await saveExamSet(makeExamSet("e1"));
+    await deleteExamSet("e1");
+    expect(await getExamSet("e1")).toBeUndefined();
   });
 });

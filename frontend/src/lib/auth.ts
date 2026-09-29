@@ -4,12 +4,15 @@
  * 流程：
  * 1. 生成 authorize URL（带随机 state，防 CSRF）；
  * 2. 回调：code 换 access_token → 调 GitHub API 取最小用户信息；
- * 3. 会话：签发随机 token 存 DB，HttpOnly cookie 持有。
+ * 3. 会话：签发共享 HS256 JWT（与 topic-talkshow 同密钥/同格式），HttpOnly cookie 持有。
  *
  * 安全约定：
  * - access_token 只用于换取用户身份，用后即弃，永不落库；
  * - state 用短时 cookie 校验（10 分钟）；
- * - 会话 30 天过期。
+ * - 会话 30 天过期；
+ * - 共享 JWT 无服务端状态：不写 sessions 表、也没有吊销表，所以登出只能清 cookie，
+ *   30 天内的 token 副本在别处仍可用（跨应用全局吊销需两边共用吊销存储或
+ *   短寿命 access token + 可吊销 refresh token，属跨应用架构改造）。
  */
 
 import { randomBytes } from "node:crypto";
@@ -156,8 +159,10 @@ export async function upsertUserFromGithub(
   sql: (q: string, ...params: unknown[]) => Promise<unknown>,
   gh: GithubUserInfo
 ): Promise<{ id: number; login: string; avatar_url: string | null; email: string | null }> {
-  const rows = (await sql(
-    `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
+  const params = [gh.id, gh.login, gh.avatar_url, gh.email, Date.now()];
+  try {
+    const rows = (await sql(
+      `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
      VALUES (?1, ?2, ?3, ?4, ?5, ?5)
      ON CONFLICT (github_id) DO UPDATE SET
        login = excluded.login,
@@ -165,13 +170,26 @@ export async function upsertUserFromGithub(
        email = COALESCE(excluded.email, users.email),
        updated_at = excluded.updated_at
      RETURNING id, login, avatar_url, email`,
-    gh.id,
-    gh.login,
-    gh.avatar_url,
-    gh.email,
-    Date.now()
-  )) as { id: number; login: string; avatar_url: string | null; email: string | null }[];
-  return rows[0];
+      ...params
+    )) as { id: number; login: string; avatar_url: string | null; email: string | null }[];
+    return rows[0];
+  } catch (e) {
+    // 线上库若仍是旧 schema（login UNIQUE），GitHub 用户名被回收后 A 改名、B 接管同名，
+    // 这条 upsert 撞的是 login 唯一约束——ON CONFLICT 只声明了 github_id，撞 login 时不生效。
+    // 退化为「只更新资料、保留旧显示名」：被抢名者安静地用旧名，但登录不再直接失败。
+    const rows = (await sql(
+      `UPDATE users SET avatar_url = ?2, email = COALESCE(?3, email), updated_at = ?4
+     WHERE github_id = ?1
+     RETURNING id, login, avatar_url, email`,
+      ...params
+    )) as { id: number; login: string; avatar_url: string | null; email: string | null }[];
+    if (!rows[0]) {
+      // 连 github_id 都没有行（首次登录就撞名），无法凭空造一行，交给调用方报错
+      console.error("[auth] 用户名被他人占用且本账号无用户行:", e);
+      throw new Error(`GitHub 用户名 ${gh.login} 已被占用，无法落库`);
+    }
+    return rows[0];
+  }
 }
 
 /**
@@ -188,15 +206,23 @@ export async function getUserBySession(
   if (claims) {
     const ghId = Number(claims.userId);
     if (!Number.isFinite(ghId)) return null;
-    await sql(
-      `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
+    try {
+      // 这句 INSERT 是 SSO 的一部分，不能挪走：用户只在 talkshow 登录过时，
+      // 这里首次出现要自动落一行。旧 schema 的 login UNIQUE 可能让它撞约束
+      // （新 github_id + 被他人占用的显示名），包一层 catch 保住读路径本身。
+      await sql(
+        `INSERT INTO users (github_id, login, avatar_url, email, created_at, updated_at)
        SELECT ?1, ?2, ?3, NULL, ?4, ?4
        WHERE NOT EXISTS (SELECT 1 FROM users WHERE github_id = ?1)`,
-      ghId,
-      claims.login ?? "github-user",
-      claims.avatarUrl ?? null,
-      Date.now()
-    );
+        ghId,
+        claims.login ?? "github-user",
+        claims.avatarUrl ?? null,
+        Date.now()
+      );
+    } catch (e) {
+      // 落行失败不致命：下面按 github_id（真正的主键）反查，已有行照常取回
+      console.error("[auth] 首次落用户行失败:", e);
+    }
     const rows = (await sql(
       `SELECT id, login, avatar_url FROM users WHERE github_id = ?1`,
       ghId

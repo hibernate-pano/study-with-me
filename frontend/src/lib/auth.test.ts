@@ -283,5 +283,68 @@ describe("oauth 工具", () => {
       });
       expect(readSessionToken(reqLegacyOnly)).toBe("old");
     });
+
+    it("共享 JWT 无服务端状态：登出删不掉任何行，token 在有效期内仍可用（架构限制，非回归）", async () => {
+      // 共享 JWT 是纯无状态签名：从不往 sessions 表写行，deleteSession 结构上命中 0 行。
+      // 所以登出只能清浏览器 cookie，「清掉即全局登出」不成立——真正的修法要两边共用吊销存储
+      // 或短寿命 access token + 可吊销 refresh token（跨应用改造，不在本轮范围）。
+      // 这条用例把该事实钉住：将来引入吊销表/共享吊销时它会红，届时再更新断言与文案。
+      const session = await createSharedSession({ userId: "9527", login: "panbo" });
+      const before = memSql.sessions.size;
+      await deleteSession(sql, session.token);
+      expect(memSql.sessions.size).toBe(before);
+      await expect(getUserBySession(sql, session.token)).resolves.not.toBeNull();
+    });
+  });
+
+  describe("GitHub 用户名被回收（线上库仍是 login UNIQUE 时的兜底）", () => {
+    it("upsert 撞 login 唯一约束 → 退化为只更新资料、保留旧显示名，不抛错", async () => {
+      const gh = { id: 100, login: "taken", avatar_url: "new.png", email: "a@b.com" };
+      const seen: string[] = [];
+      const row = { id: 7, login: "oldname", avatar_url: "new.png", email: "a@b.com" };
+      const sql = async (q: string, ...p: unknown[]) => {
+        seen.push(q.trim().split("\n")[0]);
+        if (q.startsWith("INSERT INTO users")) {
+          throw new Error("D1 查询失败: UNIQUE constraint failed: users.login");
+        }
+        if (q.startsWith("UPDATE users SET")) {
+          expect(p).toEqual([100, "taken", "new.png", "a@b.com", expect.any(Number)]);
+          return [row];
+        }
+        return [];
+      };
+      await expect(upsertUserFromGithub(sql, gh)).resolves.toEqual(row);
+      expect(seen[0]).toMatch(/^INSERT INTO users/);
+      expect(seen[1]).toMatch(/^UPDATE users SET/);
+    });
+
+    it("兜底 UPDATE 也没有行（首次登录就撞名）→ 抛明确错误，不返回 undefined", async () => {
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const sql = async (q: string) => {
+        if (q.startsWith("INSERT INTO users")) {
+          throw new Error("D1 查询失败: UNIQUE constraint failed: users.login");
+        }
+        return []; // 兜底 UPDATE 一行都没命中
+      };
+      await expect(
+        upsertUserFromGithub(sql, { id: 101, login: "taken", avatar_url: null, email: null })
+      ).rejects.toThrow(/已被占用/);
+      expect(errSpy).toHaveBeenCalled();
+    });
+
+    it("读路径首次落行撞约束时不再抛错：仍按 github_id 取回已有行（不被各路由 .catch 静默降级）", async () => {
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const session = await createSharedSession({ userId: "200", login: "taken" });
+      const row = { id: 9, login: "oldname", avatar_url: null };
+      const sql = async (q: string) => {
+        if (q.startsWith("INSERT INTO users")) {
+          throw new Error("D1 查询失败: UNIQUE constraint failed: users.login");
+        }
+        if (q.includes("FROM users WHERE github_id")) return [row];
+        return [];
+      };
+      await expect(getUserBySession(sql, session.token)).resolves.toEqual(row);
+      expect(errSpy).toHaveBeenCalled(); // 降级不再无声：服务端有日志
+    });
   });
 });
