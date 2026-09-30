@@ -87,7 +87,7 @@ export default function ReviewPage() {
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer lg:hidden"
             title="返回首页"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +136,7 @@ export default function ReviewPage() {
             </p>
             <button
               onClick={() => router.push("/")}
-              className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-[13.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+              className="mt-5 rounded-xl border border-ink-200 bg-ink-50 px-5 py-2.5 text-[13.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
             >
               去学第一个概念 →
             </button>
@@ -155,7 +155,7 @@ export default function ReviewPage() {
             </p>
             <button
               onClick={() => router.push("/")}
-              className="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-[13.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+              className="mt-5 rounded-xl border border-ink-200 bg-ink-50 px-5 py-2.5 text-[13.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
             >
               回首页 →
             </button>
@@ -173,7 +173,7 @@ export default function ReviewPage() {
                     ? router.push(`/repo/${encodeURIComponent(current.term.slice(5).split("/")[0])}/${encodeURIComponent(current.term.slice(5).split("/").slice(1).join("/"))}`)
                     : router.push(`/analyze/${encodeURIComponent(current.term)}`)
                 }
-                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[11.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2.5 py-1 text-[11.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
                 title="回到这份报告"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -243,8 +243,8 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
     return (
       <Shell owner={owner} repo={repo} onHome={() => router.push("/")}>
         <div className="mx-auto max-w-3xl py-20 text-center">
-          <div className="inline-flex items-center gap-2.5 rounded-full bg-indigo-50 px-4 py-2 text-[13px] font-medium text-indigo-600">
-            <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+          <div className="inline-flex items-center gap-2.5 rounded-full bg-ink-50 px-4 py-2 text-[13px] font-medium text-ink-600">
+            <span className="h-2 w-2 rounded-full bg-ink-500 animate-pulse" />
             正在抓取仓库结构，绘制项目地图…
           </div>
           <div className="mt-8 space-y-3 text-left">
@@ -294,9 +294,9 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
         {/* —— 项目名片 —— */}
         <div className="mb-6 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-serif-zh text-[30px] md:text-[38px] font-bold ink-grad leading-tight tracking-tight">{title}</h1>
+            <h1 className="font-disp text-[30px] md:text-[38px] font-bold ink-grad leading-tight tracking-tight">{title}</h1>
             {atlas.stats?.language && (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11.5px] font-medium text-indigo-600">{atlas.stats.language}</span>
+              <span className="rounded-full bg-ink-50 px-2.5 py-0.5 text-[11.5px] font-medium text-ink-600">{atlas.stats.language}</span>
             )}
             {fmtStars(atlas.stats?.stars) && (
               <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11.5px] font-medium text-amber-600">⭐ {fmtStars(atlas.stats?.stars)}</span>
@@ -310,7 +310,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
             <ul className="mt-4 space-y-1.5">
               {atlas.why.map((w, i) => (
                 <li key={i} className="flex gap-2 text-[13.5px] leading-relaxed text-slate-600">
-                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+                  <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-ink-400" />
                   {w}
                 </li>
               ))}
@@ -334,7 +334,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                 {drillModule && (
                   <button
                     onClick={closeDrill}
-                    className="rounded-lg px-2 py-0.5 text-[12.5px] font-medium text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                    className="rounded-lg px-2 py-0.5 text-[12.5px] font-medium text-ink-600 hover:bg-ink-50 transition-colors cursor-pointer"
                     title="返回项目全景地图"
                   >
                     ← 全景
@@ -352,7 +352,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
             {drillModule ? (
               moduleMapState === "loading" ? (
                 <div className="space-y-3 py-10">
-                  <div className="text-center text-[12.5px] text-indigo-500 animate-pulse">
+                  <div className="text-center text-[12.5px] text-ink-500 animate-pulse">
                     正在抓取「{drillModule.name}」的源码，绘制内部地图…（约 30-60s）
                   </div>
                   <div className="shimmer mx-auto h-40 w-4/5" />
@@ -377,7 +377,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                       <ul className="space-y-1">
                         {moduleAtlas.why.map((w, i) => (
                           <li key={i} className="flex gap-2 text-[12.5px] leading-relaxed text-slate-600">
-                            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-indigo-400" />
+                            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-ink-400" />
                             {w}
                           </li>
                         ))}
@@ -406,7 +406,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                   const m = byId.get(step.moduleId);
                   const active = mod?.id === step.moduleId;
                   return (
-                    <li key={i} className={`flex gap-2.5 rounded-xl border p-2.5 transition-colors ${active ? "border-indigo-200 bg-indigo-50/60" : "border-transparent hover:bg-slate-50"}`}>
+                    <li key={i} className={`flex gap-2.5 rounded-xl border p-2.5 transition-colors ${active ? "border-ink-200 bg-ink-50/60" : "border-transparent hover:bg-slate-50"}`}>
                       <button
                         onClick={() => toggleStep(i)}
                         title={done ? "标记为未读" : "标记为已懂"}
@@ -474,7 +474,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                   {subNode.talksTo
                     .filter((t) => moduleAtlas?.modules.some((m) => m.id === t))
                     .map((t) => (
-                      <button key={t} onClick={() => setSubSelected(t)} className="rounded-lg border border-[var(--line-soft)] bg-white px-2.5 py-1 text-[12.5px] text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer">
+                      <button key={t} onClick={() => setSubSelected(t)} className="rounded-lg border border-[var(--line-soft)] bg-white px-2.5 py-1 text-[12.5px] text-ink-600 hover:bg-ink-50 transition-colors cursor-pointer">
                         {moduleAtlas!.modules.find((m) => m.id === t)!.name} →
                       </button>
                     ))}
@@ -531,7 +531,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                 <ul className="space-y-1">
                   {mod.keyFiles.map((f) => (
                     <li key={f} className="font-mono text-[12.5px] text-slate-600">
-                      <a href={`https://github.com/${title}/blob/HEAD/${f}`} target="_blank" rel="noopener" className="hover:text-indigo-600 hover:underline break-all">
+                      <a href={`https://github.com/${title}/blob/HEAD/${f}`} target="_blank" rel="noopener" className="hover:text-ink-600 hover:underline break-all">
                         {f} ↗
                       </a>
                     </li>
@@ -545,7 +545,7 @@ export default function RepoView({ owner, repo }: { owner: string; repo: string 
                 <div className="text-[12px] font-bold tracking-wider text-slate-500 mb-1.5">和谁协作</div>
                 <div className="flex flex-wrap gap-1.5">
                   {mod.talksTo.filter((t) => byId.has(t)).map((t) => (
-                    <button key={t} onClick={() => setSelected(t)} className="rounded-lg border border-[var(--line-soft)] bg-white px-2.5 py-1 text-[12.5px] text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer">
+                    <button key={t} onClick={() => setSelected(t)} className="rounded-lg border border-[var(--line-soft)] bg-white px-2.5 py-1 text-[12.5px] text-ink-600 hover:bg-ink-50 transition-colors cursor-pointer">
                       {byId.get(t)!.name} →
                     </button>
                   ))}
@@ -588,7 +588,7 @@ function Shell({ owner, repo, onHome, children }: { owner: string; repo: string;
     <div className="min-h-screen">
       <header className="topbar">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-5 py-2.5">
-          <button onClick={onHome} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer" title="返回首页">
+          <button onClick={onHome} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer lg:hidden" title="返回首页">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
             首页
           </button>

@@ -195,7 +195,7 @@ function CompareInner() {
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer lg:hidden"
             title="返回首页"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -215,7 +215,7 @@ function CompareInner() {
           {fullText && !streaming && (
             <button
               onClick={() => submit(a, b)}
-              className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-[12.5px] font-medium text-violet-600 hover:bg-violet-100 transition-colors cursor-pointer"
+              className="rounded-lg border border-ink-200 bg-ink-50 px-3 py-1.5 text-[12.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
             >
               重新生成
             </button>
@@ -231,7 +231,7 @@ function CompareInner() {
               value={a}
               onChange={(e) => setA(e.target.value)}
               placeholder="概念 A，如：乐观锁"
-              className="flex-1 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-[13.5px] text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="flex-1 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-[13.5px] text-slate-700 outline-none focus:border-ink-300 focus:ring-2 focus:ring-ink-100"
               disabled={streaming}
               onKeyDown={(e) => e.key === "Enter" && submit(a, b)}
             />
@@ -242,14 +242,14 @@ function CompareInner() {
               value={b}
               onChange={(e) => setB(e.target.value)}
               placeholder="概念 B，如：悲观锁"
-              className="flex-1 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-[13.5px] text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="flex-1 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-[13.5px] text-slate-700 outline-none focus:border-ink-300 focus:ring-2 focus:ring-ink-100"
               disabled={streaming}
               onKeyDown={(e) => e.key === "Enter" && submit(a, b)}
             />
             <button
               onClick={() => submit(a, b)}
               disabled={streaming}
-              className="rounded-xl bg-violet-500 px-5 py-2.5 text-[13.5px] font-bold text-white hover:bg-violet-600 disabled:opacity-40 transition-colors cursor-pointer"
+              className="rounded-xl bg-ink-800 px-5 py-2.5 text-[13.5px] font-bold text-white hover:bg-ink-900 disabled:opacity-40 transition-colors cursor-pointer"
             >
               {streaming ? "生成中…" : "生成对比"}
             </button>
@@ -285,7 +285,7 @@ function CompareInner() {
         {fullText && (
           <div className="mt-6">
             <div className="mb-5 flex items-center gap-2.5">
-              <span className="rounded-lg bg-violet-50 px-3 py-1.5 text-[15px] font-bold text-violet-700">
+              <span className="rounded-lg bg-ink-50 px-3 py-1.5 text-[15px] font-bold text-ink-700">
                 {a.trim()}
               </span>
               <span className="text-[13px] font-bold text-slate-400">⚖️</span>
@@ -297,7 +297,7 @@ function CompareInner() {
               )}
               {streaming && (
                 <span className="flex items-center gap-1.5 text-[12px] text-slate-400">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-violet-400" />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-ink-400" />
                   正在辨析…
                 </span>
               )}

@@ -77,7 +77,7 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
               第 {index + 1} 题
             </legend>
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-semibold text-indigo-700">
+              <span className="rounded-full bg-ink-50 px-2.5 py-1 font-semibold text-ink-700">
                 第 {index + 1} 题
               </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">
@@ -101,8 +101,8 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
                       key={`${q.id}-${optionIndex}`}
                       className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-[14px] leading-relaxed transition-colors ${
                         checked
-                          ? "border-indigo-300 bg-indigo-50 text-indigo-900"
-                          : "border-[var(--line)] bg-white text-slate-700 hover:border-indigo-200"
+                          ? "border-ink-300 bg-ink-50 text-ink-900"
+                          : "border-[var(--line)] bg-white text-slate-700 hover:border-ink-200"
                       }`}
                     >
                       <input
@@ -113,7 +113,7 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
                         onChange={() =>
                           setAnswers((prev) => ({ ...prev, [q.id]: [value] }))
                         }
-                        className="mt-1 h-4 w-4 accent-indigo-600"
+                        className="mt-1 h-4 w-4 accent-ink-600"
                       />
                       <span className="font-semibold text-slate-400">
                         {String.fromCharCode(65 + optionIndex)}

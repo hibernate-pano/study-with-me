@@ -223,7 +223,7 @@ export default function RepoModuleDrawer({ module, repoTitle, onClose }: Props) 
       <aside className="fixed top-0 right-0 h-screen w-full sm:w-[580px] bg-white shadow-2xl z-40 flex flex-col animate-[slideInRight_0.25s_ease-out]">
         <header className="shrink-0 border-b border-[var(--line)] px-5 py-3 flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <div className="text-[11.5px] font-bold tracking-wide uppercase text-indigo-500 mb-1">
+            <div className="text-[11.5px] font-bold tracking-wide uppercase text-ink-500 mb-1">
               模块深挖 · 源码走读
             </div>
             <h2 className="text-[20px] font-extrabold text-slate-900 break-all">{module.name}</h2>
@@ -252,7 +252,7 @@ export default function RepoModuleDrawer({ module, repoTitle, onClose }: Props) 
 
           {sections.length === 0 && (streaming || loadingCache) && (
             <div className="space-y-3">
-              <div className="text-[12px] text-indigo-500 animate-pulse">
+              <div className="text-[12px] text-ink-500 animate-pulse">
                 {loadingCache ? "检查本地存档…" : "正在抓取该模块的源码文件，逐段走读…"}
               </div>
               {[1, 2, 3].map((i) => (
@@ -298,7 +298,7 @@ export default function RepoModuleDrawer({ module, repoTitle, onClose }: Props) 
                   }}
                   rows={1}
                   placeholder="针对这份讲解追问一句…（Enter 发送）"
-                  className="min-h-[36px] flex-1 resize-none rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[13px] outline-none focus:border-indigo-400 scroll-thin"
+                  className="min-h-[36px] flex-1 resize-none rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-[13px] outline-none focus:border-ink-400 scroll-thin"
                 />
                 <button
                   onClick={() => void submitFollowUp()}

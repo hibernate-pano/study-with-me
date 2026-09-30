@@ -90,12 +90,12 @@ export default function ExamResults({
   return (
     <div className="space-y-5">
       <section className="card overflow-hidden">
-        <div className="bg-[linear-gradient(135deg,#312e81_0%,#4f46e5_60%,#7c3aed_100%)] px-6 py-7 text-white">
+        <div className="bg-[#1d1d1a] px-6 py-7 text-white">
           <div className="flex flex-wrap items-end justify-between gap-5">
             <div>
               <p className="text-[12px] font-medium text-white/70">{paper.title}</p>
               <div className="mt-2 flex items-end gap-2">
-                <span className="font-serif-zh text-[56px] font-semibold leading-none">
+                <span className="font-disp text-[56px] font-semibold leading-none">
                   {percent}
                 </span>
                 <span className="pb-1 text-[15px] text-white/75">分</span>
@@ -118,7 +118,7 @@ export default function ExamResults({
               <button
                 type="button"
                 onClick={onBack}
-                className="min-h-10 rounded-lg bg-white px-4 py-2 text-[12.5px] font-semibold text-indigo-700 hover:bg-indigo-50"
+                className="min-h-10 rounded-lg bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-700 hover:bg-ink-50"
               >
                 返回题库
               </button>
@@ -272,8 +272,8 @@ export default function ExamResults({
                         }
                         className={`min-h-10 rounded-lg border px-3.5 py-2 text-[12.5px] font-medium ${
                           attempt.selfGrades[q.id] === value
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-[var(--line)] bg-white text-slate-600 hover:border-indigo-200"
+                            ? "border-ink-300 bg-ink-50 text-ink-700"
+                            : "border-[var(--line)] bg-white text-slate-600 hover:border-ink-200"
                         }`}
                       >
                         {label}

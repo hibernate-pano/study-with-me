@@ -115,23 +115,10 @@ function WelcomeHome({
 
   return (
     <div className="min-h-screen hero-bg">
-      <main className="mx-auto max-w-7xl px-6 pt-16 pb-24 fade-up">
-        {/* 品牌（左上角） */}
-        <div className="flex items-center gap-2.5 mb-14">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700">
-            <path d="M14 4l6 6" />
-            <path d="M11 7l-7 7v4h4l7-7" />
-            <path d="M5 19l4-4" />
-            <path d="M14 9l1 1" />
-          </svg>
-          <span className="text-[14px] font-bold tracking-[0.04em] text-slate-700">
-            概念深挖器
-          </span>
-        </div>
-
+      <main className="mx-auto max-w-7xl px-6 pt-14 pb-24 fade-up">
         {/* Hero：居中布局（视觉重心在屏幕中） */}
         <section className="mx-auto max-w-3xl text-center">
-          <h1 className="font-serif-zh text-[56px] md:text-[76px] leading-[1.05] tracking-[-0.015em]">
+          <h1 className="font-disp text-[56px] md:text-[76px] leading-[1.05] tracking-[-0.015em]">
             <span className="ink-grad">输入一个词，</span>
             <br />
             <span className="text-slate-900">顺着网络，</span>
@@ -160,9 +147,9 @@ function WelcomeHome({
             onClick={() =>
               onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")
             }
-            className="mt-5 mx-auto flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-indigo-200 bg-white/40 px-4 py-2.5 hover:border-indigo-300 hover:bg-indigo-50/40 transition-colors cursor-pointer text-left"
+            className="mt-5 mx-auto flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-ink-200 bg-white/40 px-4 py-2.5 hover:border-ink-300 hover:bg-ink-50/40 transition-colors cursor-pointer text-left"
           >
-            <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-500 mt-0.5 shrink-0">
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-ink-500 mt-0.5 shrink-0">
               ✦
             </span>
             <span className="text-[13px] text-slate-600 leading-relaxed">
@@ -175,12 +162,12 @@ function WelcomeHome({
 
           <button
             onClick={onGoExam}
-            className="mt-4 mx-auto flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-[13px] font-medium text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+            className="mt-4 mx-auto flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-ink-200 bg-ink-50/70 px-4 py-3 text-[13px] font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-100"
           >
             <span aria-hidden>📝</span>
             <span>出题大师</span>
-            <span className="text-indigo-300">·</span>
-            <span className="text-indigo-600">上传课本，生成多套试卷</span>
+            <span className="text-ink-300">·</span>
+            <span className="text-ink-600">上传课本，生成多套试卷</span>
             <span aria-hidden>→</span>
           </button>
         </section>
@@ -226,7 +213,7 @@ function WelcomeHome({
               </div>
               <button
                 onClick={onGoMap}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
               >
                 <span>🗺</span>
                 <span>知识网络地图</span>
@@ -234,7 +221,7 @@ function WelcomeHome({
               </button>
               <button
                 onClick={onGoToday}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
               >
                 <span>📅</span>
                 <span>今日打卡</span>
@@ -247,9 +234,9 @@ function WelcomeHome({
                 <button
                   key={c.term}
                   onClick={() => onStart(c.term)}
-                  className="group flex items-baseline gap-2 rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 hover:border-indigo-300 hover:bg-white cursor-pointer"
+                  className="group flex items-baseline gap-2 rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 hover:border-ink-300 hover:bg-white cursor-pointer"
                 >
-                  <span className="text-[13px] font-medium text-slate-800 group-hover:text-indigo-700">
+                  <span className="text-[13px] font-medium text-slate-800 group-hover:text-ink-700">
                     {c.term}
                   </span>
                   <span className="text-[10.5px] text-slate-400">{fmtRel(c.updatedAt)}</span>
@@ -262,12 +249,12 @@ function WelcomeHome({
                     const [owner, ...rest] = repo.split("/");
                     router.push(`/repo/${encodeURIComponent(owner)}/${encodeURIComponent(rest.join("/"))}`);
                   }}
-                  className="group flex items-baseline gap-2 rounded-full border border-indigo-100 bg-indigo-50/60 px-3 py-1.5 hover:border-indigo-300 hover:bg-white cursor-pointer"
+                  className="group flex items-baseline gap-2 rounded-full border border-ink-100 bg-ink-50/60 px-3 py-1.5 hover:border-ink-300 hover:bg-white cursor-pointer"
                 >
-                  <span className="text-[13px] font-medium text-indigo-700 group-hover:text-indigo-800">
+                  <span className="text-[13px] font-medium text-ink-700 group-hover:text-ink-800">
                     ⌥ {repo}
                   </span>
-                  <span className="text-[10.5px] text-indigo-300">repo</span>
+                  <span className="text-[10.5px] text-ink-300">repo</span>
                 </button>
               ))}
             </div>
@@ -280,7 +267,7 @@ function WelcomeHome({
                     <button
                       key={t}
                       onClick={() => onStart(t)}
-                      className="text-slate-500 hover:text-indigo-600 cursor-pointer"
+                      className="text-slate-500 hover:text-ink-600 cursor-pointer"
                     >
                       {t}
                     </button>
@@ -325,9 +312,7 @@ function WelcomeHome({
           </button>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-slate-400/70 tracking-wide">
-          内容由 AI 生成 · 请交叉验证关键信息
-        </p>
+        {/* AI 免责声明在侧栏底部常驻（AppShell），首页不再重复 */}
       </main>
     </div>
   );
@@ -352,7 +337,7 @@ function RelayStrip({ onStart }: { onStart: (q: string) => void }) {
             }}
             className="float-slow chip"
           >
-            <span aria-hidden className="mr-1.5 text-[10px] text-indigo-300">
+            <span aria-hidden className="mr-1.5 text-[10px] text-ink-300">
               ✦
             </span>
             {e}
@@ -372,7 +357,7 @@ function Stat({ n, label, emphasize, amber }: { n: number; label: string; emphas
     : "text-slate-700";
   return (
     <>
-      <span className={`font-serif-zh text-[22px] font-semibold tabular-nums leading-none ${color}`}>
+      <span className={`font-disp text-[22px] font-semibold tabular-nums leading-none ${color}`}>
         {n}
       </span>
       <span className={`text-[12.5px] ${amber ? "text-amber-700" : "text-slate-500"}`}>
@@ -386,8 +371,8 @@ function Cap({ k, v }: { k: string; v: string }) {
   return (
     <li className="card lift cursor-default p-5">
       <div className="flex items-center gap-2">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500" />
-        <span className="font-serif-zh text-[14.5px] font-semibold text-slate-800">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink-800" />
+        <span className="font-disp text-[14.5px] font-semibold text-slate-800">
           {k}
         </span>
       </div>

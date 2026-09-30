@@ -160,11 +160,11 @@ export default function ExamPage() {
   return (
     <div className="min-h-screen">
       <header className="topbar">
-        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3 pr-32 sm:gap-3 sm:pr-4">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3 sm:gap-3">
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="flex min-h-10 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 transition-colors hover:bg-slate-100"
+              className="flex min-h-10 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 transition-colors hover:bg-slate-100 lg:hidden"
           >
             <svg
               aria-hidden
@@ -192,10 +192,10 @@ export default function ExamPage() {
       <main className="mx-auto max-w-5xl px-4 py-7 sm:py-9 fade-up">
         {!active && (
           <div className="mb-7">
-            <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-500">
+            <p className="text-[11px] font-bold tracking-[0.16em] text-ink-500">
               EXAM MASTER
             </p>
-            <h1 className="mt-2 font-serif-zh text-[34px] font-semibold leading-tight text-[var(--ink-deep)] sm:text-[42px]">
+            <h1 className="mt-2 font-disp text-[34px] font-semibold leading-tight text-[var(--ink-deep)] sm:text-[42px]">
               把学过的东西，
               <br className="sm:hidden" />
               变成一场真正会做的考试。

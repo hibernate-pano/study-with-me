@@ -425,7 +425,7 @@ export default function AnalyzeView() {
         <div className={`mx-auto flex flex-wrap items-center gap-2 px-5 py-2.5 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer lg:hidden"
             title="返回首页"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -453,7 +453,7 @@ export default function AnalyzeView() {
           ) : (
             <button
               onClick={regenerate}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-ink-700 hover:bg-ink-50 transition-colors cursor-pointer"
               title="重新生成"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -525,7 +525,7 @@ export default function AnalyzeView() {
             onClick={() => setWide((v) => !v)}
             className={`hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors cursor-pointer ${
               wide
-                ? "bg-indigo-50 text-indigo-700"
+                ? "bg-ink-50 text-ink-700"
                 : "text-slate-500 hover:bg-[var(--bg-soft)]"
             }`}
             title={wide ? "切回标准宽度（显示侧栏）" : "切到宽屏（隐藏侧栏，列加宽）"}
@@ -659,13 +659,13 @@ export default function AnalyzeView() {
         <div className="min-w-0 flex-1">
           {/* 词条标题：serif 大引语 */}
           <div className="mb-5">
-            <h1 className="font-serif-zh text-[34px] md:text-[44px] font-bold ink-grad leading-[1.1] tracking-tight break-words">
+            <h1 className="font-disp text-[34px] md:text-[44px] font-bold ink-grad leading-[1.1] tracking-tight break-words">
               {term}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
               {streaming ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[12px] font-medium text-indigo-600">
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-50 px-3 py-1 text-[12px] font-medium text-ink-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-ink-500 animate-pulse" />
                   AI 正在深挖…
                 </span>
               ) : error ? (
@@ -685,7 +685,7 @@ export default function AnalyzeView() {
                 </span>
               )}
               {talkshowDone && !streaming && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-3 py-1 text-[12px] font-medium text-violet-600" title="已在 Topic Talkshow 完成这个词的限时讲解">
+                <span className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-3 py-1 text-[12px] font-medium text-ink-600" title="已在 Topic Talkshow 完成这个词的限时讲解">
                   🎤 已开讲挑战
                 </span>
               )}
@@ -818,7 +818,7 @@ export default function AnalyzeView() {
                       className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-slate-600 group-hover:text-slate-900 transition-colors cursor-pointer"
                       title={r.term}
                     >
-                      <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-[10.5px] text-indigo-500">
+                      <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-ink-50 text-[10.5px] text-ink-500">
                         {r.term.slice(0, 1)}
                       </span>
                       <span className="truncate">{r.term}</span>
@@ -856,7 +856,7 @@ export default function AnalyzeView() {
                       href={`#${s.id}`}
                       className={`block truncate rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
                         active
-                          ? "bg-indigo-50 text-indigo-600 font-medium"
+                          ? "bg-ink-50 text-ink-600 font-medium"
                           : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                       }`}
                     >

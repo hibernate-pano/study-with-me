@@ -35,10 +35,10 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen">
       <header className="topbar">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3 pr-32 sm:gap-3 sm:pr-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3 sm:gap-3">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer lg:hidden"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
@@ -63,7 +63,7 @@ export default function HistoryPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-8 fade-up">
-        <h1 className="font-serif-zh text-[28px] font-semibold text-[var(--ink-deep)]">
+        <h1 className="font-disp text-[28px] font-semibold text-[var(--ink-deep)]">
           时间线
         </h1>
         <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
@@ -83,7 +83,7 @@ export default function HistoryPage() {
               return (
                 <div key={day}>
                   <div className="mb-1.5 flex items-baseline gap-2 px-1">
-                    <span className="font-serif-zh text-[16px] font-semibold text-slate-700">
+                    <span className="font-disp text-[16px] font-semibold text-slate-700">
                       {day}
                     </span>
                     {dayTasks.length > 0 && (

@@ -37,7 +37,7 @@ export default function AnalyzeError({
         <div className="flex justify-center gap-3">
           <button
             onClick={reset}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-ink-600 text-white text-[14px] font-medium hover:bg-ink-700 transition-colors cursor-pointer"
           >
             重试
           </button>

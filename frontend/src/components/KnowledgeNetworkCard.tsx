@@ -53,7 +53,7 @@ export default function KnowledgeNetworkCard({ markdown, streaming, onConceptCli
               style={{ background: g.color }}
             />
             <span
-              className="font-serif-zh text-[13.5px] font-semibold tracking-wide"
+              className="font-disp text-[13.5px] font-semibold tracking-wide"
               style={{ color: g.color }}
             >
               {g.label}
@@ -77,7 +77,7 @@ export default function KnowledgeNetworkCard({ markdown, streaming, onConceptCli
               >
                 <div className="flex items-baseline gap-2">
                   <span
-                    className="font-serif-zh text-[14.5px] font-medium group-hover:underline underline-offset-2"
+                    className="font-disp text-[14.5px] font-medium group-hover:underline underline-offset-2"
                     style={{ color: c.color }}
                   >
                     {c.name}

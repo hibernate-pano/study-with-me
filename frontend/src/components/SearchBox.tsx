@@ -59,7 +59,7 @@ export default function SearchBox({
           e.preventDefault();
           submit();
         }}
-        className={`group flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_-12px_rgba(30,40,90,0.18)] transition-all focus-within:border-indigo-400 focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.15)] ${padding}`}
+        className={`group flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_-12px_rgba(20,20,18,0.10)] transition-all focus-within:border-ink-400 focus-within:shadow-[0_0_0_4px_rgba(20,20,18,0.08)] ${padding}`}
       >
         <svg
           className="shrink-0 text-slate-500 mt-2"
@@ -107,7 +107,7 @@ export default function SearchBox({
           autoFocus={autoFocus}
           rows={1}
           maxLength={MAX_LEN}
-          className={`flex-1 bg-transparent outline-none text-slate-800 placeholder:text-slate-500 resize-none leading-relaxed scroll-thin ${
+          className={`flex-1 bg-transparent outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-500 resize-none leading-relaxed scroll-thin ${
             isLarge
               ? "text-[21px] py-3.5 min-h-[72px]"
               : "text-[15px] py-1.5 min-h-[36px]"
@@ -118,7 +118,7 @@ export default function SearchBox({
           <button
             type="submit"
             disabled={!value.trim()}
-            className={`shrink-0 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`shrink-0 rounded-xl bg-ink-600 text-white font-medium hover:bg-ink-700 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isLarge ? "px-9 py-4 text-[17px]" : "px-4 py-2 text-sm"
             }`}
           >

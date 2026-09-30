@@ -59,7 +59,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               <span
                 className={`flex h-7 w-7 items-center justify-center rounded-lg text-[12px] font-bold ${
                   isMine
-                    ? "bg-gradient-to-br from-violet-400 to-indigo-600 text-white"
+                    ? "bg-ink-800 text-white"
                     : "bg-white border border-slate-200 text-slate-600"
                 }`}
               >
@@ -67,7 +67,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               </span>
               <span
                 className={`text-[10.5px] font-bold tracking-wider uppercase ${
-                  isMine ? "text-indigo-600" : "text-slate-500"
+                  isMine ? "text-ink-600" : "text-slate-500"
                 }`}
               >
                 {isMine ? "我学过的" : "相关概念"}
@@ -97,7 +97,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               <span>次关联</span>
               <span className="ml-2 inline-block h-1 flex-1 max-w-[120px] rounded-full bg-slate-100 overflow-hidden">
                 <span
-                  className="block h-full bg-gradient-to-r from-indigo-400 to-violet-500 rounded-full"
+                  className="block h-full bg-ink-500 rounded-full"
                   style={{ width: `${Math.min(100, node.weight * 14)}%` }}
                 />
               </span>
@@ -124,7 +124,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
                   <button
                     key={c.name}
                     onClick={() => router.push(`/analyze/${encodeURIComponent(c.name)}`)}
-                    className="group inline-flex items-center gap-1 rounded-full border border-slate-100 bg-white px-2 py-0.5 text-[11.5px] text-slate-600 hover:border-indigo-300 hover:text-indigo-600 cursor-pointer"
+                    className="group inline-flex items-center gap-1 rounded-full border border-slate-100 bg-white px-2 py-0.5 text-[11.5px] text-slate-600 hover:border-ink-300 hover:text-ink-600 cursor-pointer"
                   >
                     <span
                       className="h-1.5 w-1.5 rounded-full shrink-0"
@@ -143,7 +143,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               <>
                 <button
                   onClick={() => router.push(`/analyze/${encodeURIComponent(node.label)}`)}
-                  className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(99,102,241,0.6)] cursor-pointer transition-all hover:shadow-[0_12px_28px_-10px_rgba(99,102,241,0.7)]"
+                  className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(20,20,18,0.22)] cursor-pointer transition-all hover:shadow-[0_12px_28px_-10px_rgba(20,20,18,0.26)]"
                 >
                   打开完整报告 →
                 </button>
@@ -157,7 +157,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
             ) : (
               <button
                 onClick={() => router.push(`/analyze/${encodeURIComponent(node.label)}`)}
-                className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(99,102,241,0.6)] cursor-pointer"
+                className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(20,20,18,0.22)] cursor-pointer"
               >
                 ✦ 深挖「{node.label.slice(0, 10)}{node.label.length > 10 ? "…" : ""}」
               </button>
@@ -187,11 +187,11 @@ function MineBody({ definition, takeaways }: { definition: string; takeaways: st
   return (
     <>
       {definition && (
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
-          <div className="text-[10.5px] font-bold tracking-wider text-indigo-500 mb-1.5">
+        <div className="rounded-xl border border-ink-100 bg-ink-50/60 p-4">
+          <div className="text-[10.5px] font-bold tracking-wider text-ink-500 mb-1.5">
             🎯 一句话定义
           </div>
-          <p className="font-serif-zh text-[14.5px] leading-relaxed text-slate-800">
+          <p className="font-disp text-[14.5px] leading-relaxed text-slate-800">
             {definition.slice(0, 180)}
             {definition.length > 180 ? "…" : ""}
           </p>

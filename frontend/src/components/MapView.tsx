@@ -214,7 +214,7 @@ export default function MapView({
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 40%, rgba(254,243,235,0.55) 0%, transparent 70%)",
+            "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.65) 0%, transparent 70%)",
         }}
       />
       {dotted && (
@@ -242,17 +242,17 @@ export default function MapView({
         onPointerCancel={onBgPointerUp}
       >
         <defs>
-          {/* 我学过的节点：紫→蓝径向渐变 */}
+          {/* 我学过的节点：墨色径向渐变 */}
           <radialGradient id="mine-fill" cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#a78bfa" />
-            <stop offset="60%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#4338ca" />
+            <stop offset="0%" stopColor="#43433d" />
+            <stop offset="60%" stopColor="#2b2b27" />
+            <stop offset="100%" stopColor="#141412" />
           </radialGradient>
           {/* hover 状态更亮 */}
           <radialGradient id="mine-fill-active" cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#c4b5fd" />
-            <stop offset="55%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#4f46e5" />
+            <stop offset="0%" stopColor="#75756d" />
+            <stop offset="55%" stopColor="#43433d" />
+            <stop offset="100%" stopColor="#2b2b27" />
           </radialGradient>
           {/* 暖光晕（filter） */}
           <filter id="warm-glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -342,12 +342,12 @@ export default function MapView({
                 >
                   {/* hover 光晕 */}
                   {active && (
-                    <circle r={r + 8} fill="#a5b4fc" opacity="0.25" />
+                    <circle r={r + 8} fill="#d4d4ce" opacity="0.3" />
                   )}
                   <circle
                     r={active ? r + 2.5 : r}
-                    fill={active ? "#eef2ff" : "#ffffff"}
-                    stroke={active ? "#6366f1" : recent ? "#b45309" : "#94a3b8"}
+                    fill={active ? "#f1f1ee" : "#ffffff"}
+                    stroke={active ? "#1d1d1a" : recent ? "#b45309" : "#94a3b8"}
                     strokeWidth={active ? 2.2 : recent ? 1.8 : 1.2}
                     className={`transition-all duration-200 ${recent ? "recent-glow" : ""}`}
                   />
@@ -355,7 +355,7 @@ export default function MapView({
                     y={r + 16}
                     textAnchor="middle"
                     fontSize="11"
-                    fill={active ? "#4338ca" : "#475569"}
+                    fill={active ? "#1d1d1a" : "#475569"}
                     fontWeight={active ? 600 : 400}
                     style={{ pointerEvents: "none" }}
                   >
@@ -420,14 +420,14 @@ export default function MapView({
                   {active && (
                     <circle
                       r={r + 6}
-                      fill="#a5b4fc"
-                      opacity="0.3"
+                      fill="#d4d4ce"
+                      opacity="0.35"
                     />
                   )}
                   <circle
                     r={active ? r + 3 : r}
                     fill={active ? "url(#mine-fill-active)" : "url(#mine-fill)"}
-                    stroke={recent ? "#b45309" : "#312e81"}
+                    stroke={recent ? "#b45309" : "#141412"}
                     strokeOpacity={recent ? "0.55" : "0.3"}
                     strokeWidth={recent ? 1.8 : 1.2}
                     className="transition-all duration-200"
@@ -451,7 +451,7 @@ export default function MapView({
 
       {/* 角标信息（左下） */}
       <div className="pointer-events-none absolute bottom-3 left-4 text-[11px] text-slate-500/80 tracking-wide">
-        <span className="font-semibold text-indigo-600/90">{mineCount}</span> 我的 ·
+        <span className="font-semibold text-ink-700/90">{mineCount}</span> 我的 ·
         <span className="text-slate-500/90"> {relatedCount}</span> 相关
       </div>
       {/* 操作提示（右下）：触屏没有滚轮，隐藏「滚轮缩放」那一段 */}

@@ -25,7 +25,7 @@ export default function MapPage() {
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer lg:hidden"
             title="返回首页"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -62,7 +62,7 @@ export default function MapPage() {
               </p>
               <button
                 onClick={() => router.push("/")}
-                className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-[13.5px] font-medium text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="mt-6 rounded-xl border border-ink-200 bg-ink-50 px-5 py-2.5 text-[13.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
               >
                 去学第一个概念 →
               </button>

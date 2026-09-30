@@ -1,28 +1,46 @@
 @import "tailwindcss";
 
+/* ===== ink 色板（Tailwind v4 @theme）=====
+ * 参考风格：中性浅灰画布 + 纯白扁平卡片 + 黑色胶囊 CTA（Lioran 式工具风）。
+ * 品牌色从紫蓝（indigo）改为"墨色"阶：交互色即近黑，功能色只留给状态。
+ * 页面代码里 ink-* 与旧 indigo-* 一一对应，方便整体迁移。
+ */
+@theme {
+  --color-ink-50: #f6f6f4;
+  --color-ink-100: #eeeeec;
+  --color-ink-200: #e2e2de;
+  --color-ink-300: #c8c8c2;
+  --color-ink-400: #a2a29a;
+  --color-ink-500: #75756d;
+  --color-ink-600: #43433d;
+  --color-ink-700: #2b2b27;
+  --color-ink-800: #1d1d1a;
+  --color-ink-900: #141412;
+}
+
 :root {
-  /* ===== 调色板（v1.7 设计系统 · 精致升级版） =====
-   * 暖纸色基底 + 紫蓝主色 + 琥珀点睛
-   * 背景从冷灰 (#f6f7fb) 换成暖白 (#faf8f3)，让"思考"语境有温度
+  /* ===== 调色板（v1.8 设计系统 · 工具风） =====
+   * 中性浅灰基底 + 墨色交互 + 琥珀点睛；渐变与噪点全部撤掉，靠层级和留白
    */
-  --bg: #faf8f3;            /* 暖纸色：整个产品基底 */
-  --bg-soft: #f4efe5;       /* 稍深：区块背景 */
+  --bg: #f0f0ee;            /* 画布：整个产品基底 */
+  --bg-soft: #e9e9e5;       /* 稍深：区块背景 */
   --card: #ffffff;
-  --ink: #1f1d2a;           /* 主文本（暖黑） */
-  --ink-soft: #5b6478;
-  --ink-deep: #0f0e1a;
-  --line: #e8e2d3;          /* 暖灰描边（呼应背景温度） */
-  --line-soft: #efeadd;
+  --ink: #1d1d1a;           /* 主文本（近黑） */
+  --ink-soft: #6b6b64;
+  --ink-deep: #141412;
+  --line: #e3e3df;          /* 发丝描边 */
+  --line-soft: #ebebe7;
+  --line-strong: #d4d4ce;   /* 按钮/输入框等需要更清晰的边 */
 
-  --brand: #4f46e5;
-  --brand-deep: #4338ca;
-  --brand-soft: #eef2ff;
+  --brand: #1d1d1a;         /* 交互色 = 墨黑（链接、焦点环、光标） */
+  --brand-deep: #000000;
+  --brand-soft: #ecece7;
 
-  --accent: #b45309;        /* 暖琥珀（细节高光，不当 CTA 用） */
+  --accent: #b45309;        /* 琥珀（细节高光，不当 CTA 用） */
   --accent-soft: #fef3eb;
   --accent-deep: #92400e;
 
-  /* 关系色（知识网络边的 5 类）—— 比之前更克制，避免视觉噪声 */
+  /* 关系色（知识网络边的 5 类）—— 数据语义色，保持不动 */
   --r-prereq: #0e7490;      /* 前置知识：青 */
   --r-sibling: #7c3aed;     /* 兄弟概念：紫 */
   --r-successor: #047857;   /* 后继深入：绿 */
@@ -30,7 +48,7 @@
   --r-analogy: #c2410c;     /* 类比：橙 */
 
   /* 字号节奏 */
-  --t-display: 1.875rem;    /* 30px，serif 大引语 */
+  --t-display: 1.875rem;    /* 30px，大引语 */
   --t-mega: 2.5rem;         /* 40px，概念标题 */
   --t-h: 1.0625rem;         /* 17px */
   --t-body: 0.9375rem;      /* 15px */
@@ -54,27 +72,35 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto,
     "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* serif 用作"定义/引语/概念标题"语义 */
-/* 优先 Google Fonts 的 Noto Serif SC（云端可用），然后 fallback 到系统 */
-.font-serif-zh {
-  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC",
-    "STSong", "SimSun", ui-serif, Georgia, serif;
-  font-weight: 500;
+/* 等宽：数据值、版本号、快捷键等"机器写"的文本 */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* 展示级文本：重 sans、收紧字距（原衬线展示位统一迁到这里） */
+.font-disp {
+  font-weight: 600;
+  letter-spacing: -0.01em;
   font-feature-settings: "kern", "palt";
 }
 
-/* 全局焦点环——键盘用户可见 */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 6px;
+/* 全局焦点环——键盘用户可见。
+ * 必须放进 @layer base：v4 的工具类（如 outline-none）都在 layer 里，
+ * 未分层规则会无条件压过工具类，导致输入框的双重描边关不掉。 */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 /* 淡入 */
@@ -90,7 +116,7 @@ body {
 }
 .fade-in { animation: fade-in 280ms var(--ease-quiet) both; }
 
-/* 节点最近学习高亮（柔光呼吸） */
+/* 节点最近学习高亮（柔光呼吸，琥珀 = "最近动过"） */
 @keyframes node-glow {
   0%, 100% { filter: drop-shadow(0 0 0 rgba(180, 83, 9, 0)); }
   50%      { filter: drop-shadow(0 0 6px rgba(180, 83, 9, 0.55)); }
@@ -110,60 +136,158 @@ body {
 
 /* ===== 容器样式 ===== */
 
-/* 精致表面：暖色温磨砂 + 三层柔和阴影 */
+/* 表面：白色磨砂（顶栏、抽屉头等浮层用） */
 .surface {
-  background: rgba(255, 253, 248, 0.85);
-  backdrop-filter: blur(14px) saturate(1.4);
-  border: 1px solid rgba(232, 226, 211, 0.55);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 8px 30px -10px rgba(15, 23, 42, 0.10),
-    0 24px 60px -28px rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(20, 20, 18, 0.05);
 }
 
-/* 卡片：实心白，暖描边 */
+/* 卡片：纯白、发丝边、几乎无影——层级靠边线和留白，不靠投影 */
 .card {
   background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: 16px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 6px 24px -10px rgba(15, 23, 42, 0.10),
-    0 20px 48px -28px rgba(15, 23, 42, 0.16);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(20, 20, 18, 0.04);
 }
 
-/* ===== 渐变 ===== */
-
-/* 主品牌渐变 */
-.brand-grad {
-  background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #4f46e5 100%);
+/* ===== 主按钮：墨黑胶囊 ===== */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ink);
+  box-shadow: 0 1px 2px rgba(20, 20, 18, 0.25);
+  transition:
+    transform 160ms var(--ease-quiet),
+    background 160ms var(--ease-quiet),
+    box-shadow 160ms var(--ease-quiet);
 }
-.brand-grad:hover {
-  background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #4338ca 100%);
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px -2px rgba(20, 20, 18, 0.3);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-/* 标题渐变文本：暖紫黑 → 蓝紫 */
-.ink-grad {
-  background-image: linear-gradient(135deg, #1f1d2a 0%, #312e81 55%, #4f46e5 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* ===== 次按钮：白底描边胶囊 ===== */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  transition:
+    transform 160ms var(--ease-quiet),
+    background 160ms var(--ease-quiet),
+    border-color 160ms var(--ease-quiet);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-soft);
+  border-color: var(--ink-soft);
+  transform: translateY(-1px);
+}
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
-/* ===== 首页 hero ===== */
-.hero-bg {
-  background:
-    radial-gradient(1200px 600px at 50% -15%, rgba(180, 83, 9, 0.10), transparent 55%),
-    radial-gradient(1000px 500px at 100% 10%, rgba(99, 102, 241, 0.10), transparent 55%),
-    var(--bg);
+/* ===== 胶囊标签（示例概念、接力棒等）===== */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  padding: 0.4rem 0.95rem;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 160ms var(--ease-quiet);
+}
+.chip:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.chip:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ===== 悬浮抬升（配合使用方的阴影生效）===== */
+.lift {
+  transition:
+    transform 220ms var(--ease-quiet),
+    box-shadow 220ms var(--ease-quiet),
+    border-color 220ms var(--ease-quiet);
+}
+.lift:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 6px 16px -8px rgba(20, 20, 18, 0.18);
+}
+
+/* ===== 流式进度光线（生成中，贴顶栏底边来回扫光）===== */
+.stream-line {
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(29, 29, 26, 0) 0%,
+    #1d1d1a 50%,
+    rgba(29, 29, 26, 0) 100%
+  );
+  background-size: 300% 100%;
+  animation: stream-sweep 1.6s linear infinite;
+}
+@keyframes stream-sweep {
+  from { background-position: 0% 50%; }
+  to   { background-position: 300% 50%; }
+}
+
+/* ===== 缓慢浮动（首页接力胶囊错峰呼吸）===== */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.float-slow {
+  animation: float-y 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-slow,
+  .stream-line {
+    animation: none;
+  }
+}
+
+/* ===== 虚线轨道（接力带底纹）===== */
+.dotted-rail {
+  height: 2px;
+  background-image: radial-gradient(circle, #c0c0b9 1px, transparent 1.5px);
+  background-size: 14px 2px;
+  background-repeat: repeat-x;
 }
 
 /* ===== 报告分区（Markdown 渲染）===== */
 .md {
   font-size: 15px;
   line-height: 1.85;
-  color: #2a2740;
+  color: #2b2b27;
 }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
@@ -171,26 +295,26 @@ body {
   font-size: 15.5px;
   font-weight: 700;
   margin: 20px 0 8px;
-  color: #1f1d2a;
+  color: var(--ink);
   letter-spacing: 0.01em;
 }
 .md p { margin: 10px 0; }
 .md ul, .md ol { margin: 10px 0; padding-left: 22px; }
 .md li { margin: 6px 0; }
-.md li::marker { color: #a09484; }
-.md strong { color: #0f0e1a; font-weight: 700; }
+.md li::marker { color: #a2a29a; }
+.md strong { color: var(--ink-deep); font-weight: 700; }
 .md code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
-  background: #f4efe5;
+  background: #f4f4f1;
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 1px 5px;
-  color: #b91c1c;
+  color: var(--ink);
 }
 .md pre {
-  background: #171c2c;
-  color: #e5e9f5;
+  background: #1d1d1a;
+  color: #ecece7;
   padding: 14px 16px;
   border-radius: 10px;
   overflow-x: auto;
@@ -198,7 +322,7 @@ body {
 }
 .md pre code { background: transparent; border: none; color: inherit; padding: 0; font-size: 13px; }
 .md blockquote {
-  border-left: 3px solid var(--line);
+  border-left: 3px solid var(--line-strong);
   margin: 10px 0;
   padding: 2px 14px;
   color: var(--ink-soft);
@@ -218,7 +342,7 @@ body {
   100% { background-position: 400px 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, #ece8dc 25%, #f6f1e3 50%, #ece8dc 75%);
+  background: linear-gradient(90deg, #e7e7e3 25%, #f3f3f0 50%, #e7e7e3 75%);
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
   border-radius: 8px;
@@ -235,7 +359,7 @@ body {
 /* ===== 其他 ===== */
 .scroll-thin::-webkit-scrollbar { width: 5px; }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: #d4cdba;
+  background: #c8c8c2;
   border-radius: 4px;
 }
 
@@ -256,8 +380,8 @@ body {
 .kbar-backdrop {
   background: radial-gradient(
     ellipse at top,
-    rgba(15, 14, 26, 0.42),
-    rgba(15, 14, 26, 0.62) 60%
+    rgba(20, 20, 18, 0.36),
+    rgba(20, 20, 18, 0.55) 60%
   );
   backdrop-filter: blur(6px);
 }
@@ -271,12 +395,38 @@ body {
 
 /* ===== 引语 ===== */
 .lead-quote {
-  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
   font-size: var(--t-display);
   line-height: 1.55;
   color: var(--ink-deep);
-  letter-spacing: 0.005em;
-  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* ===== 顶栏（分析/复习/对比/地图等页头部共用）===== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--line);
+  background: rgba(240, 240, 238, 0.82);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* ===== 首页画布（原 hero 渐变撤掉，回归纯净画布）===== */
+.hero-bg {
+  background: var(--bg);
+}
+
+/* ===== 渐变类：保留类名避免散点改动，但改为实色墨黑 ===== */
+.brand-grad {
+  background: var(--ink);
+}
+.brand-grad:hover {
+  background: var(--brand-deep);
+}
+.ink-grad {
+  color: var(--ink-deep);
 }
 
 /* ===== 地图画布光标 ===== */
@@ -307,169 +457,7 @@ body {
   box-shadow: 0 0 0 2px white;
 }
 
-/* ============================================================
-   精致升级基础层（全站共用）
-   材质噪点 / 统一顶栏 / 按钮胶囊 / 流式光线 / 浮动动画
-   ============================================================ */
-
-/* ===== 纸感噪点覆层：一层极淡的纸张颗粒，消除纯白平面感 ===== */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  pointer-events: none;
-  opacity: 0.045;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
 /* 全局选中色 */
 ::selection {
-  background: rgba(99, 102, 241, 0.18);
-}
-
-/* ===== 统一顶栏（分析/复习/对比/地图四页头部共用）===== */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  border-bottom: 1px solid var(--line);
-  background: rgba(250, 248, 243, 0.72);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-}
-
-/* ===== 主按钮：品牌渐变 + 悬浮微抬 ===== */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  color: #fff;
-  background-image: linear-gradient(135deg, #6366f1, #7c3aed);
-  box-shadow:
-    0 1px 2px rgba(79, 70, 229, 0.4),
-    0 6px 20px -6px rgba(99, 102, 241, 0.55);
-  transition:
-    transform 180ms var(--ease-quiet),
-    box-shadow 180ms var(--ease-quiet),
-    filter 180ms var(--ease-quiet);
-}
-.btn-primary:hover:not(:disabled) {
-  filter: brightness(1.07);
-  transform: translateY(-1px);
-  box-shadow:
-    0 2px 4px rgba(79, 70, 229, 0.38),
-    0 10px 28px -8px rgba(99, 102, 241, 0.6);
-}
-.btn-primary:active:not(:disabled) {
-  transform: scale(0.97);
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ===== 次按钮：暖白描边 ===== */
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  border-radius: 0.75rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-  border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.6);
-  transition:
-    transform 180ms var(--ease-quiet),
-    background 180ms var(--ease-quiet),
-    color 180ms var(--ease-quiet),
-    border-color 180ms var(--ease-quiet);
-}
-.btn-ghost:hover:not(:disabled) {
-  background: var(--bg-soft);
-  color: var(--ink);
-  transform: translateY(-1px);
-}
-.btn-ghost:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-/* ===== 胶囊标签（示例概念、接力棒等）===== */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.65);
-  padding: 0.4rem 0.95rem;
-  font-size: 13px;
-  color: #475569;
-  cursor: pointer;
-  transition: all 180ms var(--ease-quiet);
-}
-.chip:hover {
-  border-color: #a5b4fc;
-  color: #4338ca;
-  background: rgba(238, 242, 255, 0.7);
-  transform: translateY(-2px);
-}
-.chip:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* ===== 悬浮抬升（配合使用方的阴影生效）===== */
-.lift {
-  transition:
-    transform 220ms var(--ease-quiet),
-    box-shadow 220ms var(--ease-quiet);
-}
-.lift:hover {
-  transform: translateY(-3px);
-}
-
-/* ===== 流式进度光线（生成中，贴顶栏底边来回扫光）===== */
-.stream-line {
-  height: 2px;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    #6366f1 0%,
-    #a855f7 25%,
-    #f59e0b 50%,
-    #6366f1 100%
-  );
-  background-size: 300% 100%;
-  animation: stream-sweep 1.8s linear infinite;
-}
-@keyframes stream-sweep {
-  from { background-position: 0% 50%; }
-  to   { background-position: 300% 50%; }
-}
-
-/* ===== 缓慢浮动（首页接力胶囊错峰呼吸）===== */
-@keyframes float-y {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-7px); }
-}
-.float-slow {
-  animation: float-y 6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .float-slow,
-  .stream-line {
-    animation: none;
-  }
-}
-
-/* ===== 虚线轨道（接力带底纹）===== */
-.dotted-rail {
-  height: 2px;
-  background-image: radial-gradient(circle, #c9c2b0 1px, transparent 1.5px);
-  background-size: 14px 2px;
-  background-repeat: repeat-x;
+  background: rgba(29, 29, 26, 0.14);
 }

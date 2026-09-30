@@ -50,7 +50,7 @@ export default function AtlasGraph({ modules, selected, onSelect, emptyEdgeHint 
             <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" />
           </marker>
           <marker id="arrow-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#1d1d1a" strokeWidth="1.8" strokeLinecap="round" />
           </marker>
         </defs>
         {edges.map((e, i) => {
@@ -86,7 +86,7 @@ export default function AtlasGraph({ modules, selected, onSelect, emptyEdgeHint 
               key={i}
               d={`M ${a.x} ${a.y} Q ${mx} ${my} ${ex} ${ey}`}
               fill="none"
-              stroke={hi ? "#6366f1" : "#cbd5e1"}
+              stroke={hi ? "#1d1d1a" : "#cbd5e1"}
               strokeWidth={hi ? 2 : 1.4}
               markerEnd={hi ? "url(#arrow-hi)" : "url(#arrow)"}
             />
@@ -102,8 +102,8 @@ export default function AtlasGraph({ modules, selected, onSelect, emptyEdgeHint 
               <rect
                 x={p.x - NODE_W / 2} y={p.y - NODE_H / 2} width={NODE_W} height={NODE_H} rx={10}
                 className="transition-all"
-                fill={active ? "#4f46e5" : "#ffffff"}
-                stroke={active ? "#4f46e5" : "#e2e8f0"}
+                fill={active ? "#1d1d1a" : "#ffffff"}
+                stroke={active ? "#1d1d1a" : "#e2e8f0"}
                 strokeWidth={1.5}
               />
               <text x={p.x} y={p.y + 1} textAnchor="middle" dominantBaseline="middle"

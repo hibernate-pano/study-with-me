@@ -127,14 +127,14 @@ export default function ExamSetup({
       <section className="card p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-serif-zh text-[24px] font-semibold text-[var(--ink-deep)]">
+            <h2 className="font-disp text-[24px] font-semibold text-[var(--ink-deep)]">
               新建试卷
             </h2>
             <p className="mt-1 text-[13px] leading-relaxed text-[var(--ink-soft)]">
               文件只在当前浏览器解析。选择页段后，只把对应文字发送给 AI 命题。
             </p>
           </div>
-          <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11.5px] font-medium text-indigo-700">
+          <span className="rounded-full bg-ink-50 px-3 py-1 text-[11.5px] font-medium text-ink-700">
             本地原文 · 云端题库暂不启用
           </span>
         </div>
@@ -150,9 +150,9 @@ export default function ExamSetup({
               </label>
               <label
                 htmlFor={fileId}
-                className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 px-4 py-5 text-center transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+                className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-ink-50/40 px-4 py-5 text-center transition-colors hover:border-ink-300 hover:bg-ink-50"
               >
-                <span className="text-[14px] font-semibold text-indigo-700">
+                <span className="text-[14px] font-semibold text-ink-700">
                   {pdf ? pdf.fileName : "选择可复制文字的 PDF"}
                 </span>
                 <span className="mt-1 text-[11.5px] text-slate-500">
@@ -368,7 +368,7 @@ export default function ExamSetup({
 
       {sets.length > 0 && (
         <section className="card p-5 sm:p-7">
-          <h2 className="font-serif-zh text-[20px] font-semibold text-[var(--ink-deep)]">
+          <h2 className="font-disp text-[20px] font-semibold text-[var(--ink-deep)]">
             本机题库
           </h2>
           <p className="mt-1 text-[12.5px] text-slate-500">
@@ -410,7 +410,7 @@ export default function ExamSetup({
                         key={paper.id}
                         type="button"
                         onClick={() => onOpenPaper(set, paper)}
-                        className="rounded-lg border border-indigo-100 bg-white px-3 py-2 text-left text-[12.5px] text-indigo-700 hover:border-indigo-300"
+                        className="rounded-lg border border-ink-100 bg-white px-3 py-2 text-left text-[12.5px] text-ink-700 hover:border-ink-300"
                       >
                         <span className="font-semibold">{paper.title.split("·").at(-1)?.trim()}</span>
                         <span className="ml-2 text-[11px] text-slate-400">

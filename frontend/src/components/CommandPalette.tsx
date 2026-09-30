@@ -254,12 +254,12 @@ export default function CommandPalette() {
                         onMouseEnter={() => setActive(idx)}
                         onClick={() => go(it)}
                         className={`flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors ${
-                          isActive ? "bg-indigo-50" : "hover:bg-slate-50"
+                          isActive ? "bg-ink-50" : "hover:bg-slate-50"
                         }`}
                       >
                         <IconBox item={it} active={isActive} />
                         <span className="flex-1 min-w-0">
-                          <span className={`block truncate text-[14px] ${isActive ? "text-indigo-700 font-semibold" : "text-slate-800"}`}>
+                          <span className={`block truncate text-[14px] ${isActive ? "text-ink-700 font-semibold" : "text-slate-800"}`}>
                             {renderTitle(it, query)}
                           </span>
                           <span className="block truncate text-[11.5px] text-slate-500">
@@ -267,7 +267,7 @@ export default function CommandPalette() {
                           </span>
                         </span>
                         {isActive && (
-                          <span className="shrink-0 text-[11px] text-indigo-400 font-mono">↵</span>
+                          <span className="shrink-0 text-[11px] text-ink-400 font-mono">↵</span>
                         )}
                       </button>
                     );
@@ -321,7 +321,7 @@ function IconBox({ item, active }: { item: Item; active: boolean }) {
     <span
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[13px] transition-colors ${
         active
-          ? "border-indigo-200 bg-white text-indigo-600"
+          ? "border-ink-200 bg-white text-ink-600"
           : "border-slate-100 bg-white text-slate-500"
       }`}
     >
