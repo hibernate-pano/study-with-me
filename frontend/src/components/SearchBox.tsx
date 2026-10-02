@@ -100,7 +100,7 @@ export default function SearchBox({
           }}
           placeholder={
             isLarge
-              ? "输入概念、问题，或粘贴 GitHub 仓库地址…例如：分布式锁、什么是Kafka、github.com/vercel/next.js、我在学分布式系统设计，遇到 RCU 这个词，能讲讲吗？"
+              ? "输入概念、问题，或粘贴 GitHub 仓库地址"
               : "换个输入…"
           }
           aria-label={isLarge ? "输入要深挖的概念、问题或 GitHub 仓库地址" : "输入要深挖的概念"}
@@ -109,7 +109,9 @@ export default function SearchBox({
           maxLength={MAX_LEN}
           className={`flex-1 bg-transparent outline-none focus-visible:outline-none text-slate-800 placeholder:text-slate-500 resize-none leading-relaxed scroll-thin ${
             isLarge
-              ? "text-[21px] py-3.5 min-h-[72px]"
+              ? // 3 行底高：默认即"从容态"，1-3 行的输入不发生尺寸跳动；
+                // 超出仍自动长到 200px 上限（min-height 兜底，JS 设的 height 不会低于它）
+                "text-[21px] py-3.5 min-h-[130px]"
               : "text-[15px] py-1.5 min-h-[36px]"
           }`}
         />
