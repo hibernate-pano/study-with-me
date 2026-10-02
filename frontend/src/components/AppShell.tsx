@@ -140,7 +140,7 @@ const NAV: NavGroup[] = [
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-2.5 shrink-0" title="回首页">
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-ink-800 text-white">
+      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-ink-900 text-white">
         <Icon size={13}>
           <path d="M14 4l6 6" />
           <path d="M11 7l-7 7v4h4l7-7" />
@@ -177,8 +177,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      {/* ── 桌面侧栏 ── */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[228px] flex-col border-r border-[var(--line)] lg:flex">
+      {/* ── 桌面侧栏：纯白"机身"面板，与灰画布形成台面/机身对比 ── */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[228px] flex-col border-r border-[var(--line)] bg-white lg:flex">
         <div className="px-5 pb-5 pt-5">
           <Brand />
         </div>
@@ -200,16 +200,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         aria-current={active ? "page" : undefined}
                         className={`flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors ${
                           active
-                            ? "bg-white text-ink-900 shadow-[0_1px_2px_rgba(20,20,18,0.05)] border border-[var(--line)] font-medium"
-                            : "text-ink-soft hover:bg-ink-100/70 hover:text-ink border border-transparent"
+                            ? "bg-[var(--brand-soft)] font-semibold text-ink-900"
+                            : "text-ink-soft hover:bg-ink-50 hover:text-ink"
                         }`}
                       >
-                        <span className={active ? "text-ink-800" : "text-slate-400"}>
+                        <span className={active ? "text-ink-900" : "text-slate-400"}>
                           {item.icon}
                         </span>
                         <span className="truncate">{item.label}</span>
                         {badge !== null && (
-                          <span className="ml-auto rounded-full bg-ink-100 px-1.5 py-px font-mono text-[10.5px] tabular-nums text-ink-600">
+                          <span
+                            className={`ml-auto rounded-md px-1.5 py-px font-mono text-[10.5px] tabular-nums ${
+                              // 到期数 = 待办警告（琥珀色洗）；其余计数保持中性灰
+                              item.badge === "due"
+                                ? "bg-[var(--st-warn-bg)] text-[var(--st-warn)]"
+                                : "bg-ink-100 text-ink-600"
+                            }`}
+                          >
                             {badge}
                           </span>
                         )}

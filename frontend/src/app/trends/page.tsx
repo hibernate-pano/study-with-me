@@ -196,14 +196,21 @@ export default function TrendsPage() {
                         {a.date.slice(5).replace("-", "/")}
                       </span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                        {/* 数据标记统一数据蓝（Lioran 图表语言），对错语义只落在数字上 */}
                         <div
-                          className={`h-full rounded-full ${
-                            a.pct >= 80 ? "bg-emerald-500" : a.pct >= 60 ? "bg-ink-500" : "bg-amber-400"
-                          }`}
+                          className="h-full rounded-full bg-[var(--data)]"
                           style={{ width: `${Math.max(2, Math.round(a.pct))}%` }}
                         />
                       </div>
-                      <span className="w-[42px] shrink-0 text-right text-[12px] font-medium tabular-nums text-slate-700">
+                      <span
+                        className={`w-[42px] shrink-0 text-right text-[12px] font-medium tabular-nums ${
+                          a.pct < 40
+                            ? "text-[var(--st-err)]"
+                            : a.pct < 60
+                              ? "text-[var(--st-warn)]"
+                              : "text-slate-700"
+                        }`}
+                      >
                         {Math.round(a.pct)}%
                       </span>
                     </div>

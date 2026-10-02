@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 /* ===== ink 色板（Tailwind v4 @theme）=====
- * 参考风格：中性浅灰画布 + 纯白扁平卡片 + 黑色胶囊 CTA（Lioran 式工具风）。
- * 品牌色从紫蓝（indigo）改为"墨色"阶：交互色即近黑，功能色只留给状态。
+ * 设计哲学（复刻 Lioran.ai 工具风，v3 定稿）：
+ * 1. 桌上的精密仪器——画布灰是"台面"，白色是"机身"；深度来自表面反差与发丝边，不靠投影。
+ * 2. 黑白为纲，彩色为目——黑只给品牌块/主按钮/激活态；彩色只表达状态（红=失败、琥珀=待办、
+ *    蓝=信息/数据、绿=通过），且一律以小面积色洗 chip 出现，不做大面积色块。
+ * 3. 万物有名有态——微标签命名分区，实体内联状态 chip 和计数，界面读起来是状态报告。
+ * 4. 圆角语法——面板/按钮=8-12px 矩形（"可以按的东西"），标签/筛选=全圆胶囊（"贴上去的纸"）。
+ * 5. 紧凑而可扫读——tabular 数字、次级信息小号灰字、底部灰色脚注写约束。
  * 页面代码里 ink-* 与旧 indigo-* 一一对应，方便整体迁移。
  */
 @theme {
@@ -19,26 +24,32 @@
 }
 
 :root {
-  /* ===== 调色板（v1.8 设计系统 · 工具风） =====
-   * 中性浅灰基底 + 墨色交互 + 琥珀点睛；渐变与噪点全部撤掉，靠层级和留白
-   */
-  --bg: #f0f0ee;            /* 画布：整个产品基底 */
-  --bg-soft: #e9e9e5;       /* 稍深：区块背景 */
+  /* ===== 调色板（v3 · Lioran 式工具风定稿） ===== */
+  --bg: #ecebe8;            /* 画布：整个产品的"台面"，比卡片深一档让白卡浮起 */
+  --bg-soft: #e7e6e2;       /* 稍深：区块背景 / hover 洗 */
   --card: #ffffff;
   --ink: #1d1d1a;           /* 主文本（近黑） */
   --ink-soft: #6b6b64;
   --ink-deep: #141412;
-  --line: #e3e3df;          /* 发丝描边 */
-  --line-soft: #ebebe7;
-  --line-strong: #d4d4ce;   /* 按钮/输入框等需要更清晰的边 */
+  --line: #e0dfda;          /* 发丝描边 */
+  --line-soft: #e8e7e3;
+  --line-strong: #d2d1cb;   /* 按钮/输入框等需要更清晰的边 */
 
   --brand: #1d1d1a;         /* 交互色 = 墨黑（链接、焦点环、光标） */
   --brand-deep: #000000;
-  --brand-soft: #ecece7;
+  --brand-soft: #e9e8e3;    /* 激活态色洗 */
 
   --accent: #b45309;        /* 琥珀（细节高光，不当 CTA 用） */
   --accent-soft: #fef3eb;
   --accent-deep: #92400e;
+
+  /* ===== 状态色板：小面积色洗 chip 专用（红=失败 / 琥珀=待办 / 绿=通过 / 蓝=信息） ===== */
+  --st-err: #b3401f;        --st-err-bg: #fbe9e2;   --st-err-line: #f0d3c7;
+  --st-warn: #92400e;       --st-warn-bg: #fdf3d8;   --st-warn-line: #efe0b4;
+  --st-ok: #1a7f4b;         --st-ok-bg: #e3f2e9;     --st-ok-line: #c6e4d2;
+  --st-info: #1e429b;       --st-info-bg: #dce7f8;   --st-info-line: #c3d6f0;
+
+  --data: #3e6ea4;          /* 数据蓝：图表数据标记专用（对照 RUNS 条形色），失败才用红 */
 
   /* 关系色（知识网络边的 5 类）—— 数据语义色，保持不动 */
   --r-prereq: #0e7490;      /* 前置知识：青 */
@@ -152,13 +163,13 @@ body {
   box-shadow: 0 1px 2px rgba(20, 20, 18, 0.04);
 }
 
-/* ===== 主按钮：墨黑胶囊 ===== */
+/* ===== 主按钮：墨黑圆角矩形（参考图按钮是 8-10px 矩形；全圆只留给胶囊标签）===== */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 9999px;
+  border-radius: 10px;
   font-weight: 600;
   color: #fff;
   background: var(--ink);
@@ -181,13 +192,13 @@ body {
   cursor: not-allowed;
 }
 
-/* ===== 次按钮：白底描边胶囊 ===== */
+/* ===== 次按钮：白底描边圆角矩形 ===== */
 .btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  border-radius: 9999px;
+  border-radius: 10px;
   font-weight: 500;
   color: var(--ink);
   border: 1px solid var(--line-strong);
@@ -206,7 +217,10 @@ body {
   transform: scale(0.97);
 }
 
-/* ===== 胶囊标签（示例概念、接力棒等）===== */
+/* ===== 胶囊标签（示例概念、接力棒等）=====
+ * hover 只做浅洗加深，不做黑反色——参考图语言里黑填充是"动作/选中"，
+ * 悬停态比它轻一档，才分得清"能点"和"已选中"。
+ */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -220,13 +234,36 @@ body {
   transition: all 160ms var(--ease-quiet);
 }
 .chip:hover {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: #fff;
+  border-color: var(--ink-soft);
+  background: var(--bg-soft);
   transform: translateY(-1px);
 }
 .chip:active {
   transform: translateY(0) scale(0.98);
+}
+
+/* ===== 状态 chip 词汇表：小面积色洗 + 深色文字（红=失败/琥珀=待办/绿=通过/蓝=信息）===== */
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 7px;
+  border: 1px solid;
+  padding: 0.1rem 0.5rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.state-ok   { color: var(--st-ok);   background: var(--st-ok-bg);   border-color: var(--st-ok-line); }
+.state-warn { color: var(--st-warn); background: var(--st-warn-bg); border-color: var(--st-warn-line); }
+.state-err  { color: var(--st-err);  background: var(--st-err-bg);  border-color: var(--st-err-line); }
+.state-info { color: var(--st-info); background: var(--st-info-bg); border-color: var(--st-info-line); }
+
+/* 触屏：双击缩放延迟只对按钮关掉（指南要求） */
+button,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* ===== 悬浮抬升（配合使用方的阴影生效）===== */
@@ -408,7 +445,7 @@ body {
   top: 0;
   z-index: 20;
   border-bottom: 1px solid var(--line);
-  background: rgba(240, 240, 238, 0.82);
+  background: rgba(236, 235, 232, 0.85);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
