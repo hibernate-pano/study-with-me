@@ -23,6 +23,7 @@ const ACTIONS: ActionItem[] = [
   { kind: "action", id: "review", title: "去复习", subtitle: "间隔重复自测题", icon: "🗂" },
   { kind: "action", id: "map", title: "我的知识网络（焦点）", subtitle: "全屏沉浸式地图", icon: "🗺" },
   { kind: "action", id: "compare", title: "概念对比", subtitle: "把两个概念放一起辨析", icon: "⚖️" },
+  { kind: "action", id: "trends", title: "学习统计", subtitle: "深挖 / 复习 / 考试的真实数据曲线", icon: "📈" },
 ];
 
 export default function CommandPalette() {
@@ -111,6 +112,7 @@ export default function CommandPalette() {
       if (item.id === "review") router.push("/review");
       else if (item.id === "exam") router.push("/exam");
       else if (item.id === "map") router.push("/map");
+      else if (item.id === "trends") router.push("/trends");
       else if (item.id === "compare") {
         // 用最近的两个概念做对比；不够则去 /compare 自填
         if (reports.length >= 2) {
