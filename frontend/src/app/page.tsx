@@ -77,8 +77,8 @@ export default function HomePage() {
       recentRepos={recentRepos}
       recentConcepts={recentConcepts}
       onGoMap={() => router.push("/map")}
+      onGoTrends={() => router.push("/trends")}
       onGoReview={() => router.push("/review")}
-      onGoToday={() => router.push("/today")}
       onGoExam={() => router.push("/exam")}
     />
   );
@@ -94,8 +94,8 @@ function WelcomeHome({
   recentRepos,
   recentConcepts,
   onGoMap,
+  onGoTrends,
   onGoReview,
-  onGoToday,
   onGoExam,
 }: {
   onStart: (q: string) => void;
@@ -106,8 +106,8 @@ function WelcomeHome({
   recentRepos: string[];
   recentConcepts: { term: string; updatedAt: number }[];
   onGoMap: () => void;
+  onGoTrends: () => void;
   onGoReview: () => void;
-  onGoToday: () => void;
   onGoExam: () => void;
 }) {
   const router = useRouter();
@@ -220,11 +220,11 @@ function WelcomeHome({
                 <span>→</span>
               </button>
               <button
-                onClick={onGoToday}
+                onClick={onGoTrends}
                 className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
               >
-                <span>📅</span>
-                <span>今日打卡</span>
+                <span>📈</span>
+                <span>学习统计</span>
                 <span>→</span>
               </button>
             </div>

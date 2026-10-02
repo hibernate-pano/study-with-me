@@ -8,7 +8,6 @@ import type { FlatConcept } from "./network";
 import { parseQuizSection, newCard, type Card } from "./cards";
 import { extractSectionRaw } from "./stream";
 import type { Atlas } from "./atlas";
-import type { Reflection, Task, Zone } from "./tasks";
 import type { ExamSet } from "./exams";
 
 export interface StoredReport {
@@ -25,8 +24,6 @@ export interface StoredReport {
 const DB_NAME = "concept-digger";
 const REPORTS_STORE = "reports";
 const CARDS_STORE = "cards";
-const TASKS_STORE = "tasks"; // 拉伸区任务（每日）
-const REFLECTIONS_STORE = "reflections"; // 每日反思（每日一条）
 const EXAM_SETS_STORE = "exam_sets"; // 出题大师：题库 + 试卷 + 作答记录
 const DB_VERSION = 4;
 
@@ -69,13 +66,6 @@ function openDB(): Promise<IDBDatabase> {
         const cards = db.createObjectStore(CARDS_STORE, { keyPath: "key" });
         cards.createIndex("dueAt", "dueAt");
         cards.createIndex("term", "term");
-      }
-      if (!db.objectStoreNames.contains(TASKS_STORE)) {
-        const tasks = db.createObjectStore(TASKS_STORE, { keyPath: "id", autoIncrement: true });
-        tasks.createIndex("date", "date");
-      }
-      if (!db.objectStoreNames.contains(REFLECTIONS_STORE)) {
-        db.createObjectStore(REFLECTIONS_STORE, { keyPath: "date" });
       }
       if (!db.objectStoreNames.contains(EXAM_SETS_STORE)) {
         const exams = db.createObjectStore(EXAM_SETS_STORE, { keyPath: "id" });
@@ -436,14 +426,12 @@ export async function clearAllLocalData(): Promise<void> {
   const db = await openDB();
   await new Promise<void>((resolve, reject) => {
     const t = db.transaction(
-      [REPORTS_STORE, CARDS_STORE, TASKS_STORE, REFLECTIONS_STORE, EXAM_SETS_STORE],
+      [REPORTS_STORE, CARDS_STORE, EXAM_SETS_STORE],
       "readwrite"
     );
     for (const store of [
       REPORTS_STORE,
       CARDS_STORE,
-      TASKS_STORE,
-      REFLECTIONS_STORE,
       EXAM_SETS_STORE,
     ]) {
       t.objectStore(store).clear();
@@ -489,93 +477,6 @@ export async function deleteExamSet(id: string): Promise<void> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
   });
-}
-
-// ---------------- 每日任务 / 反思 ----------------
-// ponytail: 当前仅本地 IndexedDB；登录态云同步（D1 tasks/reflections 表）暂不接，
-// 单设备够用。升级路径——补 D1 schema + sync payload 即可复用 reports/ 那套 cloudPusher。
-
-const VALID_ZONES: ReadonlySet<Zone> = new Set(["comfort", "stretch", "difficult"]);
-
-/** 当天任务列表（按 id 顺序） */
-export async function getTasksByDate(date: string): Promise<Task[]> {
-  const all = (await tx(TASKS_STORE, "readonly", (s) => s.getAll())) as Task[];
-  return all
-    .filter((t) => t.date === date)
-    .sort((a, b) => a.id - b.id);
-}
-
-/** 全部任务（趋势页统计用） */
-export async function getAllTasks(): Promise<Task[]> {
-  return (await tx(TASKS_STORE, "readonly", (s) => s.getAll())) as Task[];
-}
-
-/** 读取某天的反思；没有 → 空记录 */
-export async function getReflection(date: string): Promise<Reflection> {
-  const r = (await tx(REFLECTIONS_STORE, "readonly", (s) => s.get(date))) as
-    | Reflection
-    | undefined;
-  return r ?? { date, autopilot: "", stretch: "", updatedAt: 0 };
-}
-
-/** 全部反思（时间线 + 趋势统计用） */
-export async function getAllReflections(): Promise<Reflection[]> {
-  return (await tx(REFLECTIONS_STORE, "readonly", (s) => s.getAll())) as Reflection[];
-}
-
-/** 新增一条任务；返回新 id */
-export async function addTask(date: string, content: string, zone: Zone): Promise<number> {
-  const db = await openDB();
-  return new Promise<number>((resolve, reject) => {
-    const t = db.transaction(TASKS_STORE, "readwrite");
-    const req = t.objectStore(TASKS_STORE).add({ date, content, zone, done: 0 });
-    req.onsuccess = () => resolve(req.result as number);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-/** 切换任务 done 状态 */
-export async function toggleTask(id: number, done: 0 | 1): Promise<void> {
-  const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const t = db.transaction(TASKS_STORE, "readwrite");
-    const store = t.objectStore(TASKS_STORE);
-    const getReq = store.get(id);
-    getReq.onsuccess = () => {
-      const cur = getReq.result as Task | undefined;
-      if (!cur) return;
-      store.put({ ...cur, done });
-    };
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error);
-  });
-}
-
-/** 删除一条任务 */
-export async function deleteTask(id: number): Promise<void> {
-  const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const t = db.transaction(TASKS_STORE, "readwrite");
-    t.objectStore(TASKS_STORE).delete(id);
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error);
-  });
-}
-
-/** upsert 一天的反思 */
-export async function saveReflection(r: Reflection): Promise<void> {
-  const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const t = db.transaction(REFLECTIONS_STORE, "readwrite");
-    t.objectStore(REFLECTIONS_STORE).put({ ...r, updatedAt: Date.now() });
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error);
-  });
-}
-
-/** 复用：清洗 zone 入参 */
-export function normalizeZone(z: unknown): Zone {
-  return VALID_ZONES.has(z as Zone) ? (z as Zone) : "stretch";
 }
 
 // ---------------- talkshow 已开讲标记 ----------------
