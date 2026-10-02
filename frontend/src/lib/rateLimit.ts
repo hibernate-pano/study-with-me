@@ -1,5 +1,5 @@
 /**
- * 服务端共享限流（/api/analyze、/api/repo、/api/repo/module 共用）。
+ * 服务端共享限流（/api/analyze、/api/exam 等管线共用）。
  *
  * 主路径：Cloudflare D1 持久化计数（serverless 多实例全局一致），见 aiAccess()：
  * - 匿名请求：同 IP 60s 固定窗口 10 次/分钟，且叠加同 IP 的 UTC+8 日配额 200 次/天；

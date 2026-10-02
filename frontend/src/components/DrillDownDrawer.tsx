@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { parseSections, extractSectionRaw, styleForTitle, stripStreamMarkers, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
 import { useFocusTrap } from "@/components/useFocusTrap";
-import { saveReport, getReport, drillKey } from "@/lib/storage";
+import { saveReport, getReport, drillKey, syncCardsFromReport } from "@/lib/storage";
 
 /**
  * 右侧抽屉：承载某个被点击概念的流式深挖报告。
@@ -22,9 +22,11 @@ interface DrawerProps {
   concept: FlatConcept | null;
   parentTerm: string;
   onClose: () => void;
+  /** 深挖报告首次成卡后回调（父组件刷新复习徽标） */
+  onCardsSynced?: () => void;
 }
 
-export default function DrillDownDrawer({ concept, parentTerm, onClose }: DrawerProps) {
+export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsSynced }: DrawerProps) {
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState("");
@@ -135,6 +137,12 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
             }).catch(() => {
               /* 隐私模式等场景写失败就静默 */
             });
+            // 深挖报告的定义卡与追问卡也进复习闭环（幂等，同 key 跳过）
+            syncCardsFromReport(concept.name, final, drillKey(parentTerm, concept.name))
+              .then((n) => {
+                if (n > 0) onCardsSynced?.();
+              })
+              .catch(() => {});
           }
         } catch (err: unknown) {
           if (
@@ -161,6 +169,12 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
           setText(r.fullText);
           setStreaming(false);
           setCachedAt(r.updatedAt);
+          // 缓存回放也补成卡（幂等：老报告升级后首次打开时把定义卡/追问卡补齐）
+          syncCardsFromReport(concept.name, r.fullText, drillKey(parentTerm, concept.name))
+            .then((n) => {
+              if (n > 0) onCardsSynced?.();
+            })
+            .catch(() => {});
         } else {
           stream();
         }

@@ -7,8 +7,9 @@ import {
   getDueCards,
   putCard,
   deleteCard,
+  cardReportHref,
 } from "@/lib/storage";
-import { nextCard, fmtCardInfo, type Card } from "@/lib/cards";
+import { nextCard, fmtCardInfo, type Card, type Grade } from "@/lib/cards";
 
 /** 复习页：间隔重复复习「深入追问」自测题。本地数据，每天一张张过。 */
 export default function ReviewPage() {
@@ -29,7 +30,7 @@ export default function ReviewPage() {
     })();
   }, []);
 
-  // 键盘快捷键：Space 翻面、1 忘了、2 记住了（监听写法参照 CommandPalette）
+  // 键盘快捷键：Space 翻面、1 忘了、2 模糊、3 记住了（监听写法参照 CommandPalette）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
@@ -43,9 +44,11 @@ export default function ReviewPage() {
           setShowAnswer(true);
         }
       } else if (e.key === "1") {
-        if (current && showAnswer) void grade(false);
+        if (current && showAnswer) void grade("again");
       } else if (e.key === "2") {
-        if (current && showAnswer) void grade(true);
+        if (current && showAnswer) void grade("hard");
+      } else if (e.key === "3") {
+        if (current && showAnswer) void grade("good");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -53,9 +56,9 @@ export default function ReviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, showAnswer]);
 
-  const grade = async (remember: boolean) => {
+  const grade = async (rating: Grade) => {
     if (!current) return;
-    const updated = nextCard(current, remember);
+    const updated = nextCard(current, rating);
     await putCard(updated).catch(() => {});
     setDone((d) => d + 1);
     const rest = due.slice(1);
@@ -130,7 +133,7 @@ export default function ReviewPage() {
               还没有复习卡
             </div>
             <p className="mx-auto mt-2 max-w-sm text-[13px] text-slate-500 leading-relaxed">
-              去深挖一个概念，报告里的「🔍 深入追问」自测题会
+              去深挖一个概念，报告里的「🔍 深入追问」自测题和一句话定义会
               <span className="font-medium text-slate-600">自动变成复习卡</span>，
               在这里隔天复习，把知识焊进脑子里。
             </p>
@@ -168,11 +171,7 @@ export default function ReviewPage() {
             {/* 卡头 */}
             <div className="flex items-center gap-2.5 px-5 pt-4">
               <button
-                onClick={() =>
-                  current.term.startsWith("repo:")
-                    ? router.push(`/repo/${encodeURIComponent(current.term.slice(5).split("/")[0])}/${encodeURIComponent(current.term.slice(5).split("/").slice(1).join("/"))}`)
-                    : router.push(`/analyze/${encodeURIComponent(current.term)}`)
-                }
+                onClick={() => router.push(cardReportHref(current))}
                 className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2.5 py-1 text-[11.5px] font-medium text-ink-600 hover:bg-ink-100 transition-colors cursor-pointer"
                 title="回到这份报告"
               >
@@ -181,7 +180,7 @@ export default function ReviewPage() {
                   <path d="M10 14 21 3" />
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 </svg>
-                {current.term.replace(/^repo:/, "")}
+                {current.term}
               </button>
               <span className="text-[11px] text-slate-400">{fmtCardInfo(current)}</span>
               <div className="flex-1" />
@@ -218,22 +217,28 @@ export default function ReviewPage() {
                     {current.answer}
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2.5">
                   <button
-                    onClick={() => grade(false)}
-                    className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-[14px] font-bold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] cursor-pointer"
+                    onClick={() => grade("again")}
+                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-[13.5px] font-bold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-100 active:scale-[0.98] cursor-pointer"
                   >
-                    忘了 · 明天再来 <kbd className="ml-1 rounded border border-red-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">1</kbd>
+                    忘了 · 明天再来 <kbd className="ml-0.5 rounded border border-red-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">1</kbd>
                   </button>
                   <button
-                    onClick={() => grade(true)}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-[14px] font-bold text-emerald-600 transition-all hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98] cursor-pointer"
+                    onClick={() => grade("hard")}
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[13.5px] font-bold text-amber-700 transition-all hover:-translate-y-0.5 hover:bg-amber-100 active:scale-[0.98] cursor-pointer"
                   >
-                    记住了 · 间隔翻倍 <kbd className="ml-1 rounded border border-emerald-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">2</kbd>
+                    模糊 · 温和推进 <kbd className="ml-0.5 rounded border border-amber-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">2</kbd>
+                  </button>
+                  <button
+                    onClick={() => grade("good")}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[13.5px] font-bold text-emerald-600 transition-all hover:-translate-y-0.5 hover:bg-emerald-100 active:scale-[0.98] cursor-pointer"
+                  >
+                    记住了 · 间隔翻倍 <kbd className="ml-0.5 rounded border border-emerald-200 bg-white/60 px-1.5 py-0.5 text-[10.5px] font-mono font-medium opacity-70">3</kbd>
                   </button>
                 </div>
                 <p className="text-center text-[11px] text-slate-400">
-                  记住后间隔 1 → 2 → 4 → … → 30 天；忘了则明天再来一次
+                  记住了间隔翻倍（→30 天封顶）· 模糊至少 +1 天 · 忘了明天重来
                 </p>
               </div>
             )}

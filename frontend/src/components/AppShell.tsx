@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { getDueCards } from "@/lib/storage";
+import { getDueCards, purgeLegacyRepoData } from "@/lib/storage";
 import AuthBar from "./AuthBar";
+
+/** 已删功能（repo 学习）残留清理只跑一次的标志（模块级，路由变化不重跑） */
+let legacyPurged = false;
 
 /**
  * 全局应用壳（工具风三栏布局的骨架）：
@@ -95,8 +98,7 @@ const NAV: NavGroup[] = [
       {
         href: "/map",
         label: "知识网络",
-        // repo 学习也产出地图节点，归入知识库
-        match: (p) => p.startsWith("/map") || p.startsWith("/repo"),
+        match: (p) => p.startsWith("/map"),
         icon: (
           <Icon>
             <circle cx="18" cy="5" r="2.6" />
@@ -166,7 +168,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshDue();
+    // 首次挂载先清已删功能（repo 学习）的残留数据，再刷角标；模块级标志防路由变化重复跑
+    void (legacyPurged
+      ? Promise.resolve()
+      : purgeLegacyRepoData()
+          .then(() => {
+            legacyPurged = true;
+          })
+          .catch(() => {})
+    ).finally(refreshDue);
     window.addEventListener("focus", refreshDue);
     // 复习/出题完成后角标要回落：路由变化时顺带刷新
     return () => window.removeEventListener("focus", refreshDue);

@@ -42,7 +42,7 @@ function anySignal(...signals: AbortSignal[]): AbortSignal {
 /**
  * POST /api/analyze  { term }
  *
- * 流式返回纯文本 Markdown。前端按 "## " 切分渲染成卡片。仅处理概念/对比（repo 走 /api/repo 独立管线）。
+ * 流式返回纯文本 Markdown。前端按 "## " 切分渲染成卡片。仅处理概念/对比。
  * - 与硅基流动 DeepSeek 流式调用，逐字转发；
  * - 与 Tavily 联网检索并行（无 key 自动跳过），完成后追加"实时资料检索"模块；
  *

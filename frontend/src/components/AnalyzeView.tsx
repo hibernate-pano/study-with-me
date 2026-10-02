@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
 import SectionCard from "@/components/SectionCard";
 import DrillDownDrawer from "@/components/DrillDownDrawer";
@@ -22,6 +22,7 @@ import {
   getAllReports,
   getDueCards,
   mainKey,
+  drillKey,
   syncCardsFromReport,
   deleteReport,
   deleteTermCards,
@@ -50,10 +51,14 @@ function recordRecent(term: string) {
 
 export default function AnalyzeView() {
   const params = useParams<{ term?: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
-  // 概念深挖视图（repo 走独立的 RepoView + /api/repo 管线）。
   const term = params.term ? decodeURIComponent(params.term) : "";
-  const storageKey = mainKey(term);
+  // ?drill=子概念 → 直达深挖报告（复习卡回链入口）；此时展示概念为子概念，
+  // storageKey 用 drill key。知识网络/对比等操作围绕当前展示概念进行。
+  const drill = searchParams.get("drill") ?? "";
+  const concept = drill || term;
+  const storageKey = drill ? drillKey(term, concept) : mainKey(term);
 
   // 全文（markdown）与解析后的区块
   const [fullText, setFullText] = useState("");
@@ -114,7 +119,7 @@ export default function AnalyzeView() {
       const groups = parseNetworkMarkdown(extractSectionRaw(clean, "知识网络"));
       saveReport({
         key: storageKey,
-        term,
+        term: concept,
         fullText: clean,
         related: flattenGroups(groups),
         createdAt: Date.now(),
@@ -126,11 +131,11 @@ export default function AnalyzeView() {
           console.error("[analyze] saveReport failed:", err);
         });
       // 自测题 → 复习卡（幂等：只新增从未见过的题）
-      syncCardsFromReport(term, clean)
+      syncCardsFromReport(concept, clean)
         .then(() => refreshDueCount())
         .catch(() => {});
     },
-    [term, storageKey, refreshDueCount]
+    [concept, storageKey, refreshDueCount]
   );
 
   // 进入页面先取一次待复习数
@@ -245,8 +250,8 @@ export default function AnalyzeView() {
     const myTerm = term;
 
     setStopped(false);
-    setTalkshowDone(isTalkshowDone(term));
-    recordRecent(term);
+    setTalkshowDone(isTalkshowDone(concept));
+    recordRecent(concept);
 
     // 1) 旧分享链接（#report=）兼容：正常展示报告，不再提示"只读"
     const shared = readShareHash();
@@ -272,9 +277,26 @@ export default function AnalyzeView() {
           setSections(parseSections(r.fullText));
           setStreaming(false);
           // 缓存报告也同步一次复习卡（幂等）
-          syncCardsFromReport(term, r.fullText)
+          syncCardsFromReport(concept, r.fullText, storageKey)
             .then(() => refreshDueCount())
             .catch(() => {});
+        } else if (drill) {
+          // 深挖回链但本机无此报告（云同步时序差 / 已删档）：
+          // 退回展示主报告而不是发起生成——/api/analyze 不带 parentTerm 会生成主概念报告，
+          // 存成 mainKey 会跟当前 drill 标题错位。
+          getReport(mainKey(term))
+            .then((main) => {
+              if (!alive) return;
+              if (main && main.fullText) {
+                fullTextRef.current = main.fullText;
+                setFullText(main.fullText);
+                setSections(parseSections(main.fullText));
+              }
+              setStreaming(false);
+            })
+            .catch(() => {
+              if (alive) setStreaming(false);
+            });
         } else {
           if (myTerm !== termRef.current) return; // 期间已切到别的词，别给旧词烧 token
           start();
@@ -311,9 +333,9 @@ export default function AnalyzeView() {
   const refreshArchive = useCallback((current: string) => {
     getAllReports()
       .then((rs) => {
-        // 只展示主报告（非深挖、非对比、非 repo 项目地图），按更新时间倒序，最多 8 条
+        // 只展示主报告（非深挖、非对比），按更新时间倒序，最多 8 条
         const mains = rs
-          .filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:") && !r.key.startsWith("repo:"))
+          .filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:"))
           .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 8);
         setArchive(
@@ -372,7 +394,7 @@ export default function AnalyzeView() {
   const copyAll = async () => {
     try {
       await navigator.clipboard.writeText(
-        `# ${term}\n\n${fullTextRef.current || fullText}`
+        `# ${concept}\n\n${fullTextRef.current || fullText}`
       );
       setCopied(true);
       // 「已复制全文」可见 1.6s 后再收起菜单（立即关闭会让反馈永远看不见）
@@ -396,19 +418,19 @@ export default function AnalyzeView() {
 
   /** 去 Topic Talkshow 开讲：跳转时本地标记该概念已开讲 */
   const startTalkshow = () => {
-    markTalkshowDone(term);
+    markTalkshowDone(concept);
     setTalkshowDone(true);
   };
 
   const exportMd = () => {
     const text = fullTextRef.current || fullText;
     if (!text) return;
-    const md = `# ${term}\n\n${text}\n`;
+    const md = `# ${concept}\n\n${text}\n`;
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${term.replace(/[\\/:*?"<>|]/g, "_")}.md`;
+    a.download = `${concept.replace(/[\\/:*?"<>|]/g, "_")}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -435,7 +457,7 @@ export default function AnalyzeView() {
           </button>
 
           <div className="flex-1 max-w-md ml-1">
-            <SearchBox initial={term} size="md" />
+            <SearchBox initial={concept} size="md" />
           </div>
 
           <div className="h-5 w-px bg-[var(--line)] mx-1" />
@@ -468,7 +490,7 @@ export default function AnalyzeView() {
 
           {/* 次要动作（图标-only + 文字）—— ≤md 收进 ⋯ 菜单 */}
           <button
-            onClick={() => router.push(`/compare?a=${encodeURIComponent(term)}`)}
+            onClick={() => router.push(`/compare?a=${encodeURIComponent(concept)}`)}
             disabled={streaming}
             className="hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-40 cursor-pointer"
             title="和另一个概念做对比"
@@ -568,7 +590,7 @@ export default function AnalyzeView() {
                 <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-[var(--line-soft)] bg-white shadow-lg fade-in">
                   {/* 次要动作（≤md 时顶栏放不下，收在这里；宽屏在顶栏直接可见） */}
                   <button
-                    onClick={() => { setMoreOpen(false); router.push(`/compare?a=${encodeURIComponent(term)}`); }}
+                    onClick={() => { setMoreOpen(false); router.push(`/compare?a=${encodeURIComponent(concept)}`); }}
                     disabled={streaming}
                     className="md:hidden flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer"
                   >
@@ -660,7 +682,7 @@ export default function AnalyzeView() {
           {/* 词条标题：serif 大引语 */}
           <div className="mb-5">
             <h1 className="font-disp text-[34px] md:text-[44px] font-bold ink-grad leading-[1.1] tracking-tight break-words">
-              {term}
+              {concept}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
               {streaming ? (
@@ -873,11 +895,12 @@ export default function AnalyzeView() {
       {/* 深挖抽屉 */}
       <DrillDownDrawer
         concept={drillConcept}
-        parentTerm={term}
+        parentTerm={concept}
         onClose={() => {
           setDrillConcept(null);
           refreshArchive(term);
         }}
+        onCardsSynced={refreshDueCount}
       />
     </div>
   );

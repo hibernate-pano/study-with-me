@@ -27,6 +27,7 @@ export interface CloudCard {
   interval_days: number;
   reps: number;
   status: string;
+  report_key?: string | null; // 旧客户端/旧数据可能缺省
 }
 
 export interface CloudDump {

@@ -5,9 +5,8 @@
  */
 
 import type { FlatConcept } from "./network";
-import { parseQuizSection, newCard, type Card } from "./cards";
+import { parseQuizSection, newCard, buildDefinitionQuiz, type Card } from "./cards";
 import { extractSectionRaw } from "./stream";
-import type { Atlas } from "./atlas";
 import type { ExamSet } from "./exams";
 
 export interface StoredReport {
@@ -149,6 +148,7 @@ export interface CloudPushPayload {
     interval_days: number;
     reps: number;
     status: string;
+    report_key: string | null;
   }>;
   deleteReports?: string[];
   deleteCards?: string[];
@@ -177,6 +177,7 @@ export function cardToCloud(c: Card): NonNullable<CloudPushPayload["cards"]>[num
     interval_days: c.intervalDays,
     reps: c.reps,
     status: c.status,
+    report_key: c.reportKey ?? null,
   };
 }
 
@@ -287,6 +288,20 @@ export function drillKey(parentTerm: string, term: string): string {
   return `drill:${parentTerm}::${term}`;
 }
 
+/**
+ * 复习卡 → 报告页跳转地址。
+ * 有 reportKey 精确回源（深挖卡带 ?drill= 直达深挖报告）；
+ * 旧数据无此字段，回退 term 推导（等价于旧版行为）。
+ */
+export function cardReportHref(card: Pick<Card, "reportKey" | "term">): string {
+  const k = card.reportKey ?? mainKey(card.term);
+  if (k.startsWith("drill:")) {
+    const [parent, child] = k.slice("drill:".length).split("::");
+    return `/analyze/${encodeURIComponent(parent ?? "")}?drill=${encodeURIComponent(child ?? "")}`;
+  }
+  return `/analyze/${encodeURIComponent(k)}`;
+}
+
 // ---------------- cards ----------------
 
 export function getCard(key: string): Promise<Card | undefined> {
@@ -339,22 +354,24 @@ export async function getCardsByTerm(term: string): Promise<Card[]> {
 }
 
 /**
- * 报告生成/加载后调用：把「🔍 深入追问」解析成复习卡。
+ * 报告生成/加载后调用：把「🎯 一句话定义」与「🔍 深入追问」解析成复习卡。
  * 已有同 key 的卡保留学习进度（不覆盖）；只新增从未见过的题。
+ * reportKey 写进卡片供复习页回链（缺省为主报告 key）。
  * 返回本次新增数量。
  */
 export async function syncCardsFromReport(
   term: string,
-  fullText: string
+  fullText: string,
+  reportKey: string = mainKey(term)
 ): Promise<number> {
-  const raw = extractSectionRaw(fullText, "追问");
-  if (!raw.trim()) return 0;
-  const quiz = parseQuizSection(raw);
-  if (quiz.length === 0) return 0;
+  const def = buildDefinitionQuiz(term, fullText);
+  const quiz = parseQuizSection(extractSectionRaw(fullText, "追问"));
+  const items = def ? [def, ...quiz] : quiz;
+  if (items.length === 0) return 0;
   const now = Date.now();
   let added = 0;
-  for (const q of quiz) {
-    const card = newCard(term, q, now);
+  for (const q of items) {
+    const card = newCard(term, q, now, reportKey);
     const existing = await getCard(card.key);
     if (!existing) {
       await putCard(card);
@@ -370,55 +387,20 @@ export async function deleteTermCards(term: string): Promise<void> {
   for (const c of cards) await deleteCard(c.key);
 }
 
-/** repo 项目地图的阅读进度：piggyback 成一份报告记录（key 带 repo: 前缀），云同步零改动复用 */
-export function repoProgressKey(repoTitle: string): string {
-  return `repo:progress:${repoTitle}`;
-}
-
-/** 读阅读路线进度（已完成站点索引）；无存档/坏数据 → 空集 */
-export async function getRepoProgress(repoTitle: string): Promise<Set<number>> {
-  try {
-    const r = await getReport(repoProgressKey(repoTitle));
-    if (!r?.fullText) return new Set();
-    const parsed: unknown = JSON.parse(r.fullText);
-    return new Set(Array.isArray(parsed) ? parsed.filter((n): n is number => typeof n === "number") : []);
-  } catch {
-    return new Set();
-  }
-}
-
-/** 写阅读路线进度（本地 IndexedDB + 云推送） */
-export async function saveRepoProgress(repoTitle: string, done: Set<number>): Promise<void> {
-  await saveReport({
-    key: repoProgressKey(repoTitle),
-    term: `${repoTitle} 阅读进度`,
-    fullText: JSON.stringify([...done].sort((a, b) => a - b)),
-    related: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
-}
-
 /**
- * repo 项目地图的模块自测题 → 复习卡（幂等：只新增从未见过的题）。
- * term 用 repo: 前缀标记（复习页据此跳回 /repo 而非 /analyze）。
- * 返回本次新增数量。
+ * 一次性清理已删功能（GitHub repo 学习，2026-10-02 下线）的本地残留。
+ * 走 deleteReport/deleteCard（联动云删除事件），云端同类残留随之被推删；
+ * 幂等，可放心重复调用。
  */
-export async function syncRepoCards(repoTitle: string, atlas: Atlas): Promise<number> {
-  const term = `repo:${repoTitle}`;
-  const now = Date.now();
-  let added = 0;
-  for (const m of atlas.modules) {
-    for (const question of m.questions) {
-      const card = newCard(term, { question, answer: `（模块：${m.name}）${m.role}` }, now);
-      const existing = await getCard(card.key);
-      if (!existing) {
-        await putCard(card);
-        added++;
-      }
-    }
+export async function purgeLegacyRepoData(): Promise<void> {
+  const reports = await getAllReports();
+  for (const r of reports) {
+    if (r.key.startsWith("repo:")) await deleteReport(r.key);
   }
-  return added;
+  const cards = await getAllCards();
+  for (const c of cards) {
+    if (c.term.startsWith("repo:")) await deleteCard(c.key);
+  }
 }
 
 /** 清空全部本地数据（用于测试重置；供未来"清空本机数据"功能复用）。 */

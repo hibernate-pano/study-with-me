@@ -28,6 +28,7 @@ function cloudCardToLocal(c: {
   interval_days: number;
   reps: number;
   status: string;
+  report_key?: string | null;
   created_at: number;
   updated_at: number;
 }): Card {
@@ -40,6 +41,7 @@ function cloudCardToLocal(c: {
     intervalDays: c.interval_days,
     reps: c.reps,
     status: (c.status as Card["status"]) || "new",
+    ...(c.report_key ? { reportKey: c.report_key } : {}), // 旧数据无此字段，保持 undefined
     createdAt: c.created_at,
     updatedAt: c.updated_at,
   };
@@ -88,11 +90,13 @@ export async function initCloudSync(): Promise<{ user: { login: string; avatar_u
         // 每次整页加载（AuthBar 挂在 RootLayout，useEffect 依赖 []）都会全量撞同一批 key。
         // 曾经无条件 saveReport，旧云端会把本地新版退回旧版、时间戳还被刷成 now。
         for (const r of dump.reports) {
+          if (r.key.startsWith("repo:")) continue; // 已删功能（repo 学习）的云端残留，不落回本地
           const local = await getReport(r.key);
           if (local && local.updatedAt > r.updated_at) continue;
           await saveReport(cloudReportToLocal(r));
         }
         for (const c of dump.cards) {
+          if (c.term.startsWith("repo:")) continue; // 同上
           const local = await getCard(c.key);
           if (local && local.updatedAt > c.updated_at) continue;
           await putCard(cloudCardToLocal(c));

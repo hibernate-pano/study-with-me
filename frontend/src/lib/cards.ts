@@ -1,6 +1,8 @@
-/** 复习卡片：把报告「🔍 深入追问」模块的自测题变成间隔重复复习卡片。
+/** 复习卡片：把报告「🔍 深入追问」自测题与「🎯 一句话定义」变成间隔重复复习卡片。
  * 纯函数部分（解析 + 调度）与存储解耦，便于测试。
  */
+
+import { extractSectionRaw } from "./stream";
 
 export interface QuizItem {
   question: string;
@@ -8,6 +10,9 @@ export interface QuizItem {
 }
 
 export type CardStatus = "new" | "learning" | "reviewing";
+
+/** 复习自评三档：忘了 / 模糊（想起来了但不牢）/ 记住了 */
+export type Grade = "again" | "hard" | "good";
 
 export interface Card {
   key: string;
@@ -20,6 +25,7 @@ export interface Card {
   status: CardStatus;
   createdAt: number;
   updatedAt: number;
+  reportKey?: string; // 来源报告 key（主报告=term；深挖=drill:parent::child）；旧数据无此字段
 }
 
 /** 简单稳定 hash（djb2），用于生成卡片 key，避免存长字符串 */
@@ -104,13 +110,14 @@ function cleanQuestion(s: string): string {
 }
 
 /**
- * 简化 SM-2 调度：
- * - 忘了 → 明天再来（间隔重置 1 天）
- * - 记住了 → 间隔翻倍，1→2→4→…→30 天封顶
+ * 三档自评调度：
+ * - again（忘了）→ 明天再来（间隔重置 1 天，次数清零）
+ * - good（记住了）→ 间隔翻倍，1→2→4→…→30 天封顶
+ * - hard（模糊）→ 温和推进：至少 +1 天、约 1.2 倍、30 天封顶
  */
-export function nextCard(card: Card, remember: boolean): Card {
+export function nextCard(card: Card, grade: Grade): Card {
   const now = Date.now();
-  if (!remember) {
+  if (grade === "again") {
     return {
       ...card,
       intervalDays: 1,
@@ -120,7 +127,10 @@ export function nextCard(card: Card, remember: boolean): Card {
       updatedAt: now,
     };
   }
-  const next = Math.min(card.intervalDays <= 0 ? 1 : card.intervalDays * 2, 30);
+  const next =
+    grade === "good"
+      ? Math.min(card.intervalDays <= 0 ? 1 : card.intervalDays * 2, 30)
+      : Math.min(Math.max(card.intervalDays + 1, Math.round(card.intervalDays * 1.2)), 30);
   return {
     ...card,
     intervalDays: next,
@@ -131,8 +141,13 @@ export function nextCard(card: Card, remember: boolean): Card {
   };
 }
 
-/** 新卡：立即可复习。 */
-export function newCard(term: string, q: QuizItem, now = Date.now()): Card {
+/** 新卡：立即可复习。reportKey 记录来源报告，供复习页回链。 */
+export function newCard(
+  term: string,
+  q: QuizItem,
+  now = Date.now(),
+  reportKey?: string
+): Card {
   return {
     key: `${term}::${hashString(q.question)}`,
     term,
@@ -144,7 +159,22 @@ export function newCard(term: string, q: QuizItem, now = Date.now()): Card {
     status: "new",
     createdAt: now,
     updatedAt: now,
+    reportKey,
   };
+}
+
+/** 从「🎯 一句话定义」区块构造一张自测卡；区块缺失/为空返回 null（不成卡）。 */
+export function buildDefinitionQuiz(term: string, fullText: string): QuizItem | null {
+  const body = extractSectionRaw(fullText, "定义")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !/^#{1,6}\s/.test(l)) // 去空行与误入的子标题
+    .map((l) => l.replace(/^[-*•]\s+/, "")) // 剥列表前缀
+    .join("\n")
+    .replace(/\*{1,2}/g, "") // 剥加粗标记（卡片答案按纯文本渲染）
+    .trim();
+  if (!body) return null;
+  return { question: `用一句话说清「${term}」`, answer: body };
 }
 
 /** 卡片文案：比如 "2天后" / "已学 3 次" */

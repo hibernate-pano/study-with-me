@@ -57,6 +57,7 @@ interface SyncBody {
     interval_days: number;
     reps: number;
     status: string;
+    report_key?: string | null;
   }>;
   deleteReports?: string[];
   deleteCards?: string[];
@@ -210,6 +211,7 @@ export async function POST(req: NextRequest) {
         interval_days: c.interval_days,
         reps: c.reps,
         status: c.status,
+        report_key: c.report_key ?? null,
       })
     );
   }

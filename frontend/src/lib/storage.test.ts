@@ -7,11 +7,13 @@ import {
   deleteReport,
   mainKey,
   drillKey,
-  getRepoProgress,
-  saveRepoProgress,
-  repoProgressKey,
-  syncRepoCards,
   getCardsByTerm,
+  getAllCards,
+  putCard,
+  deleteCard,
+  syncCardsFromReport,
+  purgeLegacyRepoData,
+  cardReportHref,
   markTalkshowDone,
   isTalkshowDone,
   saveExamSet,
@@ -20,6 +22,7 @@ import {
   deleteExamSet,
   type StoredReport,
 } from "./storage";
+import { newCard } from "./cards";
 import type { ExamSet } from "./exams";
 
 function makeReport(key: string, term: string, updatedAt: number): StoredReport {
@@ -39,6 +42,8 @@ beforeEach(async () => {
   for (const r of all) await deleteReport(r.key);
   const exams = await getAllExamSets();
   for (const exam of exams) await deleteExamSet(exam.id);
+  const cards = await getAllCards();
+  for (const c of cards) await deleteCard(c.key);
 });
 
 describe("storage 基础读写", () => {
@@ -182,37 +187,83 @@ describe("key 约定", () => {
   });
 });
 
-describe("repo 进度与自测题（Phase 3）", () => {
-  const atlas = {
-    pitch: "p",
-    why: [],
-    modules: [
-      { id: "core", name: "核心", dir: "src/", role: "干活的", keyFiles: [], talksTo: [], questions: ["核心怎么动？", "为何这样设计？"] },
-      { id: "api", name: "接口", dir: "api/", role: "接请求", keyFiles: [], talksTo: [], questions: [] },
-    ],
-    path: [],
-  };
+describe("purgeLegacyRepoData 清理已删功能（repo 学习）残留", () => {
+  it("删 repo: 前缀的报告与卡片，保留正常数据；重复执行幂等", async () => {
+    await saveReport(makeReport("repo:panbo/x", "panbo/x", 1));
+    await saveReport(makeReport("repo:progress:panbo/x", "panbo/x 阅读进度", 1));
+    await saveReport(makeReport("分布式锁", "分布式锁", 2));
+    await putCard(newCard("repo:panbo/x", { question: "核心模块干嘛的？", answer: "a" }, 1));
+    await putCard(newCard("分布式锁", { question: "什么是互斥锁？", answer: "a" }, 1));
 
-  it("进度 roundtrip：空集 → 写入 → 读回，坏数据降级空集", async () => {
-    expect(await getRepoProgress("panbo/x")).toEqual(new Set());
-    await saveRepoProgress("panbo/x", new Set([2, 0]));
-    expect(await getRepoProgress("panbo/x")).toEqual(new Set([0, 2]));
-    // 进度是一份 repo: 前缀的报告记录，云同步可白嫖
-    const r = await getReport(repoProgressKey("panbo/x"));
-    expect(r?.key).toBe("repo:progress:panbo/x");
-    await saveReport({ key: repoProgressKey("panbo/y"), term: "x", fullText: "不是json", related: [], createdAt: 0, updatedAt: 0 });
-    expect(await getRepoProgress("panbo/y")).toEqual(new Set());
+    await purgeLegacyRepoData();
+
+    expect((await getAllReports()).map((r) => r.key)).toEqual(["分布式锁"]);
+    expect((await getAllCards()).map((c) => c.term)).toEqual(["分布式锁"]);
+
+    await purgeLegacyRepoData(); // 幂等：再跑一次无副作用
+    expect((await getAllReports()).length).toBe(1);
+    expect((await getAllCards()).length).toBe(1);
+  });
+});
+
+describe("syncCardsFromReport 卡源扩容", () => {
+  const report = `## 🎯 一句话定义
+分布式锁是**控制多个进程互斥访问共享资源**的锁。
+
+## 🔍 深入追问
+1. 为什么需要分布式锁？
+思考方向：单机锁管不到跨进程。
+
+2. Redis 怎么实现分布式锁？
+思考方向：SETNX + 过期时间。`;
+
+  it("定义卡 + 追问卡一起成卡，写入 reportKey", async () => {
+    const added = await syncCardsFromReport("分布式锁", report, "drill:并发::分布式锁");
+    expect(added).toBe(3);
+    const cards = await getCardsByTerm("分布式锁");
+    expect(cards).toHaveLength(3);
+    expect(cards.every((c) => c.reportKey === "drill:并发::分布式锁")).toBe(true);
+    expect(cards.some((c) => c.question === "用一句话说清「分布式锁」")).toBe(true);
   });
 
-  it("自测题 → 复习卡（幂等），term 带 repo: 前缀", async () => {
-    const first = await syncRepoCards("panbo/x", atlas);
-    expect(first).toBe(2);
-    const again = await syncRepoCards("panbo/x", atlas);
-    expect(again).toBe(0); // 幂等：重复加载不重复建卡
-    const cards = await getCardsByTerm("repo:panbo/x");
-    expect(cards).toHaveLength(2);
-    expect(cards[0].term).toBe("repo:panbo/x");
-    expect(cards[0].answer).toContain("核心");
+  it("幂等：重复 sync 不新增，且不覆盖已有学习进度", async () => {
+    await syncCardsFromReport("分布式锁", report);
+    const first = await getCardsByTerm("分布式锁");
+    const learned = { ...first[0], reps: 3, intervalDays: 8 };
+    await putCard(learned);
+
+    const again = await syncCardsFromReport("分布式锁", report);
+    expect(again).toBe(0);
+    const cards = await getCardsByTerm("分布式锁");
+    expect(cards).toHaveLength(3);
+    expect(cards.find((c) => c.key === learned.key)?.reps).toBe(3);
+  });
+
+  it("缺省 reportKey = 主报告 key（即 term）", async () => {
+    await syncCardsFromReport("乐观锁", report);
+    const cards = await getCardsByTerm("乐观锁");
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((c) => c.reportKey === "乐观锁")).toBe(true);
+  });
+});
+
+describe("cardReportHref 卡片回链", () => {
+  it("深挖卡 → /analyze/父?drill=子（URL 编码）", () => {
+    expect(cardReportHref({ reportKey: "drill:并发编程::分布式锁", term: "分布式锁" })).toBe(
+      `/analyze/${encodeURIComponent("并发编程")}?drill=${encodeURIComponent("分布式锁")}`
+    );
+  });
+
+  it("主报告卡 → /analyze/reportKey", () => {
+    expect(cardReportHref({ reportKey: "乐观锁", term: "乐观锁" })).toBe(
+      `/analyze/${encodeURIComponent("乐观锁")}`
+    );
+  });
+
+  it("旧数据无 reportKey → 回退 term 推导", () => {
+    expect(cardReportHref({ term: "分布式锁" })).toBe(
+      `/analyze/${encodeURIComponent("分布式锁")}`
+    );
   });
 });
 

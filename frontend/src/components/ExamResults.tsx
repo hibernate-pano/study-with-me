@@ -78,7 +78,7 @@ export default function ExamResults({
               q.options[Number(q.answer[0])] ?? ""
             }\n\n${q.explanation}`
           : `${q.answer[0]}\n\n评分点：${q.keyPoints.join("；")}\n\n${q.explanation}`;
-      // 与 syncCardsFromReport / syncRepoCards 同一约定：同 key 的卡已存在就跳过，
+      // 与 syncCardsFromReport 同一约定：同 key 的卡已存在就跳过，
       // 否则重考后再答错会把已记住的卡打回新卡、清零复习进度。
       const card = newCard(examSet.title, { question: q.stem, answer });
       const existing = await getCard(card.key);

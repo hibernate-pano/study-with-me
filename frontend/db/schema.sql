@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS cards (
   interval_days INTEGER NOT NULL DEFAULT 0,
   reps INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'new',
+  report_key TEXT,                        -- 来源报告 key（主报告=term；深挖=drill:parent::term）；旧数据可空
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, key)

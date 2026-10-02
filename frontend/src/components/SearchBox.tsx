@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { parseGithubRef } from "@/lib/source";
 
 interface Props {
   initial?: string;
@@ -39,12 +38,6 @@ export default function SearchBox({
   const submit = () => {
     const term = value.trim();
     if (!term) return;
-    // 学习引擎：粘贴 GitHub 仓库地址 → 走 repo 学习模式
-    const ref = parseGithubRef(term);
-    if (ref) {
-      router.push(`/repo/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}`);
-      return;
-    }
     router.push(`/analyze/${encodeURIComponent(term)}`);
   };
 
@@ -100,10 +93,10 @@ export default function SearchBox({
           }}
           placeholder={
             isLarge
-              ? "输入概念、问题，或粘贴 GitHub 仓库地址"
+              ? "输入概念或问题"
               : "换个输入…"
           }
-          aria-label={isLarge ? "输入要深挖的概念、问题或 GitHub 仓库地址" : "输入要深挖的概念"}
+          aria-label={isLarge ? "输入要深挖的概念或问题" : "输入要深挖的概念"}
           autoFocus={autoFocus}
           rows={1}
           maxLength={MAX_LEN}

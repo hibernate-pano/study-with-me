@@ -113,11 +113,12 @@ export async function upsertCard(userId: number, c: {
   interval_days: number;
   reps: number;
   status: string;
+  report_key?: string | null;
 }): Promise<void> {
   const now = Date.now();
   await run(
-    `INSERT INTO cards (user_id, key, term, question, answer, due_at, interval_days, reps, status, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)
+    `INSERT INTO cards (user_id, key, term, question, answer, due_at, interval_days, reps, status, report_key, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)
      ON CONFLICT (user_id, key) DO UPDATE SET
        term = excluded.term,
        question = excluded.question,
@@ -126,9 +127,10 @@ export async function upsertCard(userId: number, c: {
        interval_days = excluded.interval_days,
        reps = excluded.reps,
        status = excluded.status,
+       report_key = excluded.report_key,
        created_at = COALESCE(cards.created_at, excluded.created_at),
        updated_at = excluded.updated_at`,
-    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status, now
+    userId, c.key, c.term, c.question, c.answer, c.due_at, c.interval_days, c.reps, c.status, c.report_key ?? null, now
   );
 }
 

@@ -14,7 +14,7 @@ import { getAllReports, getDueCards } from "@/lib/storage";
  */
 
 type ActionItem = { kind: "action"; id: string; title: string; subtitle: string; icon: string };
-type ReportItem = { kind: "report"; term: string; updatedAt: number; isRepo?: boolean };
+type ReportItem = { kind: "report"; term: string; updatedAt: number };
 type NewItem = { kind: "new" };
 type Item = ReportItem | ActionItem | NewItem;
 
@@ -30,7 +30,7 @@ export default function CommandPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [reports, setReports] = useState<{ term: string; updatedAt: number; isRepo?: boolean }[]>([]);
+  const [reports, setReports] = useState<{ term: string; updatedAt: number }[]>([]);
   const [dueCount, setDueCount] = useState(0);
   const [active, setActive] = useState(0);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -62,9 +62,9 @@ export default function CommandPalette() {
     Promise.all([getAllReports(), getDueCards()])
       .then(([rs, cards]) => {
         const mains = rs
-          .filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:") && !r.key.startsWith("repo:progress:"))
+          .filter((r) => !r.key.startsWith("drill:") && !r.key.startsWith("compare:"))
           .sort((a, b) => b.updatedAt - a.updatedAt)
-          .map((r) => ({ term: r.term, updatedAt: r.updatedAt, isRepo: r.key.startsWith("repo:") }));
+          .map((r) => ({ term: r.term, updatedAt: r.updatedAt }));
         setReports(mains);
         setDueCount(cards.length);
       })
@@ -77,7 +77,7 @@ export default function CommandPalette() {
     const matchedReports: ReportItem[] = (q
       ? reports.filter((r) => r.term.toLowerCase().includes(q)).slice(0, 8)
       : reports.slice(0, 6)
-    ).map((r) => ({ kind: "report" as const, term: r.term, updatedAt: r.updatedAt, isRepo: r.isRepo }));
+    ).map((r) => ({ kind: "report" as const, term: r.term, updatedAt: r.updatedAt }));
     const acts: ActionItem[] = ACTIONS.filter((a): a is ActionItem => {
       if (a.id === "review" && dueCount === 0) return false;
       if (a.kind !== "action") return false;
@@ -97,12 +97,7 @@ export default function CommandPalette() {
     (item: Item) => {
       setOpen(false);
       if (item.kind === "report") {
-        if (item.isRepo) {
-          const [owner, ...rest] = item.term.split("/");
-          router.push(`/repo/${encodeURIComponent(owner)}/${encodeURIComponent(rest.join("/"))}`);
-        } else {
-          router.push(`/analyze/${encodeURIComponent(item.term)}`);
-        }
+        router.push(`/analyze/${encodeURIComponent(item.term)}`);
         return;
       }
       if (item.kind === "new") {
@@ -308,14 +303,14 @@ function renderTitle(it: Item, q: string): string {
 }
 
 function renderSubtitle(it: Item): string {
-  if (it.kind === "report") return `${it.isRepo ? "Repo 学习" : "学过的概念"} · ${fmtRel(it.updatedAt)}`;
+  if (it.kind === "report") return `学过的概念 · ${fmtRel(it.updatedAt)}`;
   if (it.kind === "action") return it.subtitle;
   return "按 Enter 直接开始生成";
 }
 
 function IconBox({ item, active }: { item: Item; active: boolean }) {
   let content = "";
-  if (item.kind === "report") content = item.isRepo ? "⌥" : item.term.slice(0, 1);
+  if (item.kind === "report") content = item.term.slice(0, 1);
   else if (item.kind === "action") content = item.icon;
   else content = "✦";
 

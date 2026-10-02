@@ -3,6 +3,7 @@ import {
   parseQuizSection,
   nextCard,
   newCard,
+  buildDefinitionQuiz,
   hashString,
   fmtCardInfo,
   type Card,
@@ -91,26 +92,30 @@ describe("nextCard 调度", () => {
     updatedAt: 0,
   };
 
-  it("新卡第一次记住 → 间隔 1 天", () => {
-    const next = nextCard(base, true);
+  it("新卡 good → 间隔 1 天", () => {
+    const next = nextCard(base, "good");
     expect(next.intervalDays).toBe(1);
     expect(next.reps).toBe(1);
     expect(next.status).toBe("reviewing");
   });
 
-  it("2 天后记住 → 间隔 4 天", () => {
-    const next = nextCard({ ...base, intervalDays: 2, reps: 2 }, true);
-    expect(next.intervalDays).toBe(4);
+  it("good：2 天 → 4 天，封顶 30 天", () => {
+    expect(nextCard({ ...base, intervalDays: 2, reps: 2 }, "good").intervalDays).toBe(4);
+    expect(nextCard({ ...base, intervalDays: 30, reps: 6 }, "good").intervalDays).toBe(30);
+  });
+
+  it("hard：温和推进——至少 +1 天、约 1.2 倍、封顶 30", () => {
+    expect(nextCard(base, "hard").intervalDays).toBe(1); // 新卡
+    expect(nextCard({ ...base, intervalDays: 2, reps: 1 }, "hard").intervalDays).toBe(3); // max(3, 2)
+    expect(nextCard({ ...base, intervalDays: 16, reps: 4 }, "hard").intervalDays).toBe(19); // max(17, 19)
+    expect(nextCard({ ...base, intervalDays: 30, reps: 6 }, "hard").intervalDays).toBe(30);
+    const next = nextCard({ ...base, intervalDays: 8, reps: 2 }, "hard");
     expect(next.reps).toBe(3);
+    expect(next.status).toBe("reviewing");
   });
 
-  it("间隔封顶 30 天", () => {
-    const next = nextCard({ ...base, intervalDays: 30, reps: 6 }, true);
-    expect(next.intervalDays).toBe(30);
-  });
-
-  it("忘了 → 明天再来、次数清零", () => {
-    const next = nextCard({ ...base, intervalDays: 8, reps: 3 }, false);
+  it("again → 明天再来、次数清零", () => {
+    const next = nextCard({ ...base, intervalDays: 8, reps: 3 }, "again");
     expect(next.intervalDays).toBe(1);
     expect(next.reps).toBe(0);
     expect(next.status).toBe("learning");
@@ -118,10 +123,41 @@ describe("nextCard 调度", () => {
 
   it("dueAt 按间隔推进（约 1 天后）", () => {
     const now = Date.now();
-    const next = nextCard(base, true);
+    const next = nextCard(base, "good");
     const diff = next.dueAt - now;
     expect(diff).toBeGreaterThanOrEqual(24 * 3600 * 1000);
     expect(diff).toBeLessThan(25 * 3600 * 1000);
+  });
+});
+
+describe("buildDefinitionQuiz 定义卡", () => {
+  const md = `## 🎯 一句话定义
+乐观锁是**先操作、提交时再校验**的并发控制思路，读多写少时开销小。
+
+## 📌 核心重点
+- 与定义无关的内容`;
+
+  it("从定义模块构造自测卡，问题只含概念名（key 幂等的依据）", () => {
+    const q = buildDefinitionQuiz("乐观锁", md);
+    expect(q?.question).toBe("用一句话说清「乐观锁」");
+    expect(q?.answer).toContain("先操作");
+    expect(q?.answer).not.toContain("**");
+    // 同一报告重复构造 → 同一问题 → newCard hash key 稳定
+    expect(buildDefinitionQuiz("乐观锁", md)?.question).toBe(q?.question);
+  });
+
+  it("剥列表前缀与子标题，多行合并", () => {
+    const q = buildDefinitionQuiz(
+      "X",
+      "## 🎯 一句话定义\n### 先懂这个\n- **X** 就是一个\n用来 Y 的 Z。\n"
+    );
+    expect(q?.answer).toBe("X 就是一个\n用来 Y 的 Z。");
+  });
+
+  it("无定义模块或空块 → null（不成卡）", () => {
+    expect(buildDefinitionQuiz("X", "## 📌 核心重点\n- 无关")).toBeNull();
+    expect(buildDefinitionQuiz("X", "")).toBeNull();
+    expect(buildDefinitionQuiz("X", "## 🎯 一句话定义\n   \n")).toBeNull();
   });
 });
 

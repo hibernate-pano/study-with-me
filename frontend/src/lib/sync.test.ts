@@ -77,13 +77,26 @@ describe("initCloudSync 首次登录合并上传", () => {
   });
 
   it("登录 + 云端空 + 本地有卡片 → 卡片一并上传", async () => {
-    const card = newCard("本地旧概念", { question: "什么是X?", answer: "答案" }, 1);
+    const card = newCard("本地旧概念", { question: "什么是X?", answer: "答案" }, 1, "drill:父::本地旧概念");
     await putCard(card);
     const { posts } = mockFetchRoutes({ meUser: { id: 1, login: "j", avatar_url: null } });
 
     await initCloudSync();
     expect(posts[0].cards ?? []).toHaveLength(1);
-    expect(posts[0].cards?.[0]).toMatchObject({ key: card.key, question: "什么是X?" });
+    expect(posts[0].cards?.[0]).toMatchObject({
+      key: card.key,
+      question: "什么是X?",
+      report_key: "drill:父::本地旧概念", // 回链字段随卡上云
+    });
+  });
+
+  it("登录 + 云端空 + 本地无 reportKey 的卡 → report_key 为 null", async () => {
+    const card = newCard("旧卡", { question: "q?", answer: "" }, 1); // 错题卡等旧数据无回链
+    await putCard(card);
+    const { posts } = mockFetchRoutes({ meUser: { id: 1, login: "j", avatar_url: null } });
+
+    await initCloudSync();
+    expect(posts[0].cards?.[0]).toMatchObject({ key: card.key, report_key: null });
   });
 
   it("登录 + 云端已有数据 → 不再全量上传（避免覆盖）", async () => {
@@ -96,6 +109,40 @@ describe("initCloudSync 首次登录合并上传", () => {
     const r = await initCloudSync();
     expect(r.user?.login).toBe("j");
     expect(posts).toHaveLength(0); // 云端非空 → 跳过全量上传
+  });
+
+  it("拉取的云端卡带 report_key → 写入本地；旧数据无此字段 → 容忍缺省", async () => {
+    mockFetchRoutes({
+      meUser: { id: 1, login: "j", avatar_url: null },
+      cloudCards: [
+        { key: "k1", term: "t1", question: "q1", answer: "a1", due_at: 1, interval_days: 2, reps: 1, status: "reviewing", report_key: "drill:父::t1", created_at: 1, updated_at: 2 },
+        { key: "k2", term: "t2", question: "q2", answer: "a2", due_at: 1, interval_days: 0, reps: 0, status: "new", created_at: 1, updated_at: 2 },
+      ],
+    });
+    await initCloudSync();
+    const { getAllCards } = await import("./storage");
+    const cards = await getAllCards();
+    expect(cards.find((c) => c.key === "k1")?.reportKey).toBe("drill:父::t1");
+    expect(cards.find((c) => c.key === "k2")?.reportKey).toBeUndefined();
+  });
+
+  it("拉取时跳过已删功能（repo 学习）的云端残留，正常数据照常入库", async () => {    const { posts } = mockFetchRoutes({
+      meUser: { id: 1, login: "j", avatar_url: null },
+      cloudReports: [
+        { key: "repo:panbo/x", term: "panbo/x", full_text: "x", related: [], created_at: 1, updated_at: 1 },
+        { key: "云端概念", term: "云端概念", full_text: "y", related: [], created_at: 1, updated_at: 2 },
+      ],
+      cloudCards: [
+        { key: "repo:panbo/x::abc", term: "repo:panbo/x", question: "q", answer: "a", due_at: 1, interval_days: 0, reps: 0, status: "new", created_at: 1, updated_at: 1 },
+      ],
+    });
+
+    await initCloudSync();
+    const { getReport, getAllCards } = await import("./storage");
+    expect(await getReport("repo:panbo/x")).toBeUndefined(); // 残留不落回本地
+    expect(await getReport("云端概念")).toBeDefined();
+    expect(await getAllCards()).toHaveLength(0);
+    expect(posts).toHaveLength(0); // 云端非空 → 不触发全量上传
   });
 
   it("登录 + 云端空 + 本地空 → 不上传", async () => {
