@@ -135,19 +135,19 @@ function WelcomeHome({
             。
           </p>
 
-          {/* 搜索框（居中，最大 640px） */}
+          {/* 搜索框与所有交互元素共用一条 672px 轴——整页只有这一条对齐轴 */}
           <div className="mt-10 mx-auto max-w-2xl">
             <SearchBox autoFocus />
             {/* 概念接力带：产品核心隐喻的可视化，点击即开振 */}
             <RelayStrip onStart={onStart} />
           </div>
 
-          {/* 完整段落示例（居中） */}
+          {/* 完整段落示例（与搜索框同轴同宽） */}
           <button
             onClick={() =>
               onStart("我在学分布式系统设计，其中一个词叫分布式锁，该怎么理解？")
             }
-            className="mt-5 mx-auto flex max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-ink-200 bg-white/40 px-4 py-2.5 hover:border-ink-300 hover:bg-ink-50/40 transition-colors cursor-pointer text-left"
+            className="mt-3 mx-auto flex w-full max-w-2xl items-start gap-2.5 rounded-lg border border-dashed border-ink-200 bg-white/40 px-4 py-2.5 hover:border-ink-300 hover:bg-ink-50/40 transition-colors cursor-pointer text-left"
           >
             <span className="text-[10.5px] font-bold tracking-[0.12em] text-ink-500 mt-0.5 shrink-0">
               ✦
@@ -162,7 +162,7 @@ function WelcomeHome({
 
           <button
             onClick={onGoExam}
-            className="mt-4 mx-auto flex max-w-2xl items-center justify-center gap-2 rounded-xl border border-ink-200 bg-ink-50/70 px-4 py-3 text-[13px] font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-100"
+            className="mt-3 mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-ink-200 bg-ink-50/70 px-4 py-3 text-[13px] font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-100"
           >
             <span aria-hidden>📝</span>
             <span>出题大师</span>
@@ -176,7 +176,7 @@ function WelcomeHome({
         {dueCount > 0 && (
           <button
             onClick={onGoReview}
-            className="mt-8 mx-auto flex max-w-3xl items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-3 text-[14px] font-medium text-amber-800 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-100 cursor-pointer"
+            className="mt-3 mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-[var(--st-warn-line)] bg-[var(--st-warn-bg)] px-5 py-3 text-[14px] font-medium text-[var(--st-warn)] transition-colors hover:brightness-[0.985] cursor-pointer"
           >
             <span aria-hidden>⏰</span>
             <span>
@@ -187,11 +187,11 @@ function WelcomeHome({
         )}
 
         {/* ── 分隔 ── */}
-        <div className="mt-16 mx-auto max-w-3xl border-t border-[var(--line)]" />
+        <div className="mt-14 mx-auto max-w-2xl border-t border-[var(--line)]" />
 
-        {/* 你的知识库（有存档时） */}
+        {/* 你的知识库（有存档时）——与 hero 同轴 */}
         {has && (
-          <section className="mt-14 mx-auto max-w-4xl">
+          <section className="mt-10 mx-auto max-w-2xl">
             <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
               <div>
                 <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-2">
@@ -211,22 +211,24 @@ function WelcomeHome({
                   )}
                 </div>
               </div>
-              <button
-                onClick={onGoMap}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
-              >
-                <span>🗺</span>
-                <span>知识网络地图</span>
-                <span>→</span>
-              </button>
-              <button
-                onClick={onGoTrends}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
-              >
-                <span>📈</span>
-                <span>学习统计</span>
-                <span>→</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onGoMap}
+                  className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
+                >
+                  <span>🗺</span>
+                  <span>知识网络地图</span>
+                  <span>→</span>
+                </button>
+                <button
+                  onClick={onGoTrends}
+                  className="flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[12.5px] font-medium text-slate-700 hover:border-ink-300 hover:text-ink-700 cursor-pointer"
+                >
+                  <span>📈</span>
+                  <span>学习统计</span>
+                  <span>→</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -278,8 +280,8 @@ function WelcomeHome({
           </section>
         )}
 
-        {/* 它能做什么（三张轻卡片） */}
-        <section className={`mx-auto max-w-4xl ${has ? "mt-14" : "mt-16"}`}>
+        {/* 它能做什么（三张轻卡片，同轴） */}
+        <section className={`mx-auto max-w-2xl ${has ? "mt-10" : "mt-12"}`}>
           <div className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400 mb-4">
             它能做什么
           </div>
@@ -300,7 +302,7 @@ function WelcomeHome({
         </section>
 
         {/* 底部：⌘K */}
-        <div className="mt-12 flex items-center justify-center gap-3">
+        <div className="mt-10 flex items-center justify-center gap-3">
           <button
             onClick={onOpenPalette}
             className="chip !text-[12px]"
@@ -318,15 +320,16 @@ function WelcomeHome({
   );
 }
 
-/* 概念接力带：虚线轨道上错峰浮动的接力胶囊，让“顺着网络学下去”看得见 */
+/* 概念接力带：虚线轨道上错峰浮动的接力胶囊，让“顺着网络学下去”看得见。
+ * 左对齐 wrap：与全页唯一对齐轴一致，第二行不再孤零零居中。 */
 function RelayStrip({ onStart }: { onStart: (q: string) => void }) {
   return (
-    <div className="relative mt-9">
+    <div className="relative mt-6">
       <div
         aria-hidden
-        className="dotted-rail absolute inset-x-8 top-1/2 hidden -translate-y-1/2 opacity-70 md:block"
+        className="dotted-rail absolute inset-x-4 top-1/2 hidden -translate-y-1/2 opacity-70 md:block"
       />
-      <div className="relative flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+      <div className="relative flex flex-wrap items-center justify-start gap-x-5 gap-y-3">
         {EXAMPLES.map((e, i) => (
           <button
             key={e}
