@@ -113,7 +113,11 @@ describe("assembleExamPapers", () => {
       { title: "测试题库", knowledgePoints: [], questions },
       { countPerPaper: 4, paperCount: 2, seed: 7 }
     );
-    expect(first).toEqual(second);
+    // createdAt 是生成时刻的 Date.now()，不归 seed 管；两次调用跨毫秒即不同，
+    // 必须剔除后比较，否则这条"确定性"测试本身会随机器负载偶发失败。
+    const stripCreatedAt = (papers: ReturnType<typeof assembleExamPapers>) =>
+      papers.map((p) => ({ ...p, createdAt: 0 }));
+    expect(stripCreatedAt(first)).toEqual(stripCreatedAt(second));
   });
 
   it("任意 seed 下多套卷都不重题（回归：曾经每套各洗一次牌）", () => {
