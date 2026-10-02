@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { parseSections, extractSectionRaw, styleForTitle, stripStreamMarkers, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
 import { useFocusTrap } from "@/components/useFocusTrap";
-import { saveReport, drillKey } from "@/lib/storage";
+import { saveReport, getReport, drillKey } from "@/lib/storage";
 
 /**
  * 右侧抽屉：承载某个被点击概念的流式深挖报告。
@@ -14,6 +14,8 @@ import { saveReport, drillKey } from "@/lib/storage";
  * - 同样的 8 模块渲染
  *
  * 复用同 /api/analyze 接口，body 多传一个 parentTerm 作为上下文。
+ * 缓存约定与主报告一致（wiki 化）：打开先读 IndexedDB（drill:parent::term），
+ * 命中即渲染不烧 token，头部提供「重新生成」显式覆盖；未命中才流式生成。
  */
 
 interface DrawerProps {
@@ -26,8 +28,12 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState("");
+  // 非 null = 当前展示的是本地缓存报告（updatedAt），头部据此显示缓存态与重新生成
+  const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
+  // 重新生成按钮要能再次触发流式生成；生成逻辑随 effect 闭包建立，经 ref 暴露
+  const streamRef = useRef<(() => void) | null>(null);
 
   // 模态无障碍：焦点移入/归还、Tab 循环、背景 inert 隔离（统一走 useFocusTrap）。
   // 焦点落点保持「抽屉自身」——沿用上一轮的行为，抽屉内容是流式长文，
@@ -58,89 +64,115 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
       setText("");
       setStreaming(false);
       setError("");
+      setCachedAt(null);
+      streamRef.current = null;
       return;
     }
 
     // 关闭上一次的请求
     abortCtrl?.abort();
 
-    setText("");
-    setStreaming(true);
-    setError("");
-
     const controller = new AbortController();
     setAbortCtrl(controller);
+    let alive = true;
 
-    (async () => {
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            term: concept.name,
-            parentTerm,
-            relationType: concept.relationType,
-            relationLabel: concept.groupLabel,
-          }),
-          signal: controller.signal,
-        });
+    const stream = () => {
+      setText("");
+      setStreaming(true);
+      setError("");
+      setCachedAt(null);
 
-        if (!res.ok || !res.body) {
-          let msg = `请求失败（${res.status}）`;
-          try {
-            const data = (await res.json()) as { error?: string };
-            if (data?.error) msg = data.error;
-          } catch { /* ignore */ }
-          throw new Error(msg);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        // 抽屉里我们不要节流（流速本来慢），每一帧直接渲染
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          setText(buf);
-        }
-
-        setStreaming(false);
-
-        // 深挖报告也入库：让每次追问都沉淀为知识库的一页
-        // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
-        const final = stripStreamMarkers(buf);
-        if (final) {
-          const groups = parseNetworkMarkdown(extractSectionRaw(final, "知识网络"));
-          saveReport({
-            key: drillKey(parentTerm, concept.name),
-            term: concept.name,
-            parentTerm,
-            relationType: concept.relationType,
-            fullText: final,
-            related: flattenGroups(groups),
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          }).catch(() => {
-            /* 隐私模式等场景写失败就静默 */
+      (async () => {
+        try {
+          const res = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              term: concept.name,
+              parentTerm,
+              relationType: concept.relationType,
+              relationLabel: concept.groupLabel,
+            }),
+            signal: controller.signal,
           });
-        }
-      } catch (err: unknown) {
-        if (
-          typeof err === "object" &&
-          err !== null &&
-          "name" in err &&
-          (err as { name?: string }).name === "AbortError"
-        ) {
-          // 抽屉关闭触发的 abort，不算错误
-          return;
-        }
-        setError(err instanceof Error ? err.message : "生成失败");
-        setStreaming(false);
-      }
-    })();
 
-    return () => controller.abort();
+          if (!res.ok || !res.body) {
+            let msg = `请求失败（${res.status}）`;
+            try {
+              const data = (await res.json()) as { error?: string };
+              if (data?.error) msg = data.error;
+            } catch { /* ignore */ }
+            throw new Error(msg);
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          // 抽屉里我们不要节流（流速本来慢），每一帧直接渲染
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            setText(buf);
+          }
+
+          setStreaming(false);
+
+          // 深挖报告也入库：让每次追问都沉淀为知识库的一页
+          // 入库前剥掉 <!-- DONE --> 等流式标记，否则会随全文进 IndexedDB / 云端
+          const final = stripStreamMarkers(buf);
+          if (final) {
+            const groups = parseNetworkMarkdown(extractSectionRaw(final, "知识网络"));
+            saveReport({
+              key: drillKey(parentTerm, concept.name),
+              term: concept.name,
+              parentTerm,
+              relationType: concept.relationType,
+              fullText: final,
+              related: flattenGroups(groups),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            }).catch(() => {
+              /* 隐私模式等场景写失败就静默 */
+            });
+          }
+        } catch (err: unknown) {
+          if (
+            typeof err === "object" &&
+            err !== null &&
+            "name" in err &&
+            (err as { name?: string }).name === "AbortError"
+          ) {
+            // 抽屉关闭触发的 abort，不算错误
+            return;
+          }
+          setError(err instanceof Error ? err.message : "生成失败");
+          setStreaming(false);
+        }
+      })();
+    };
+    streamRef.current = stream;
+
+    // 缓存优先：同一概念在同一上下文下问过，就直接回放，不重复烧 token
+    getReport(drillKey(parentTerm, concept.name))
+      .then((r) => {
+        if (!alive) return;
+        if (r && r.fullText) {
+          setText(r.fullText);
+          setStreaming(false);
+          setCachedAt(r.updatedAt);
+        } else {
+          stream();
+        }
+      })
+      .catch(() => {
+        if (alive) stream();
+      });
+
+    return () => {
+      alive = false;
+      controller.abort();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concept?.name, concept?.relationType]);
 
@@ -190,15 +222,31 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose }: Drawer
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-            aria-label="关闭抽屉"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="shrink-0 flex items-center gap-2 self-start">
+            {cachedAt !== null && !streaming && (
+              <>
+                <span className="state-chip state-info" title="上次生成于本地缓存，未消耗模型调用">
+                  本地缓存
+                </span>
+                <button
+                  onClick={() => streamRef.current?.()}
+                  className="rounded-md border border-[var(--line-strong)] px-2 py-1 text-[11.5px] text-slate-500 hover:border-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors cursor-pointer"
+                  title="忽略缓存，重新生成这份深挖报告"
+                >
+                  ⟳ 重新生成
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="shrink-0 p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="关闭抽屉"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto scroll-thin px-5 py-4 space-y-4">

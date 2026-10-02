@@ -91,6 +91,8 @@ vi.mock("@/lib/storage", () => ({
   ]),
   getDueCards: vi.fn(async () => 3),
   saveReport: vi.fn(async () => {}),
+  // 抽屉打开先查缓存：返回 undefined 走"未命中"分支，焦点陷阱行为与改动前一致
+  getReport: vi.fn(async () => undefined),
   drillKey: (t: string) => `drill:${t}`,
 }));
 
