@@ -48,6 +48,7 @@
 | `lib/cards.ts` | 复习卡：定义卡/追问卡解析、三档自评调度（again 清零 / hard 至少 +1 天 / good 翻倍，30 天封顶） |
 | `lib/rateLimit.ts` `lib/auth.ts` `lib/session.ts` `lib/db.ts` `lib/cloud.ts` `lib/sync.ts` | 限流 / OAuth / D1 / 云同步 |
 | `lib/pdf.ts` | PDF 浏览器内解析（pdfjs-dist） |
+| `app/globals.css` + `components/icons.tsx` + `components/sectionMeta.tsx` | **设计语言 v4「精密仪器」**：设计令牌 / 组件词汇表 / SVG 图标库 / 报告模块图标映射。改视觉前先读 `frontend/DESIGN.md` |
 
 ## 环境变量（项目根 `.env`）
 
@@ -71,3 +72,4 @@ npm run build  # 构建（严格类型检查）
 3. **流式协议为纯文本 Markdown**，前端按 `## ` 切分；不要改成 JSON-SSE，除非同步重写两端。
 4. **导航**在 `AppShell.tsx` 的 `NAV` 常量；新增页面记得挂进去（含移动端横滚条）。
 5. **测试是 node 环境**（无 jsdom）：`.tsx` 组件行为测不了，用 AST 契约测试或抽纯逻辑到 `lib/*.ts` 再测。
+6. **视觉唯一真源是 `frontend/DESIGN.md`**：色彩/排版/圆角/动效都从令牌取（`globals.css`）；图标只用 `components/icons.tsx` 的 SVG，**禁止 emoji 当 UI 图标**；报告模块标题的 emoji 只属于解析协议，显示前经 `sectionMeta` 剥掉并换 SVG。

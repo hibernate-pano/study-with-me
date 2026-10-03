@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { IconRefresh, IconWarn } from "@/components/icons";
 
 /**
  * 全局 Error Boundary。
@@ -20,17 +21,22 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5">
-      <div className="max-w-md w-full text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-[22px] font-bold text-slate-900 mb-2">页面出错了</h2>
-        <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">
+    <div className="flex min-h-screen items-center justify-center px-5" role="alert">
+      <div className="w-full max-w-md text-center">
+        <div className="mb-4 flex justify-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--st-err-bg)] text-[var(--st-err)]">
+            <IconWarn size={24} />
+          </span>
+        </div>
+        <h2 className="mb-2 text-[22px] font-bold text-ink-900">页面出错了</h2>
+        <p className="mb-6 text-[14px] leading-relaxed text-ink-soft">
           {error.message || "出了点意料之外的问题，请稍后再试。"}
         </p>
         <button
           onClick={reset}
-          className="px-5 py-2.5 rounded-xl bg-ink-600 text-white text-[14px] font-medium hover:bg-ink-700 transition-colors cursor-pointer"
+          className="btn-primary px-5 py-2.5 text-[14px]"
         >
+          <IconRefresh size={15} />
           重试
         </button>
       </div>

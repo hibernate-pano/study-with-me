@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { IconSearch } from "./icons";
 
 interface Props {
   initial?: string;
@@ -52,21 +53,13 @@ export default function SearchBox({
           e.preventDefault();
           submit();
         }}
-        className={`group flex items-start gap-2 rounded-2xl border border-[var(--line)] bg-white shadow-[0_10px_30px_-12px_rgba(20,20,18,0.10)] transition-all focus-within:border-ink-400 focus-within:shadow-[0_0_0_4px_rgba(20,20,18,0.08)] ${padding}`}
+        className={`group flex items-start gap-2 rounded-2xl border border-[var(--line-strong)] bg-white shadow-[0_10px_30px_-14px_rgba(20,20,18,0.14)] transition-all focus-within:border-ink-400 focus-within:shadow-[0_0_0_4px_rgba(20,20,18,0.08)] ${padding}`}
       >
-        <svg
-          className="shrink-0 text-slate-500 mt-2"
-          width={iconSize}
-          height={iconSize}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+        <IconSearch
+          size={iconSize}
+          strokeWidth={2}
+          className="mt-2 shrink-0 text-slate-500"
+        />
 
         <textarea
           ref={taRef}
@@ -104,7 +97,7 @@ export default function SearchBox({
             isLarge
               ? // 3 行底高：默认即"从容态"，1-3 行的输入不发生尺寸跳动；
                 // 超出仍自动长到 200px 上限（min-height 兜底，JS 设的 height 不会低于它）
-                "text-[21px] py-3.5 min-h-[130px]"
+                "text-[21px] py-3.5 min-h-[120px]"
               : "text-[15px] py-1.5 min-h-[36px]"
           }`}
         />

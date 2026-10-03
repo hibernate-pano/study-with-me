@@ -39,33 +39,35 @@ export function stripStreamMarkers(text: string): string {
 }
 
 export function styleForTitle(title: string): SectionStyle {
+  // 区块强调色遵循「彩为状态」：只有承担语义的模块给彩色，其余走中性墨阶。
+  // 色值取自 globals.css 的 --st-*（状态）与 --r-*（关系）令牌，保持全站同源。
   // —— 对比报告专用标题（放在通用关键词之前，避免误匹配） ——
   if (title.includes("一句话辨析") || title.includes("辨析"))
-    return { accent: "#8b5cf6", badge: "#f5f3ff" };
-  if (title.includes("关键差异")) return { accent: "#6366f1", badge: "#eef2ff" };
+    return { accent: "#2a4a72", badge: "#e8eff8" }; // 信息蓝
+  if (title.includes("关键差异")) return { accent: "#2a4a72", badge: "#e8eff8" };
   if (title.includes("架构"))
-    return { accent: "#4f46e5", badge: "#eef2ff" }; // 仓库报告：架构/数据流
+    return { accent: "#2a4a72", badge: "#e8eff8" }; // 架构/数据流
   if (title.includes("亮点"))
-    return { accent: "#d97706", badge: "#fffbeb" }; // 仓库报告：为什么牛
-  if (title.includes("场景")) return { accent: "#10b981", badge: "#ecfdf5" };
-  if (title.includes("混淆")) return { accent: "#ef4444", badge: "#fef2f2" };
+    return { accent: "#9d7414", badge: "#fdf5e3" }; // 待办琥珀
+  if (title.includes("场景")) return { accent: "#1f6b6b", badge: "#e6f2f2" };
+  if (title.includes("混淆")) return { accent: "#b3401f", badge: "#fbeae3" };
   if (title.includes("协同") || title.includes("组合"))
-    return { accent: "#0d9488", badge: "#f0fdfa" };
+    return { accent: "#1f6b6b", badge: "#e6f2f2" };
 
-  if (title.includes("定义")) return { accent: "#6366f1", badge: "#eef2ff" };
-  if (title.includes("核心重点")) return { accent: "#f59e0b", badge: "#fffbeb" };
+  if (title.includes("定义")) return { accent: "#2a4a72", badge: "#e8eff8" };
+  if (title.includes("核心重点")) return { accent: "#9d7414", badge: "#fdf5e3" };
   if (title.includes("误区") || title.includes("易错"))
-    return { accent: "#ef4444", badge: "#fef2f2" };
-  if (title.includes("拆解")) return { accent: "#8b5cf6", badge: "#f5f3ff" };
+    return { accent: "#b3401f", badge: "#fbeae3" };
+  if (title.includes("拆解")) return { accent: "#56564f", badge: "#f6f6f4" };
   if (title.includes("进阶") || title.includes("路径"))
-    return { accent: "#10b981", badge: "#ecfdf5" };
+    return { accent: "#1a7f4b", badge: "#e6f3ec" };
   if (title.includes("知识网络") || title.includes("知识图谱"))
-    return { accent: "#06b6d4", badge: "#ecfeff" };
+    return { accent: "#3e6ea4", badge: "#e8eff8" };
   if (title.includes("追问") || title.includes("自测"))
-    return { accent: "#ec4899", badge: "#fdf2f8" };
+    return { accent: "#7c3aed", badge: "#f5f3ff" };
   if (title.includes("资料") || title.includes("检索"))
-    return { accent: "#0ea5e9", badge: "#f0f9ff" };
-  return { accent: "#64748b", badge: "#f1f5f9" };
+    return { accent: "#1f6b6b", badge: "#e6f2f2" };
+  return { accent: "#75756d", badge: "#f6f6f4" };
 }
 
 /** 标题去掉 emoji 和括号，用作锚点 id */

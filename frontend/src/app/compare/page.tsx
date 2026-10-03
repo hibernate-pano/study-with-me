@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SectionCard from "@/components/SectionCard";
+import { IconArrowRight, IconCheck, IconCompare, IconFolderOpen, IconScale } from "@/components/icons";
 import { parseSections, extractSectionRaw, stripStreamMarkers, type Section } from "@/lib/stream";
 import { parseNetworkMarkdown, flattenGroups } from "@/lib/network";
 import { saveReport, getReport } from "@/lib/storage";
@@ -195,19 +196,21 @@ function CompareInner() {
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer lg:hidden"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-ink-soft transition-colors hover:bg-ink-100 cursor-pointer lg:hidden"
             title="返回首页"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <IconArrowRight size={16} className="rotate-180" />
             首页
           </button>
-          <div className="text-[14px] font-bold text-slate-800">⚖️ 概念对比</div>
+          <div className="flex items-center gap-1.5 text-[14px] font-bold text-ink-800">
+            <IconScale size={15} className="text-ink-500" />
+            概念对比
+          </div>
           <div className="flex-1" />
           {cachedAt && (
-            <span className="text-[11.5px] text-slate-400">
-              📂 已加载对比存档（更新于{" "}
+            <span className="flex items-center gap-1.5 text-[11.5px] text-ink-faint">
+              <IconFolderOpen size={13} />
+              已加载对比存档（更新于{" "}
               {new Date(cachedAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               ）
             </span>
@@ -236,7 +239,7 @@ function CompareInner() {
               onKeyDown={(e) => e.key === "Enter" && submit(a, b)}
             />
             <div className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full border border-[var(--line)] bg-white text-[11px] font-black tracking-widest text-slate-400 shadow-sm">
-              VS
+              <IconCompare size={16} className="text-ink-400" />
             </div>
             <input
               value={b}
@@ -288,12 +291,15 @@ function CompareInner() {
               <span className="rounded-lg bg-ink-50 px-3 py-1.5 text-[15px] font-bold text-ink-700">
                 {a.trim()}
               </span>
-              <span className="text-[13px] font-bold text-slate-400">⚖️</span>
+              <IconScale size={15} className="text-ink-400" />
               <span className="rounded-lg bg-teal-50 px-3 py-1.5 text-[15px] font-bold text-teal-700">
                 {b.trim()}
               </span>
               {saved && !streaming && (
-                <span className="text-[11.5px] text-emerald-600">✓ 已存入本地知识库</span>
+                <span className="flex items-center gap-1 text-[11.5px] text-[var(--st-ok)]">
+                  <IconCheck size={12} />
+                  已存入本地知识库
+                </span>
               )}
               {streaming && (
                 <span className="flex items-center gap-1.5 text-[12px] text-slate-400">

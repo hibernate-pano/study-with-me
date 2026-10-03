@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { IconArrowRight, IconRefresh, IconWarn } from "@/components/icons";
 
 /**
  * 报告页专属 Error Boundary。
@@ -24,27 +25,33 @@ export default function AnalyzeError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5">
-      <div className="max-w-md w-full text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-[22px] font-bold text-slate-900 mb-2">报告生成失败</h2>
+    <div className="flex min-h-screen items-center justify-center px-5" role="alert">
+      <div className="w-full max-w-md text-center">
+        <div className="mb-4 flex justify-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--st-err-bg)] text-[var(--st-err)]">
+            <IconWarn size={24} />
+          </span>
+        </div>
+        <h2 className="mb-2 text-[22px] font-bold text-ink-900">报告生成失败</h2>
         {term && (
-          <p className="text-[13px] text-slate-500 mb-2">「{term}」</p>
+          <p className="mb-2 text-[13px] text-ink-faint">「{term}」</p>
         )}
-        <p className="text-[14px] text-slate-500 mb-6 leading-relaxed">
+        <p className="mb-6 text-[14px] leading-relaxed text-ink-soft">
           {error.message || "AI 服务暂时不可用，请稍后再试。"}
         </p>
         <div className="flex justify-center gap-3">
           <button
             onClick={reset}
-            className="px-5 py-2.5 rounded-xl bg-ink-600 text-white text-[14px] font-medium hover:bg-ink-700 transition-colors cursor-pointer"
+            className="btn-primary px-5 py-2.5 text-[14px]"
           >
+            <IconRefresh size={15} />
             重试
           </button>
           <button
             onClick={() => router.push("/")}
-            className="px-5 py-2.5 rounded-xl border border-[var(--line)] bg-white text-[14px] font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+            className="btn-ghost px-5 py-2.5 text-[14px]"
           >
+            <IconArrowRight size={15} className="rotate-180" />
             回首页
           </button>
         </div>

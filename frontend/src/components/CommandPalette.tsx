@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import { getAllReports, getDueCards } from "@/lib/storage";
+import {
+  IconArrowRight,
+  IconExam,
+  IconFolderOpen,
+  IconNetwork,
+  IconReview,
+  IconScale,
+  IconSpark,
+  IconTrends,
+} from "./icons";
 
 /**
  * 全局命令面板（⌘K / Ctrl+K）
@@ -13,17 +23,17 @@ import { getAllReports, getDueCards } from "@/lib/storage";
  * - 键盘：↑↓ 选中、Enter 跳转、Esc 关闭、⌘K 切换
  */
 
-type ActionItem = { kind: "action"; id: string; title: string; subtitle: string; icon: string };
+type ActionItem = { kind: "action"; id: string; title: string; subtitle: string; icon: React.ReactNode };
 type ReportItem = { kind: "report"; term: string; updatedAt: number };
 type NewItem = { kind: "new" };
 type Item = ReportItem | ActionItem | NewItem;
 
 const ACTIONS: ActionItem[] = [
-  { kind: "action", id: "exam", title: "出题大师", subtitle: "上传课本，生成题库和多套试卷", icon: "📝" },
-  { kind: "action", id: "review", title: "去复习", subtitle: "间隔重复自测题", icon: "🗂" },
-  { kind: "action", id: "map", title: "我的知识网络（焦点）", subtitle: "全屏沉浸式地图", icon: "🗺" },
-  { kind: "action", id: "compare", title: "概念对比", subtitle: "把两个概念放一起辨析", icon: "⚖️" },
-  { kind: "action", id: "trends", title: "学习统计", subtitle: "深挖 / 复习 / 考试的真实数据曲线", icon: "📈" },
+  { kind: "action", id: "exam", title: "出题大师", subtitle: "上传课本，生成题库和多套试卷", icon: <IconExam size={15} /> },
+  { kind: "action", id: "review", title: "去复习", subtitle: "间隔重复自测题", icon: <IconReview size={15} /> },
+  { kind: "action", id: "map", title: "我的知识网络", subtitle: "全屏沉浸式地图", icon: <IconNetwork size={15} /> },
+  { kind: "action", id: "compare", title: "概念对比", subtitle: "把两个概念放一起辨析", icon: <IconScale size={15} /> },
+  { kind: "action", id: "trends", title: "学习统计", subtitle: "深挖 / 复习 / 考试的真实数据曲线", icon: <IconTrends size={15} /> },
 ];
 
 export default function CommandPalette() {
@@ -148,7 +158,8 @@ export default function CommandPalette() {
   let cursor = 0;
   const sections = [
     {
-      title: "📂 你的报告",
+      title: "你的报告",
+      icon: <IconFolderOpen size={12} />,
       hint: "按更新时间倒序",
       count: grouped.matchedReports.length,
       render: () => {
@@ -158,7 +169,8 @@ export default function CommandPalette() {
       },
     },
     {
-      title: "⚡ 内置动作",
+      title: "内置动作",
+      icon: <IconSpark size={12} />,
       hint: "跳转页面或开始操作",
       count: grouped.acts.length,
       render: () => {
@@ -168,7 +180,8 @@ export default function CommandPalette() {
       },
     },
     {
-      title: "🆕 深挖新概念",
+      title: "深挖新概念",
+      icon: <IconArrowRight size={12} />,
       hint: "按 Enter 直接开始",
       count: grouped.newItem.length,
       render: () => {
@@ -194,7 +207,7 @@ export default function CommandPalette() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* 输入区 */}
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-[var(--line-soft)] px-5 py-4">
           <SearchBox
             initial=""
             autoFocus
@@ -219,7 +232,7 @@ export default function CommandPalette() {
               return false;
             }}
           />
-          <p className="mt-2 text-[11.5px] text-slate-500">
+          <p className="mt-2 text-[11.5px] text-ink-faint">
             ↑↓ 选择 · Enter 跳转 · Esc 关闭
           </p>
         </div>
@@ -227,7 +240,7 @@ export default function CommandPalette() {
         {/* 结果列表（分组） */}
         <div className="max-h-[48vh] overflow-y-auto scroll-thin py-1">
           {flat.length === 0 ? (
-            <div className="px-5 py-10 text-center text-[13px] text-slate-500">
+            <div className="px-5 py-10 text-center text-[13px] text-ink-soft">
               {query.trim() ? `没有匹配「${query.trim()}」，按 Enter 深挖新概念` : "还没有存档，去首页挖一个概念？"}
             </div>
           ) : (
@@ -235,11 +248,12 @@ export default function CommandPalette() {
               const { start, length } = sec.render();
               return (
                 <div key={sec.title} className="py-1.5">
-                  <div className="flex items-baseline gap-2 px-5 pt-1 pb-1.5">
-                    <span className="text-[10.5px] font-bold tracking-wider text-slate-500">
-                      {sec.title.toUpperCase().replace(/^[^\s]+\s/, "")}
+                  <div className="flex items-center gap-1.5 px-5 pt-1 pb-1.5">
+                    <span className="text-ink-400">{sec.icon}</span>
+                    <span className="label !text-ink-faint">
+                      {sec.title}
                     </span>
-                    <span className="text-[10.5px] text-slate-300">{sec.hint}</span>
+                    <span className="text-[10.5px] text-ink-300">{sec.hint}</span>
                   </div>
                   {Array.from({ length }).map((_, i) => {
                     const idx = start + i;
@@ -251,15 +265,15 @@ export default function CommandPalette() {
                         onMouseEnter={() => setActive(idx)}
                         onClick={() => go(it)}
                         className={`flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors ${
-                          isActive ? "bg-ink-50" : "hover:bg-slate-50"
+                          isActive ? "bg-ink-50" : "hover:bg-ink-50/60"
                         }`}
                       >
                         <IconBox item={it} active={isActive} />
                         <span className="flex-1 min-w-0">
-                          <span className={`block truncate text-[14px] ${isActive ? "text-ink-700 font-semibold" : "text-slate-800"}`}>
+                          <span className={`block truncate text-[14px] ${isActive ? "text-ink-700 font-semibold" : "text-ink-800"}`}>
                             {renderTitle(it, query)}
                           </span>
-                          <span className="block truncate text-[11.5px] text-slate-500">
+                          <span className="block truncate text-[11.5px] text-ink-faint">
                             {renderSubtitle(it)}
                           </span>
                         </span>
@@ -276,13 +290,16 @@ export default function CommandPalette() {
         </div>
 
         {/* 底栏：快捷提示 + 复习提醒 */}
-        <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-2 text-[11px] text-slate-500">
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">↑↓</kbd> 移动</span>
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">↵</kbd> 选择</span>
-          <span><kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono">esc</kbd> 关闭</span>
+        <div className="flex items-center gap-3 border-t border-[var(--line-soft)] bg-ink-50/60 px-5 py-2 text-[11px] text-ink-faint">
+          <span className="flex items-center gap-1"><kbd className="kbd">↑↓</kbd> 移动</span>
+          <span className="flex items-center gap-1"><kbd className="kbd">↵</kbd> 选择</span>
+          <span className="flex items-center gap-1"><kbd className="kbd">esc</kbd> 关闭</span>
           <div className="flex-1" />
           {dueCount > 0 && (
-            <span className="text-amber-600">🗂 {dueCount} 张复习卡到期</span>
+            <span className="flex items-center gap-1 text-[var(--st-warn)]">
+              <IconReview size={12} />
+              <span className="nums">{dueCount}</span> 张复习卡到期
+            </span>
           )}
         </div>
       </div>
@@ -309,17 +326,21 @@ function renderSubtitle(it: Item): string {
 }
 
 function IconBox({ item, active }: { item: Item; active: boolean }) {
-  let content = "";
-  if (item.kind === "report") content = item.term.slice(0, 1);
-  else if (item.kind === "action") content = item.icon;
-  else content = "✦";
+  const content: React.ReactNode =
+    item.kind === "report" ? (
+      <span className="text-[12px] font-semibold">{item.term.slice(0, 1)}</span>
+    ) : item.kind === "action" ? (
+      item.icon
+    ) : (
+      <IconSpark size={14} />
+    );
 
   return (
     <span
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[13px] transition-colors ${
         active
-          ? "border-ink-200 bg-white text-ink-600"
-          : "border-slate-100 bg-white text-slate-500"
+          ? "border-ink-300 bg-ink-50 text-ink-700"
+          : "border-[var(--line-soft)] bg-white text-ink-400"
       }`}
     >
       {content}

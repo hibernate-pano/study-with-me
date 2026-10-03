@@ -2,23 +2,28 @@
 
 import ReactMarkdown from "react-markdown";
 import { styleForTitle, type Section } from "@/lib/stream";
+import { sectionMeta } from "./sectionMeta";
 import KnowledgeNetworkCard from "./KnowledgeNetworkCard";
 import { markdownCodeComponents } from "./codeRenderer";
 import type { FlatConcept } from "@/lib/network";
+import { IconChevronDown } from "./icons";
 
 /**
- * 单个报告区块卡片（v1.7 类型差异化版）
+ * 单个报告区块卡片。
  *
- * 不同 section 类型走不同视觉：
- * - 一句话定义/辨析：serif 引语 + 引号装饰（hero）
- * - 常见误区：红色边 + 浅红底（警示感）
- * - 知识网络：KnowledgeNetworkCard（分组 chips）
- * - 其它：标准卡片（保留 accent stripe）
+ * 类型差异化：
+ * - 一句话定义/辨析：无 card chrome 的大引语（hero），靠排版撑场；
+ * - 知识网络：KnowledgeNetworkCard；
+ * - 其它：标准卡片（左侧语义强调条 + SVG 语义图标）。
+ *
+ * 标题里的 emoji 只用于解析协议，显示前一律剥掉并换成 SVG 图标（sectionMeta）。
  */
 
 interface Props {
   section: Section;
   streaming: boolean;
+  /** 是否正在生成这一段（仅最后一段为真）——决定是否显示"生成中…"与流式光标 */
+  active?: boolean;
   collapsed: boolean;
   onToggle?: () => void;
   onConceptDrillDown?: (concept: FlatConcept) => void;
@@ -27,6 +32,7 @@ interface Props {
 export default function SectionCard({
   section,
   streaming,
+  active = false,
   collapsed,
   onToggle,
   onConceptDrillDown,
@@ -36,29 +42,24 @@ export default function SectionCard({
   const isNetwork = section.title.includes("知识网络");
   const isQuote = section.title.includes("一句话定义") || section.title.includes("一句话辨析");
   const isPitfall = section.title.includes("误区") || section.title.includes("易错");
+  const meta = sectionMeta(section.title, 15);
 
-  // —— 类型差异化壳层 ——
-  const wrapperClass = (() => {
-    if (isPitfall) {
-      return "card scroll-mt-24 fade-up overflow-hidden shadow-[0_4px_20px_-8px_rgba(185,28,0,0.10)] border-red-100";
-    }
-    if (isQuote) {
-      // 引语段：不要 chrome，纯靠排版撑场
-      return "scroll-mt-24 fade-up";
-    }
-    return "card scroll-mt-24 fade-up overflow-hidden hover:border-[var(--line-strong)] transition-colors";
-  })();
+  // 只有"正在生成这一段"才显示流式光标 / 生成中标签：已完成的历史模块不该一直闪。
+  const generating = streaming && active;
+
+  const wrapperClass = isQuote
+    ? "scroll-mt-24 fade-up"
+    : "card scroll-mt-24 fade-up overflow-hidden transition-colors hover:border-[var(--line-strong)]";
 
   return (
     <section id={section.id} className={wrapperClass}>
       {isQuote ? (
-        // 引语：标题 + 内容并列，无 card chrome
         !collapsed && (
-          <div className="px-5 pb-5 pt-1 md">
+          <div className="px-5 pb-5 pt-1">
             {section.content ? (
               <QuoteMarkdown content={section.content} streaming={streaming} />
             ) : streaming ? (
-              <div className="space-y-2.5 mt-3">
+              <div className="mt-3 space-y-2.5">
                 <div className="shimmer h-7 w-3/4" />
                 <div className="shimmer h-7 w-2/3" />
               </div>
@@ -69,41 +70,34 @@ export default function SectionCard({
         <>
           <button
             onClick={onToggle}
-            className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors cursor-pointer ${
-              isPitfall ? "hover:bg-red-50/40" : "hover:bg-[var(--bg-soft)]/60"
+            className={`flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors cursor-pointer ${
+              isPitfall ? "hover:bg-[var(--st-err-bg)]/50" : "hover:bg-[var(--bg-soft)]/60"
             }`}
           >
             <span
-              className="h-8 w-1.5 rounded-full shrink-0"
+              className="h-7 w-1 shrink-0 rounded-full"
               style={{ background: style.accent }}
             />
-            <h2 className="flex-1 text-[16px] font-bold text-slate-800">
-              {section.title}
+            <span className="shrink-0 text-ink-400">{meta.icon}</span>
+            <h2 className="flex-1 text-[15.5px] font-bold tracking-[-0.005em] text-ink-800">
+              {meta.label}
             </h2>
-            {streaming && section.content && (
-              <span className="shrink-0 text-[11px] text-slate-500 animate-pulse">
-                生成中…
-              </span>
+            {generating && section.content && (
+              <span className="shrink-0 text-[11px] text-ink-faint animate-pulse">生成中…</span>
             )}
             {onToggle && (
-              <svg
-                className={`shrink-0 text-slate-500 transition-transform ${collapsed ? "" : "rotate-180"}`}
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
+              <IconChevronDown
+                size={16}
+                className={`shrink-0 text-ink-faint transition-transform ${
+                  collapsed ? "" : "rotate-180"
+                }`}
+              />
             )}
           </button>
 
           {!collapsed && (
             <div
-              className={`px-5 pb-5 pt-1 md ${isIntro ? "" : "caret"}`}
+              className={`px-5 pb-5 pt-0.5 md ${generating ? "caret" : ""}`}
               style={streaming ? { minHeight: 40 } : undefined}
             >
               {isNetwork ? (
@@ -116,7 +110,6 @@ export default function SectionCard({
                 <ReactMarkdown
                   components={{
                     a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                    // 行内 `code` 与块级代码块分开渲染，见 codeRenderer.ts
                     ...markdownCodeComponents,
                   }}
                 >
@@ -137,22 +130,37 @@ export default function SectionCard({
   );
 }
 
-/** 一句话定义/辨析：serif 大字号 + 引号视觉装饰 */
+/**
+ * 一句话定义 / 辨析：大引语。
+ * 注意必须保留 `.md` —— 否则行内 `**加粗**` 会失去对比（引语本身的 font-weight
+ * 已经是 600，裸 strong 无法再突出）。这里让 .md strong 升到 800 + 墨黑。
+ */
 function QuoteMarkdown({ content, streaming }: { content: string; streaming: boolean }) {
   return (
-    <div className="relative pl-7 py-3">
-      {/* 大引号装饰 */}
+    <div className="relative pl-8 py-3">
       <span
         aria-hidden
-        className="absolute left-0 top-[-6px] font-disp text-[56px] leading-none text-amber-400/60 select-none"
+        className="absolute left-0 top-0 select-none font-disp text-[52px] leading-none text-ink-200"
       >
         &ldquo;
       </span>
-      <div className={`lead-quote ${streaming ? "caret" : ""}`}>
+      <div className={`md !text-[24px] leading-[1.55] ${streaming ? "caret" : ""}`}>
         <ReactMarkdown
           components={{
             a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-            p: ({ children }) => <p className="!my-0">{children}</p>,
+            p: ({ children }) => (
+              <p className="!my-0 font-disp font-semibold tracking-[-0.01em] text-ink-950">
+                {children}
+              </p>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-extrabold !text-ink-950">{children}</strong>
+            ),
+            code: ({ children }) => (
+              <code className="rounded border border-[var(--line)] bg-[var(--card-sunken)] px-1.5 py-0.5 font-mono text-[0.7em] text-ink-700">
+                {children}
+              </code>
+            ),
           }}
         >
           {content}

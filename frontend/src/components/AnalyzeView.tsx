@@ -5,6 +5,24 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import SearchBox from "@/components/SearchBox";
 import SectionCard from "@/components/SectionCard";
 import DrillDownDrawer from "@/components/DrillDownDrawer";
+import { sectionMeta } from "@/components/sectionMeta";
+import {
+  IconArrowRight,
+  IconArrowUp,
+  IconCheck,
+  IconClose,
+  IconCopy,
+  IconDownload,
+  IconFolderOpen,
+  IconMic,
+  IconPause,
+  IconRefresh,
+  IconReview,
+  IconScale,
+  IconWarn,
+  IconWidth,
+  IconWidthWide,
+} from "@/components/icons";
 import { talkshowChallengeUrl } from "@/lib/talkshow";
 import {
   parseSections,
@@ -256,9 +274,12 @@ export default function AnalyzeView() {
     // 1) 旧分享链接（#report=）兼容：正常展示报告，不再提示"只读"
     const shared = readShareHash();
     if (shared) {
-      fullTextRef.current = shared;
-      setFullText(shared);
-      setSections(parseSections(shared));
+      // 分享 hash 里同样可能夹带 <!-- DONE --> 等流式标记：展示与惰性入库前都要剥掉，
+      // 否则会在报告末尾露出一行 <!-- DONE -->。
+      const clean = stripStreamMarkers(shared);
+      fullTextRef.current = clean;
+      setFullText(clean);
+      setSections(parseSections(clean));
       setStreaming(false);
       refreshArchive(term);
       return () => {
@@ -447,12 +468,10 @@ export default function AnalyzeView() {
         <div className={`mx-auto flex flex-wrap items-center gap-2 px-5 py-2.5 ${wide ? "max-w-[88rem]" : "max-w-7xl"}`}>
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer lg:hidden"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft transition-colors hover:bg-[var(--bg-soft)] cursor-pointer lg:hidden"
             title="返回首页"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <IconArrowRight size={14} className="rotate-180" />
             首页
           </button>
 
@@ -466,22 +485,19 @@ export default function AnalyzeView() {
           {streaming ? (
             <button
               onClick={stop}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-100/70 border border-amber-200 px-2.5 py-1.5 text-[12.5px] font-medium text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--st-warn-line)] bg-[var(--st-warn-bg)] px-2.5 py-1.5 text-[12.5px] font-medium text-[var(--st-warn)] transition-colors hover:brightness-[0.97] cursor-pointer"
               title="停止生成"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--st-warn)] animate-pulse" />
               生成中 · 点此停止
             </button>
           ) : (
             <button
               onClick={regenerate}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-ink-700 hover:bg-ink-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-ink-700 transition-colors hover:bg-ink-50 cursor-pointer"
               title="重新生成"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                <path d="M21 3v6h-6" />
-              </svg>
+              <IconRefresh size={13} />
               重新生成
             </button>
           )}
@@ -492,15 +508,10 @@ export default function AnalyzeView() {
           <button
             onClick={() => router.push(`/compare?a=${encodeURIComponent(concept)}`)}
             disabled={streaming}
-            className="hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-40 cursor-pointer"
+            className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer md:flex"
             title="和另一个概念做对比"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 3h5v5" />
-              <path d="M8 21H3v-5" />
-              <path d="M21 3 14 10" />
-              <path d="M3 21l7-7" />
-            </svg>
+            <IconScale size={13} />
             对比
           </button>
 
@@ -512,31 +523,24 @@ export default function AnalyzeView() {
             aria-disabled={streaming}
             className={`hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors cursor-pointer ${
               streaming
-                ? "pointer-events-none opacity-40 text-slate-500"
-                : "text-slate-600 hover:bg-[var(--bg-soft)]"
+                ? "pointer-events-none opacity-40 text-ink-faint"
+                : "text-ink-soft hover:bg-[var(--bg-soft)]"
             }`}
             title="去 Topic Talkshow 用这个词开一场限时讲解（新标签）"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <path d="M12 19v3" />
-            </svg>
+            <IconMic size={13} />
             开讲挑战
           </a>
 
           <button
             onClick={() => router.push("/review")}
-            className="relative hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+            className="relative hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-[var(--bg-soft)] cursor-pointer md:flex"
             title="间隔重复复习"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
+            <IconReview size={13} />
             复习
             {dueCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9.5px] font-bold text-white ring-2 ring-[var(--bg)]">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--st-warn)] px-1 mono text-[9.5px] font-bold text-white ring-2 ring-[var(--bg)]">
                 {dueCount > 9 ? "9+" : dueCount}
               </span>
             )}
@@ -548,26 +552,11 @@ export default function AnalyzeView() {
             className={`hidden md:flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors cursor-pointer ${
               wide
                 ? "bg-ink-50 text-ink-700"
-                : "text-slate-500 hover:bg-[var(--bg-soft)]"
+                : "text-ink-soft hover:bg-[var(--bg-soft)]"
             }`}
             title={wide ? "切回标准宽度（显示侧栏）" : "切到宽屏（隐藏侧栏，列加宽）"}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {wide ? (
-                <>
-                  <path d="M3 6h13" />
-                  <path d="M3 12h13" />
-                  <path d="M3 18h13" />
-                  <rect x="18" y="3" width="3" height="18" rx="0.5" fill="currentColor" stroke="none" opacity="0.35" />
-                </>
-              ) : (
-                <>
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 3v18" />
-                  <rect x="9" y="3" width="2" height="18" fill="currentColor" stroke="none" opacity="0.35" />
-                </>
-              )}
-            </svg>
+            {wide ? <IconWidthWide size={13} /> : <IconWidth size={13} />}
             {wide ? "宽屏" : "标准"}
           </button>
 
@@ -575,10 +564,11 @@ export default function AnalyzeView() {
           <div className="relative">
             <button
               onClick={() => setMoreOpen((v) => !v)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+              className="btn-icon"
               title="更多操作"
+              aria-label="更多操作"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <circle cx="12" cy="5" r="1.5" />
                 <circle cx="12" cy="12" r="1.5" />
                 <circle cx="12" cy="19" r="1.5" />
@@ -592,14 +582,9 @@ export default function AnalyzeView() {
                   <button
                     onClick={() => { setMoreOpen(false); router.push(`/compare?a=${encodeURIComponent(concept)}`); }}
                     disabled={streaming}
-                    className="md:hidden flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer md:hidden"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 3h5v5" />
-                      <path d="M8 21H3v-5" />
-                      <path d="M21 3 14 10" />
-                      <path d="M3 21l7-7" />
-                    </svg>
+                    <IconScale size={14} />
                     对比
                   </button>
                   <a
@@ -609,62 +594,45 @@ export default function AnalyzeView() {
                     onClick={() => { startTalkshow(); setMoreOpen(false); }}
                     aria-disabled={streaming}
                     className={`md:hidden flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-[var(--bg-soft)] cursor-pointer ${
-                      streaming ? "pointer-events-none opacity-40 text-slate-500" : "text-slate-700"
+                      streaming ? "pointer-events-none opacity-40 text-ink-faint" : "text-ink-700"
                     }`}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                      <path d="M12 19v3" />
-                    </svg>
+                    <IconMic size={14} />
                     开讲挑战
                   </a>
                   <button
                     onClick={() => { setMoreOpen(false); router.push("/review"); }}
-                    className="md:hidden relative flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] cursor-pointer"
+                    className="relative flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 hover:bg-[var(--bg-soft)] cursor-pointer md:hidden"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                    </svg>
+                    <IconReview size={14} />
                     复习
                     {dueCount > 0 && (
-                      <span className="ml-auto rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                      <span className="ml-auto rounded-full bg-[var(--st-warn)] px-1.5 mono text-[10px] font-bold text-white">
                         {dueCount > 9 ? "9+" : dueCount}
                       </span>
                     )}
                   </button>
                   <button
                     onClick={() => setWide((v) => !v)}
-                    className="md:hidden flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] cursor-pointer"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 hover:bg-[var(--bg-soft)] cursor-pointer md:hidden"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" />
-                      <path d="M9 3v18" />
-                    </svg>
+                    <IconWidth size={14} />
                     {wide ? "标准宽度" : "宽屏模式"}
                   </button>
-                  <div className="md:hidden my-1 h-px bg-[var(--line-soft)]" />
+                  <div className="my-1 h-px bg-[var(--line-soft)] md:hidden" />
                   <button
                     onClick={() => { exportMd(); setMoreOpen(false); }}
                     disabled={streaming || !fullText}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 hover:bg-[var(--bg-soft)] disabled:opacity-40 cursor-pointer"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <path d="m7 10 5 5 5-5" />
-                      <path d="M12 15V3" />
-                    </svg>
+                    <IconDownload size={14} />
                     导出 Markdown
                   </button>
                   <button
                     onClick={() => { void copyAll(); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-slate-700 hover:bg-[var(--bg-soft)] cursor-pointer"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-700 hover:bg-[var(--bg-soft)] cursor-pointer"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
+                    <IconCopy size={14} />
                     {copied ? "已复制全文" : "复制全文"}
                   </button>
                 </div>
@@ -681,7 +649,7 @@ export default function AnalyzeView() {
         <div className="min-w-0 flex-1">
           {/* 词条标题：serif 大引语 */}
           <div className="mb-5">
-            <h1 className="font-disp text-[34px] md:text-[44px] font-bold ink-grad leading-[1.1] tracking-tight break-words">
+            <h1 className="break-words font-disp text-[32px] font-bold leading-[1.1] tracking-[-0.025em] text-ink-950 md:text-[42px]">
               {concept}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
@@ -695,20 +663,20 @@ export default function AnalyzeView() {
                   生成失败
                 </span>
               ) : stopped ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[12px] font-medium text-amber-700">
-                  ⏸ 已停止
+                <span className="state-chip state-warn">
+                  <IconPause size={11} />
+                  已停止
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-600">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
+                <span className="state-chip state-ok">
+                  <IconCheck size={11} />
                   深挖完成
                 </span>
               )}
               {talkshowDone && !streaming && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-3 py-1 text-[12px] font-medium text-ink-600" title="已在 Topic Talkshow 完成这个词的限时讲解">
-                  🎤 已开讲挑战
+                <span className="state-chip state-info" title="已在 Topic Talkshow 完成这个词的限时讲解">
+                  <IconMic size={11} />
+                  已开讲挑战
                 </span>
               )}
               {cachedAt && !streaming && (
@@ -721,8 +689,8 @@ export default function AnalyzeView() {
 
           {/* 数据来源提示 */}
           {!streaming && !error && fullText && cachedAt && (
-            <div className="mb-4 flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-2.5 text-[13px] text-sky-700">
-              <span>📂</span>
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-[var(--st-info-line)] bg-[var(--st-info-bg)]/70 px-4 py-2.5 text-[13px] text-[var(--st-info)]">
+              <IconFolderOpen size={14} />
               <span>
                 已加载本地存档（更新于 {fmtTime(cachedAt)}）。「重新生成」可覆盖更新。
               </span>
@@ -731,23 +699,24 @@ export default function AnalyzeView() {
 
           {/* 停止态卡片（amber 中性；红色失败态只留给真错误） */}
           {stopped && !streaming && !error && (
-            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-              <div className="text-[14px] font-medium text-amber-800">
-                ⏸ 已停止生成
+            <div className="mb-5 rounded-2xl border border-[var(--st-warn-line)] bg-[var(--st-warn-bg)] px-5 py-4">
+              <div className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--st-warn)]">
+                <IconPause size={14} />
+                已停止生成
               </div>
-              <div className="mt-1 text-[13px] text-amber-700/90">
+              <div className="mt-1 text-[13px] text-[var(--st-warn)]/90">
                 已生成 {sections.length} 个模块 · 继续可补全报告，丢弃则不存档。
               </div>
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={regenerate}
-                  className="rounded-lg border border-amber-300 bg-white px-3.5 py-1.5 text-[13px] font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
+                  className="rounded-lg border border-[var(--st-warn-line)] bg-white px-3.5 py-1.5 text-[13px] font-medium text-[var(--st-warn)] transition-colors hover:brightness-[0.97] cursor-pointer"
                 >
                   继续生成
                 </button>
                 <button
                   onClick={discardStopped}
-                  className="rounded-lg border border-[var(--line)] bg-white px-3.5 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-[var(--bg-soft)] transition-colors cursor-pointer"
+                  className="btn-ghost px-3.5 py-1.5 text-[13px]"
                 >
                   丢弃
                 </button>
@@ -757,15 +726,17 @@ export default function AnalyzeView() {
 
           {/* 错误提示卡片 */}
           {error && !streaming && (
-            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
-              <div className="text-[14px] font-medium text-red-700">
-                ⚠️ 报告生成失败
+            <div className="mb-5 rounded-2xl border border-[var(--st-err-line)] bg-[var(--st-err-bg)] px-5 py-4" role="alert">
+              <div className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--st-err)]">
+                <IconWarn size={15} />
+                报告生成失败
               </div>
-              <div className="mt-1 text-[13px] text-red-600/90">{error}</div>
+              <div className="mt-1 text-[13px] text-[var(--st-err)]/90">{error}</div>
               <button
                 onClick={regenerate}
-                className="mt-3 rounded-lg border border-red-200 bg-white px-3.5 py-1.5 text-[13px] font-medium text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                className="mt-3 flex items-center gap-1.5 rounded-lg border border-[var(--st-err-line)] bg-white px-3.5 py-1.5 text-[13px] font-medium text-[var(--st-err)] transition-colors hover:brightness-[0.97] cursor-pointer"
               >
+                <IconRefresh size={13} />
                 重试
               </button>
             </div>
@@ -783,12 +754,13 @@ export default function AnalyzeView() {
           )}
 
           {/* 区块列表 */}
-          <div className="space-y-4">
-            {sections.map((s) => (
+          <div className={`space-y-4 ${wide ? "max-w-[68rem]" : ""}`}>
+            {sections.map((s, i) => (
               <SectionCard
                 key={s.id}
                 section={s}
                 streaming={streaming}
+                active={i === sections.length - 1}
                 collapsed={!!collapsed[s.id]}
                 onToggle={() => toggle(s.id)}
                 onConceptDrillDown={setDrillConcept}
@@ -803,13 +775,15 @@ export default function AnalyzeView() {
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="btn-ghost px-5 py-2.5 text-[13.5px]"
               >
-                ↑ 回到顶部
+                <IconArrowUp size={14} />
+                回到顶部
               </button>
               <button
                 onClick={regenerate}
                 className="btn-primary px-5 py-2.5 text-[13.5px]"
               >
-                ↻ 同词重新生成
+                <IconRefresh size={14} />
+                同词重新生成
               </button>
               <button
                 onClick={() => router.push("/")}
@@ -825,22 +799,20 @@ export default function AnalyzeView() {
         <aside className={`${wide ? "hidden" : "hidden lg:block"} w-56 shrink-0`}>
           {/* 我的存档 */}
           {archive.length > 0 && (
-            <div className="mb-4 rounded-2xl border border-[var(--line)] bg-white/80 p-4">
-              <div className="text-[12px] font-bold tracking-wider text-slate-500 mb-3">
-                我的存档
-              </div>
+            <div className="card mb-4 p-4">
+              <div className="label mb-3">我的存档</div>
               <nav className="space-y-1">
                 {archive.map((r) => (
                   <div
                     key={r.key}
-                    className="group flex items-center rounded-lg hover:bg-slate-50"
+                    className="group flex items-center rounded-lg hover:bg-ink-50"
                   >
                     <button
                       onClick={() => router.push(`/analyze/${encodeURIComponent(r.term)}`)}
-                      className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-slate-600 group-hover:text-slate-900 transition-colors cursor-pointer"
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px] text-ink-soft transition-colors group-hover:text-ink-900 cursor-pointer"
                       title={r.term}
                     >
-                      <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-md bg-ink-50 text-[10.5px] text-ink-500">
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-ink-50 text-[10.5px] font-semibold text-ink-500">
                         {r.term.slice(0, 1)}
                       </span>
                       <span className="truncate">{r.term}</span>
@@ -852,10 +824,11 @@ export default function AnalyzeView() {
                         void deleteTermCards(r.term);
                         refreshArchive(term);
                       }}
-                      className="mr-1 shrink-0 rounded-md px-1.5 py-1 text-[11px] text-slate-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 cursor-pointer"
+                      className="mr-1 shrink-0 rounded-md p-1 text-ink-300 opacity-0 transition-opacity hover:text-[var(--st-err)] group-hover:opacity-100 cursor-pointer"
                       title="删除此概念"
+                      aria-label="删除此概念"
                     >
-                      ✕
+                      <IconClose size={12} />
                     </button>
                   </div>
                 ))}
@@ -865,10 +838,8 @@ export default function AnalyzeView() {
 
           {/* 报告目录 */}
           {headings.length > 1 && (
-            <div className="rounded-2xl border border-[var(--line)] bg-white/80 p-4">
-              <div className="text-[12px] font-bold tracking-wider text-slate-500 mb-3">
-                报告目录
-              </div>
+            <div className="card p-4">
+              <div className="label mb-3">报告目录</div>
               <nav className="space-y-1">
                 {headings.map((s) => {
                   const active = streaming && s === sections[sections.length - 1];
@@ -876,13 +847,16 @@ export default function AnalyzeView() {
                     <a
                       key={s.id}
                       href={`#${s.id}`}
-                      className={`block truncate rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
+                      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
                         active
                           ? "bg-ink-50 text-ink-600 font-medium"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                          : "text-ink-soft hover:bg-ink-50 hover:text-ink-800"
                       }`}
                     >
-                      {s.title}
+                      <span className="shrink-0 text-ink-400">
+                        {sectionMeta(s.title, 13).icon}
+                      </span>
+                      <span className="truncate">{sectionMeta(s.title, 13).label}</span>
                     </a>
                   );
                 })}

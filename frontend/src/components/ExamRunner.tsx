@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ExamPaper, ExamSet } from "@/lib/exams";
+import { IconArrowRight, IconClock } from "@/components/icons";
 
 interface Props {
   examSet: ExamSet;
@@ -48,18 +49,20 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
     <div className="space-y-5">
       <section className="card sticky top-2 z-20 flex flex-wrap items-center gap-3 p-4 sm:top-3">
         <button type="button" onClick={onBack} className="btn-ghost min-h-10 px-3 py-2 text-[12.5px]">
-          ← 题库
+          <IconArrowRight size={14} className="rotate-180" />
+          题库
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[15px] font-bold text-slate-800">{paper.title}</h1>
-          <p className="mt-0.5 text-[11.5px] text-slate-500">
+          <h1 className="truncate text-[15px] font-bold text-ink-800">{paper.title}</h1>
+          <p className="mt-0.5 nums text-[11.5px] text-ink-faint">
             已答 {answered} / {questions.length} · 建议 {paper.durationMinutes} 分钟
           </p>
         </div>
         <span
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[13px] font-semibold tabular-nums text-slate-700"
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-white px-3 py-2 mono text-[13px] font-semibold text-ink-700"
           aria-label={`已用时 ${Math.floor((now - startedAt) / 1000)} 秒`}
         >
+          <IconClock size={13} className="text-ink-400" />
           {fmtElapsed(Math.floor((now - startedAt) / 1000))}
         </span>
       </section>
@@ -80,14 +83,14 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
               <span className="rounded-full bg-ink-50 px-2.5 py-1 font-semibold text-ink-700">
                 第 {index + 1} 题
               </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">
+              <span className="rounded-full bg-ink-100 px-2.5 py-1 text-ink-soft">
                 {q.type === "single_choice" ? "单选题" : "简答题"}
               </span>
-              <span className="text-slate-400">{q.knowledgePoint}</span>
-              {q.sourcePage && <span className="text-slate-400"> · 教材第 {q.sourcePage} 页</span>}
+              <span className="text-ink-faint">{q.knowledgePoint}</span>
+              {q.sourcePage && <span className="text-ink-faint"> · 教材第 {q.sourcePage} 页</span>}
             </div>
 
-            <p className="mt-4 text-[16px] font-semibold leading-relaxed text-slate-900">
+            <p className="mt-4 text-[16px] font-semibold leading-relaxed text-ink-900">
               {q.stem}
             </p>
 
@@ -102,7 +105,7 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
                       className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-[14px] leading-relaxed transition-colors ${
                         checked
                           ? "border-ink-300 bg-ink-50 text-ink-900"
-                          : "border-[var(--line)] bg-white text-slate-700 hover:border-ink-200"
+                          : "border-[var(--line)] bg-white text-ink-700 hover:border-ink-200"
                       }`}
                     >
                       <input
@@ -115,7 +118,7 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
                         }
                         className="mt-1 h-4 w-4 accent-ink-600"
                       />
-                      <span className="font-semibold text-slate-400">
+                      <span className="font-semibold text-ink-400">
                         {String.fromCharCode(65 + optionIndex)}
                       </span>
                       <span>{option}</span>
@@ -131,7 +134,7 @@ export default function ExamRunner({ examSet, paper, onBack, onSubmit }: Props) 
                 }
                 rows={4}
                 placeholder="先凭记忆作答，提交后再对照评分点…"
-                className="mt-4 w-full resize-y rounded-xl border border-[var(--line)] bg-white px-3.5 py-3 text-[16px] leading-relaxed text-slate-700 sm:text-[14px]"
+                className="mt-4 w-full resize-y rounded-xl border border-[var(--line-strong)] bg-white px-3.5 py-3 text-[16px] leading-relaxed text-ink-700 sm:text-[14px]"
               />
             )}
           </fieldset>

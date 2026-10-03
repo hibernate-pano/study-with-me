@@ -5,6 +5,14 @@ import { useEffect } from "react";
 import { extractSectionText } from "@/lib/stream";
 import type { MapNode } from "@/lib/map";
 import type { StoredReport } from "@/lib/storage";
+import {
+  IconArrowRight,
+  IconClose,
+  IconGlobe,
+  IconScale,
+  IconSpark,
+  IconTarget,
+} from "./icons";
 
 /**
  * 节点预览抽屉：地图上点击节点后，右侧弹出预览面板。
@@ -75,17 +83,16 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+              className="btn-icon !h-8 !w-8"
               title="关闭（Esc）"
+              aria-label="关闭预览"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
+              <IconClose size={15} />
             </button>
           </div>
 
           {/* 标题 */}
-          <h2 className="mt-3 text-[22px] font-extrabold leading-tight text-slate-900">
+          <h2 className="mt-3 text-[22px] font-extrabold leading-tight text-ink-900">
             {node.label}
           </h2>
 
@@ -143,23 +150,26 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
               <>
                 <button
                   onClick={() => router.push(`/analyze/${encodeURIComponent(node.label)}`)}
-                  className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(20,20,18,0.22)] cursor-pointer transition-all hover:shadow-[0_12px_28px_-10px_rgba(20,20,18,0.26)]"
+                  className="btn-primary w-full px-4 py-2.5 text-[13.5px]"
                 >
-                  打开完整报告 →
+                  打开完整报告
+                  <IconArrowRight size={14} />
                 </button>
                 <button
                   onClick={() => router.push(`/compare?a=${encodeURIComponent(node.label)}`)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="btn-ghost w-full px-4 py-2.5 text-[13px]"
                 >
-                  ⚖️ 拿这个和其它概念对比
+                  <IconScale size={14} />
+                  拿这个和其它概念对比
                 </button>
               </>
             ) : (
               <button
                 onClick={() => router.push(`/analyze/${encodeURIComponent(node.label)}`)}
-                className="brand-grad w-full rounded-xl px-4 py-2.5 text-[13.5px] font-bold text-white shadow-[0_8px_20px_-8px_rgba(20,20,18,0.22)] cursor-pointer"
+                className="btn-primary w-full px-4 py-2.5 text-[13.5px]"
               >
-                ✦ 深挖「{node.label.slice(0, 10)}{node.label.length > 10 ? "…" : ""}」
+                <IconSpark size={14} />
+                深挖「{node.label.slice(0, 10)}{node.label.length > 10 ? "…" : ""}」
               </button>
             )}
           </div>
@@ -179,7 +189,7 @@ export default function ConceptPreview({ node, report, onClose, relatedFromHere 
 function MineBody({ definition, takeaways }: { definition: string; takeaways: string }) {
   if (!definition && !takeaways) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-[12.5px] text-slate-500">
+      <div className="rounded-xl border border-dashed border-[var(--line)] bg-ink-50/60 p-4 text-[12.5px] text-ink-soft">
         报告已存档，但内容解析失败。请打开完整报告查看。
       </div>
     );
@@ -187,11 +197,12 @@ function MineBody({ definition, takeaways }: { definition: string; takeaways: st
   return (
     <>
       {definition && (
-        <div className="rounded-xl border border-ink-100 bg-ink-50/60 p-4">
-          <div className="text-[10.5px] font-bold tracking-wider text-ink-500 mb-1.5">
-            🎯 一句话定义
+        <div className="rounded-xl border border-[var(--line-soft)] bg-ink-50/60 p-4">
+          <div className="mb-1.5 flex items-center gap-1.5 label !text-ink-500">
+            <IconTarget size={12} />
+            一句话定义
           </div>
-          <p className="font-disp text-[14.5px] leading-relaxed text-slate-800">
+          <p className="font-disp text-[14.5px] leading-relaxed text-ink-800">
             {definition.slice(0, 180)}
             {definition.length > 180 ? "…" : ""}
           </p>
@@ -199,10 +210,10 @@ function MineBody({ definition, takeaways }: { definition: string; takeaways: st
       )}
       {takeaways && (
         <div className="mt-3">
-          <div className="text-[10.5px] font-bold tracking-wider text-slate-500 mb-1.5">
-            📌 核心重点 · 预览
+          <div className="mb-1.5 label !text-ink-faint">
+            核心重点 · 预览
           </div>
-          <p className="text-[12.5px] leading-relaxed text-slate-600 line-clamp-4">
+          <p className="line-clamp-4 text-[12.5px] leading-relaxed text-ink-soft">
             {takeaways}
           </p>
         </div>
@@ -213,14 +224,15 @@ function MineBody({ definition, takeaways }: { definition: string; takeaways: st
 
 function RelatedBody({ description }: { description: string }) {
   return (
-    <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
-      <div className="text-[10.5px] font-bold tracking-wider text-amber-600 mb-1.5">
-        🌐 来自其它报告的描述
+    <div className="rounded-xl border border-[var(--st-info-line)] bg-[var(--st-info-bg)]/50 p-4">
+      <div className="mb-1.5 flex items-center gap-1.5 label !text-[var(--st-info)]">
+        <IconGlobe size={12} />
+        来自其它报告的描述
       </div>
-      <p className="text-[13px] leading-relaxed text-slate-700">
+      <p className="text-[13px] leading-relaxed text-ink-700">
         {description || "暂无描述，深挖后会自动补全。"}
       </p>
-      <p className="mt-2 text-[11.5px] text-slate-500">
+      <p className="mt-2 text-[11.5px] text-ink-faint">
         你还没学过这个概念。点下面深挖它会自动连入你的网络。
       </p>
     </div>

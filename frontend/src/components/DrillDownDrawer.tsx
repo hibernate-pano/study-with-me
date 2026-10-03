@@ -3,9 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { parseSections, extractSectionRaw, styleForTitle, stripStreamMarkers, type Section } from "@/lib/stream";
+import { sectionMeta } from "@/components/sectionMeta";
 import { parseNetworkMarkdown, flattenGroups, type FlatConcept } from "@/lib/network";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import { saveReport, getReport, drillKey, syncCardsFromReport } from "@/lib/storage";
+import {
+  IconClose,
+  IconRefresh,
+  IconWarn,
+} from "@/components/icons";
 
 /**
  * 右侧抽屉：承载某个被点击概念的流式深挖报告。
@@ -200,7 +206,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
       {/* 遮罩。aria-hidden 同时让 useFocusTrap 的背景隔离跳过它——
           这层要保持可点，否则「点击空白处关闭」会被 inert 吃掉。 */}
       <div
-        className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30"
+        className="fixed inset-0 z-30 bg-ink-950/25 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -211,7 +217,7 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
         role="dialog"
         aria-modal="true"
         aria-label={`深挖：${concept.name}`}
-        className="fixed top-0 right-0 h-screen w-full sm:w-[560px] bg-white shadow-2xl z-40 flex flex-col outline-none animate-[slideInRight_0.25s_ease-out]"
+        className="fixed top-0 right-0 z-40 flex h-screen w-full flex-col bg-white shadow-[var(--shadow-pop)] outline-none sm:w-[560px] animate-[slideInRight_0.25s_ease-out]"
       >
         <header className="shrink-0 border-b border-[var(--line)] px-5 py-3 flex items-start gap-3">
           <div className="flex-1 min-w-0">
@@ -244,21 +250,20 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
                 </span>
                 <button
                   onClick={() => streamRef.current?.()}
-                  className="rounded-md border border-[var(--line-strong)] px-2 py-1 text-[11.5px] text-slate-500 hover:border-ink-400 hover:text-ink-700 hover:bg-ink-50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 rounded-md border border-[var(--line-strong)] px-2 py-1 text-[11.5px] text-ink-soft transition-colors hover:border-ink-400 hover:bg-ink-50 hover:text-ink-700 cursor-pointer"
                   title="忽略缓存，重新生成这份深挖报告"
                 >
-                  ⟳ 重新生成
+                  <IconRefresh size={12} />
+                  重新生成
                 </button>
               </>
             )}
             <button
               onClick={onClose}
-              className="shrink-0 p-1.5 rounded-md text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="btn-icon shrink-0 !h-8 !w-8"
               aria-label="关闭抽屉"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
+              <IconClose size={17} />
             </button>
           </div>
         </header>
@@ -266,9 +271,12 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
         <div className="flex-1 overflow-y-auto scroll-thin px-5 py-4 space-y-4">
           {/* 错误 */}
           {error && !streaming && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-              <div className="text-[13.5px] font-medium text-red-700">⚠️ 深挖失败</div>
-              <div className="text-[12.5px] text-red-600/90 mt-0.5">{error}</div>
+            <div className="rounded-2xl border border-[var(--st-err-line)] bg-[var(--st-err-bg)] px-4 py-3" role="alert">
+              <div className="flex items-center gap-1.5 text-[13.5px] font-medium text-[var(--st-err)]">
+                <IconWarn size={14} />
+                深挖失败
+              </div>
+              <div className="mt-0.5 text-[12.5px] text-[var(--st-err)]/90">{error}</div>
             </div>
           )}
 
@@ -286,8 +294,13 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
           )}
 
           {/* 报告 */}
-          {visibleSections.map((s) => (
-            <DrawerSection key={s.id} section={s} streaming={streaming} />
+          {visibleSections.map((s, i) => (
+            <DrawerSection
+              key={s.id}
+              section={s}
+              streaming={streaming}
+              active={i === visibleSections.length - 1}
+            />
           ))}
 
           {streaming && visibleSections.length > 0 && (
@@ -313,18 +326,29 @@ export default function DrillDownDrawer({ concept, parentTerm, onClose, onCardsS
 }
 
 /** 抽屉内 section —— 用同 styleForTitle 但版面紧凑 */
-function DrawerSection({ section, streaming }: { section: Section; streaming: boolean }) {
+function DrawerSection({
+  section,
+  streaming,
+  active,
+}: {
+  section: Section;
+  streaming: boolean;
+  active: boolean;
+}) {
   const s = styleForTitle(section.title);
+  const meta = sectionMeta(section.title, 14);
   return (
     <section className="rounded-xl border border-[var(--line)] bg-white overflow-hidden">
       <div className="flex items-center gap-2.5 px-4 py-2.5">
-        <span className="h-6 w-1 rounded-full shrink-0" style={{ background: s.accent }} />
-        <h3 className="text-[14px] font-bold text-slate-800 flex-1">{section.title}</h3>
+        <span className="h-6 w-1 shrink-0 rounded-full" style={{ background: s.accent }} />
+        <span className="shrink-0 text-ink-400">{meta.icon}</span>
+        <h3 className="flex-1 text-[14px] font-bold text-ink-800">{meta.label}</h3>
         {streaming && section.content && (
-          <span className="text-[10.5px] text-slate-500 animate-pulse">生成中…</span>
+          <span className="text-[10.5px] text-ink-faint animate-pulse">生成中…</span>
         )}
       </div>
-      <div className={`px-4 pb-4 pt-1 md ${streaming ? "caret" : ""}`}>
+      {/* 只有正在生成的那一段（最后一段）显示流式光标 */}
+      <div className={`px-4 pb-4 pt-1 md ${streaming && active ? "caret" : ""}`}>
         {section.content ? (
           <ReactMarkdown
             components={{

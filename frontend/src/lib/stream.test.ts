@@ -157,23 +157,23 @@ describe("slugifyTitle", () => {
 
 describe("styleForTitle", () => {
   it("为每个模块返回稳定的配色", () => {
-    expect(styleForTitle("🎯 一句话定义").accent).toBe("#6366f1");
-    expect(styleForTitle("📌 核心重点").accent).toBe("#f59e0b");
-    expect(styleForTitle("⚠️ 常见误区").accent).toBe("#ef4444");
-    expect(styleForTitle("🧩 拆解分析").accent).toBe("#8b5cf6");
-    expect(styleForTitle("🧭 学习进阶路径").accent).toBe("#10b981");
-    expect(styleForTitle("🌐 知识网络").accent).toBe("#06b6d4");
-    expect(styleForTitle("🔍 深入追问").accent).toBe("#ec4899");
-    expect(styleForTitle("📚 推荐资料").accent).toBe("#0ea5e9");
+    expect(styleForTitle("🎯 一句话定义").accent).toBe("#2a4a72");
+    expect(styleForTitle("📌 核心重点").accent).toBe("#9d7414");
+    expect(styleForTitle("⚠️ 常见误区").accent).toBe("#b3401f");
+    expect(styleForTitle("🧩 拆解分析").accent).toBe("#56564f");
+    expect(styleForTitle("🧭 学习进阶路径").accent).toBe("#1a7f4b");
+    expect(styleForTitle("🌐 知识网络").accent).toBe("#3e6ea4");
+    expect(styleForTitle("🔍 深入追问").accent).toBe("#7c3aed");
+    expect(styleForTitle("📚 推荐资料").accent).toBe("#1f6b6b");
   });
 
   it("未匹配的标题走默认配色（slate）", () => {
-    expect(styleForTitle("随便什么").accent).toBe("#64748b");
+    expect(styleForTitle("随便什么").accent).toBe("#75756d");
   });
 
   it("模糊匹配：包含关键词即识别", () => {
-    expect(styleForTitle("核心重点（最重要的事）").accent).toBe("#f59e0b");
-    expect(styleForTitle("拆解").accent).toBe("#8b5cf6");
+    expect(styleForTitle("核心重点（最重要的事）").accent).toBe("#9d7414");
+    expect(styleForTitle("拆解").accent).toBe("#56564f");
   });
 });
 
